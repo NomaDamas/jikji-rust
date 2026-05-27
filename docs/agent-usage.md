@@ -13,8 +13,13 @@ Agent flow:
    the instant index is missing:
 
 ```bash
+.venv/bin/jikji brief /path/to/folder "natural language file clue" --top-k 10 --json
 .venv/bin/jikji search /path/to/folder "natural language file clue" --top-k 10 --json
 ```
+
+Use `brief` by default for autonomous agent work because it includes the ranked
+paths, evidence snippets, relevant folder context, and fallback commands in one
+compact payload. Use `search` for a smaller ranked-candidate-only response.
 
 2. If the result is empty or clearly insufficient, inspect the route guides and
    indexes:

@@ -250,6 +250,11 @@ def _query_tokens(query: str, *, limit: int = 32, expand: bool = True) -> list[s
                 if alias not in seen and alias not in _STOPWORDS:
                     seen.add(alias)
                     out.append(alias)
+            for gram in _tokens_from_text(token, limit=limit):
+                gram = gram.casefold()
+                if gram not in seen and gram not in _STOPWORDS:
+                    seen.add(gram)
+                    out.append(gram)
     return out[: limit * 2]
 
 
@@ -1041,7 +1046,7 @@ def _compact_lookup_text(text: str) -> str:
     This is deliberately lexical: it removes punctuation/spacing variation but
     does not call embeddings, LLMs, or a semantic model.
     """
-    return re.sub(r"[^0-9a-z가-힣]+", "", (text or "").casefold())
+    return re.sub(r"[^0-9a-z가-힣ぁ-ゟ゠-ヿ一-鿿]+", "", (text or "").casefold())
 
 def _query_filename_anchors(query: str) -> list[str]:
     """Extract likely remembered filename/title anchors from a query."""

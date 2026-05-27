@@ -4,13 +4,17 @@ Jikji makes local files legible to AI agents without moving, renaming, or deleti
 
 ```bash
 jikji search ~/Documents "contract pdf from last spring" --json
+jikji brief ~/Documents "contract pdf from last spring" --json
 ```
 
-`search` is the normal entry point: it auto-prepares an explicit root when no
-instant index exists, returns existing results immediately when the index is
-stale, and can refresh in the background. `prepare`, `refresh`, `map`, and
-`doctor` remain manual/admin commands. `clean` removes Jikji-generated artifacts
-from one prepared root when you want to leave no trace.
+`search` is the fast ranked-candidate entry point. `brief` wraps the same instant
+index in a compact agent route sheet: candidate paths, evidence snippets, folder
+context, fallback commands, and a non-destructive policy. Both commands
+auto-prepare an explicit root when no instant index exists, return existing
+results immediately when the index is stale, and can refresh in the background.
+`prepare`, `refresh`, `map`, and `doctor` remain manual/admin commands. `clean`
+removes Jikji-generated artifacts from one prepared root when you want to leave
+no trace.
 
 Jikji writes `.jikji/` and `000_JIKJI_AGENT_MAP.md` with folder/file/document
 indexes, document text caches, an Everything-style instant search index, and
@@ -26,7 +30,7 @@ jikji search ~/Documents "keyword, remembered filename, or document description"
 ```
 
 Agents should only fall back to direct `rg`/`jq` over `.jikji/` when the fast
-search result is empty or clearly insufficient.
+search/brief result is empty or clearly insufficient.
 
 Remove generated artifacts from a prepared root without touching original files:
 
@@ -103,6 +107,21 @@ HippoCamp public     claude+jikji   6      1.0000  1.0000  1.0000   49.033   8.1
 This small actual-agent run shows equal accuracy with about 6.6x lower elapsed
 agent time when Jikji provides the candidate list.
 
+Hermes Agent was also run on a public MIRACL-VISION materialized-document subset
+after adding `jikji brief`. `hermes+jikji` received the query-specific brief
+(candidate paths, evidence, route order) and could still inspect files if needed.
+
+```text
+Dataset                 Agent mode     Cases  Hit@1   Hit@3   Hit@5   Hit@10  Seconds  Avg sec/case
+MIRACL-VISION public    hermes raw     8      0.7500  0.8750  0.8750  0.8750  268.381  33.548
+MIRACL-VISION public    hermes+jikji   8      0.7500  0.8750  0.8750  1.0000  194.967  24.371
+```
+
+This small actual-agent run shows equal Hit@5, higher Hit@10, and about 1.38x
+lower elapsed agent time. The public corpus/eval are under
+`.benchmarks/miracl_vision_public_doc_bench/`; generated run evidence is
+reproducible with `jikji hermes-bench ... --modes raw,jikji`.
+
 ### Public deterministic retrieval suites
 
 The deterministic harness is not a replacement for an agent benchmark; it is a
@@ -137,6 +156,15 @@ HippoCamp public no-leak deterministic check:
 Dataset           Mode   Cases  Hit@1   Hit@5   Hit@10  MRR
 HippoCamp public  raw    18     0.6667  0.7778  0.8889  0.7238
 HippoCamp public  jikji  18     0.6111  0.8333  0.9444  0.6935
+```
+
+MIRACL-VISION public multilingual document-file check after CJK-aware indexing
+and `brief` support:
+
+```text
+Dataset                    Mode   Cases  Hit@1   Hit@3   Hit@5   Hit@10  MRR     Seconds
+MIRACL-VISION ko/en/ja/fr  raw    80     0.6125  0.7250  0.7875  0.8875  0.6962  13.760
+MIRACL-VISION ko/en/ja/fr  jikji  80     0.6875  0.9000  0.9250  0.9750  0.7903   7.421
 ```
 
 Reproducible commands:

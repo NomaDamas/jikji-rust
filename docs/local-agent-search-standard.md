@@ -173,18 +173,23 @@ Write policy:
 
 A local agent using Jikji should follow this sequence:
 
-1. Read `000_JIKJI_AGENT_MAP.md`.
-2. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md`.
-3. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
+1. Run `jikji brief ROOT "query" --json` for a compact query-specific route
+   sheet. Use its candidate paths first when evidence/reasons match.
+2. Run `jikji search ROOT "query" --json` when only ranked candidates are
+   needed or when refining the query.
+3. Read `000_JIKJI_AGENT_MAP.md`.
+4. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md`.
+5. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
    `.jikji/document_index.jsonl` with `rg`/`jq`.
-4. Search parser-required document bodies in `.jikji/doc_text/`.
-5. Search native text-like files in their original locations, excluding `.jikji`.
-6. Open the original file only through the `path` field after finding a match.
-7. Never move, rename, delete, or reorganize source files as part of search.
+6. Search parser-required document bodies in `.jikji/doc_text/`.
+7. Search native text-like files in their original locations, excluding `.jikji`.
+8. Open the original file only through the `path` field after finding a match.
+9. Never move, rename, delete, or reorganize source files as part of search.
 
 Example:
 
 ```bash
+jikji brief . "contract pdf from last spring" --top-k 10 --json
 rg "contract|계약" .jikji/doc_text .jikji/*.jsonl
 jq -r 'select(.ext==".pdf") | [.path, .text_cache_path] | @tsv' .jikji/document_index.jsonl
 rg "TODO|회의" . --glob '!**/.jikji/**'

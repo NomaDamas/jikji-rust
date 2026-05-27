@@ -20,11 +20,14 @@ folder the user has explicitly provided.
 Fast path for finding files:
 
 ```bash
+jikji brief /explicit/root "natural language file clue" --top-k 10 --json
 jikji search /explicit/root "natural language file clue" --top-k 10 --json
 ```
 
-Use the returned candidate paths first. Do not manually grep large `.jikji`
-JSONL files unless `jikji search` returns no useful candidate.
+Prefer `brief` when acting as an autonomous local agent: it returns candidate
+paths plus evidence, folder context, and fallback route commands. Use `search`
+when you only need the ranked candidates. Do not manually grep large `.jikji`
+JSONL files unless `brief`/`search` returns no useful candidate.
 
 Prepare or refresh the map only when the root has not been prepared or may be
 stale:
@@ -32,6 +35,7 @@ stale:
 ```bash
 jikji prepare /explicit/root --json
 jikji doctor /explicit/root
+jikji brief /explicit/root "natural language file clue" --top-k 10 --json
 jikji search /explicit/root "natural language file clue" --top-k 10 --json
 ```
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 from jikji.agent_index import build_agent_index
 from jikji.config import Config
@@ -258,6 +259,100 @@ def test_eval_generate_and_run_scores_local_search(tmp_path, capsys):
     assert search_report["candidates"][0]["path"] == "projects/apollo/mission-notes.txt"
 
 
+def test_search_and_brief_support_japanese_cjk_content(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    doc = tmp_path / "travel" / "tokyo-guide.md"
+    doc.parent.mkdir()
+    doc.write_text(
+        "東京観光メモ。浅草寺と上野公園の集合場所を確認するための資料です。",
+        encoding="utf-8",
+    )
+    (tmp_path / "travel" / "kyoto-guide.md").write_text(
+        "京都観光メモ。伏見稲荷と嵐山の予定を整理する資料です。",
+        encoding="utf-8",
+    )
+
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+
+    assert main(["search", str(tmp_path), "浅草寺 集合場所", "--top-k", "3", "--json"]) == 0
+    search_report = json.loads(capsys.readouterr().out)
+    assert search_report["candidates"]
+    assert search_report["candidates"][0]["path"] == "travel/tokyo-guide.md"
+
+    assert main(["brief", str(tmp_path), "浅草寺 集合場所", "--top-k", "3", "--json"]) == 0
+    brief = json.loads(capsys.readouterr().out)
+    assert brief["schema_version"] == 1
+    assert brief["agent_policy"]
+    assert brief["commands"]["repeat_ranked_search"].startswith("jikji search ")
+    assert brief["candidates"][0]["path"] == "travel/tokyo-guide.md"
+    assert "Never move" in " ".join(brief["agent_policy"])
+
+
+def test_search_supports_later_cjk_phrase_in_long_unspaced_span(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    target = tmp_path / "research" / "long-cjk.md"
+    target.parent.mkdir()
+    long_prefix = "研究計画確認事項" * 12
+    target.write_text(
+        f"{long_prefix}後半重要語資料保管場所最終確認",
+        encoding="utf-8",
+    )
+    (tmp_path / "research" / "other-cjk.md").write_text(
+        "研究計画確認事項" * 14,
+        encoding="utf-8",
+    )
+
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+
+    assert main(["search", str(tmp_path), "後半重要語", "--top-k", "3", "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["candidates"]
+    assert report["candidates"][0]["path"] == "research/long-cjk.md"
+
+
+def test_search_supports_chinese_cjk_content(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    doc = tmp_path / "notes" / "beijing.md"
+    doc.parent.mkdir()
+    doc.write_text("北京会议记录包含预算审批和项目交付时间表。", encoding="utf-8")
+    (tmp_path / "notes" / "shanghai.md").write_text("上海会议记录包含场地安排。", encoding="utf-8")
+
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+
+    assert main(["search", str(tmp_path), "预算审批 项目交付", "--top-k", "3", "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["candidates"]
+    assert report["candidates"][0]["path"] == "notes/beijing.md"
+
+
+def test_brief_streams_candidate_sidecars_without_read_text_materialization(tmp_path, capsys, monkeypatch):
+    from jikji.__main__ import main
+
+    doc = tmp_path / "stream" / "target.md"
+    doc.parent.mkdir()
+    doc.write_text("streaming unique needle", encoding="utf-8")
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+
+    original_read_text = Path.read_text
+
+    def guarded_read_text(self, *args, **kwargs):
+        if self.name in {"file_cards.jsonl", "folder_profile.jsonl"}:
+            raise AssertionError(f"brief must stream {self.name}, not read_text it wholesale")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", guarded_read_text)
+    assert main(["brief", str(tmp_path), "streaming unique needle", "--top-k", "3", "--json"]) == 0
+    brief = json.loads(capsys.readouterr().out)
+    assert brief["candidates"][0]["path"] == "stream/target.md"
+
+
 def test_search_auto_prepares_missing_index(tmp_path, capsys):
     from jikji.__main__ import main
 
@@ -378,15 +473,17 @@ def test_hermes_bench_rejects_eval_leaks(tmp_path):
         raise AssertionError("expected no-leak check failure")
 
 
-def test_hermes_jikji_prompt_is_tool_first(tmp_path):
+def test_hermes_jikji_prompt_is_agent_brief_first(tmp_path):
     from jikji.hermes_bench import _prompt
 
     prompt = _prompt(tmp_path, "jikji", {"query": "find notes", "id": "case"}, candidate_top_k=5)
 
-    assert "JIKJI TOOL-FIRST MODE" in prompt
-    assert "JIKJI SEARCH RESULT" in prompt
-    assert "Do not call rg/find/ls/cat" in prompt
-    assert "return several candidates" in prompt
+    assert "JIKJI BRIEF MODE" in prompt
+    assert "JIKJI AGENT BRIEF" in prompt
+    assert "Actual brief payload follows" in prompt
+    assert '"schema_version": 1' in prompt
+    assert "Route order" in prompt
+    assert "preserve relative paths exactly" in prompt
 
 
 def test_bench_run_rejects_annotation_leak(tmp_path, capsys):

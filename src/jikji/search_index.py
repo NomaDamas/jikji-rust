@@ -17,7 +17,8 @@ from typing import Any
 INSTANT_SEARCH_INDEX = "search_index.sqlite"
 INSTANT_SEARCH_SCHEMA_VERSION = 1
 
-_TOKEN_RE = re.compile(r"[0-9A-Za-z가-힣][0-9A-Za-z가-힣_.+-]*")
+_TOKEN_RE = re.compile(r"[0-9A-Za-z가-힣ぁ-ゟ゠-ヿ一-鿿][0-9A-Za-z가-힣ぁ-ゟ゠-ヿ一-鿿_.+-]*")
+_CJK_RE = re.compile(r"[가-힣ぁ-ゟ゠-ヿ一-鿿]")
 _COPY_SUFFIX_RE = re.compile(r"(?:\s*\(\d+\)|\s*-\s*copy|\s+copy|_copy)$", re.IGNORECASE)
 _KOREAN_PARTICLE_SUFFIXES = (
     "이라고",
@@ -78,8 +79,28 @@ def _tokens(text: str, *, limit: int = 512) -> list[str]:
     return out
 
 
+def _cjk_ngrams(text: str, *, limit: int = 32) -> list[str]:
+    compact = re.sub(r"[^0-9a-z가-힣ぁ-ゟ゠-ヿ一-鿿]+", "", (text or "").casefold())
+    if len(compact) < 2 or not _CJK_RE.search(compact):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for n in (4, 3, 2):
+        if len(compact) < n:
+            continue
+        for idx in range(0, len(compact) - n + 1):
+            gram = compact[idx:idx + n]
+            if gram in seen:
+                continue
+            seen.add(gram)
+            out.append(gram)
+            if len(out) >= limit:
+                return out
+    return out
+
+
 def _compact(text: str) -> str:
-    return re.sub(r"[^0-9a-z가-힣]+", "", (text or "").casefold())
+    return re.sub(r"[^0-9a-z가-힣ぁ-ゟ゠-ヿ一-鿿]+", "", (text or "").casefold())
 
 
 def _duplicate_stem(path: str) -> str:
@@ -196,8 +217,10 @@ def terms_for_row(row: dict[str, Any]) -> set[str]:
     out: set[str] = set()
     for token in _tokens(fields, limit=512):
         out.update(_term_variants(token))
+        out.update(_cjk_ngrams(token, limit=256))
     for key in row.get("filename_lookup_keys") or []:
         out.add(str(key).casefold())
+        out.update(_cjk_ngrams(str(key), limit=64))
     return {term for term in out if term}
 
 

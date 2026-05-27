@@ -9,6 +9,7 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .agent_brief import brief_markdown, build_agent_brief_payload
 from .agent_index import AGENT_DIR_NAME, build_agent_index
 from .beir import materialize_beir_dataset, run_beir_suite
 from .config import Config
@@ -517,6 +518,38 @@ def cmd_search(args) -> int:
     return 0
 
 
+def cmd_brief(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    index_status, should_prepare = _search_index_status(root, stale_after_seconds=args.stale_after_seconds)
+    foreground_prepared = False
+    if args.fresh or (should_prepare and args.auto_prepare):
+        build_agent_index(root, _search_config_from_args(args))
+        index_status = "prepared_now" if should_prepare else "refreshed_now"
+        foreground_prepared = True
+    elif should_prepare and not args.auto_prepare:
+        print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
+        return 1
+
+    candidates = search(root, args.query, top_k=args.top_k)
+    background_refresh_started = False
+    if index_status == "stale_using_previous_index" and not args.fresh:
+        background_refresh_started = _maybe_start_background_refresh(args, root)
+    payload = build_agent_brief_payload(
+        root,
+        args.query,
+        top_k=args.top_k,
+        index_status=index_status,
+        foreground_prepared=foreground_prepared,
+        background_refresh_started=background_refresh_started,
+        candidates=candidates,
+    )
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(brief_markdown(payload))
+    return 0
+
+
 def cmd_hippocamp_fetch(args) -> int:
     result = fetch_subset(
         Path(args.dest),
@@ -847,6 +880,27 @@ def main(argv: list[str] | None = None) -> int:
     p_search.add_argument("--json", action="store_true")
     p_search.set_defaults(auto_prepare=True, background_refresh=True)
     p_search.set_defaults(func=cmd_search)
+
+    p_brief = sub.add_parser(
+        "brief",
+        help="emit a compact query-specific route brief for local agents",
+    )
+    p_brief.add_argument("path")
+    p_brief.add_argument("query")
+    p_brief.add_argument("--top-k", type=int, default=10)
+    p_brief.add_argument("--fresh", action="store_true", help="run a foreground refresh before briefing")
+    p_brief.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false", help="do not auto-prepare when the instant index is missing")
+    p_brief.add_argument("--no-background-refresh", dest="background_refresh", action="store_false", help="do not launch background refresh for stale indexes")
+    p_brief.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60, help="mark an index stale after this age; negative disables staleness")
+    p_brief.add_argument("--max-files", type=int, default=100_000, help="auto-prepare file safety limit")
+    p_brief.add_argument("--include-hidden", action="store_true")
+    p_brief.add_argument("--include-sensitive", action="store_true")
+    p_brief.add_argument("--exclude", action="append", default=[])
+    p_brief.add_argument("--max-hash-bytes", type=int, default=512 * 1024 * 1024)
+    p_brief.add_argument("--parse-timeout", type=float, default=5.0)
+    p_brief.add_argument("--json", action="store_true")
+    p_brief.set_defaults(auto_prepare=True, background_refresh=True)
+    p_brief.set_defaults(func=cmd_brief)
 
     p_hf = sub.add_parser("hippocamp-fetch", help="download a bounded HippoCamp subset from Hugging Face")
     p_hf.add_argument("dest", help="destination directory for the downloaded subset")

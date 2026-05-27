@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .agent_brief import build_agent_brief_payload
 from .agent_index import AGENT_DIR_NAME, _atomic_write_text
 from .eval import _path_fingerprints, _rank_for_expected, _read_jsonl, search
 
@@ -94,12 +95,38 @@ def _candidate_lines(root: Path, query: str, *, top_k: int) -> list[str]:
     for idx, item in enumerate(candidates, 1):
         reasons = ",".join(str(x) for x in (item.get("reasons") or []))
         lines.append(f"{idx}. {item.get('path')} | score={item.get('score')} | reasons={reasons}")
+        for preview in list(item.get("evidence") or [])[:2]:
+            lines.append(f"   evidence: {str(preview)[:240]}")
+    return lines
+
+
+def _brief_lines(root: Path, query: str, *, top_k: int) -> list[str]:
+    candidates = search(root, query, top_k=top_k)
+    payload = build_agent_brief_payload(
+        root,
+        query,
+        top_k=top_k,
+        index_status="ready",
+        foreground_prepared=False,
+        background_refresh_started=False,
+        candidates=candidates,
+    )
+    lines = [
+        "JIKJI AGENT BRIEF:",
+        f"`jikji brief {root} {json.dumps(query, ensure_ascii=False)} --top-k {top_k} --json` is the intended agent interface.",
+        "Actual brief payload follows. Treat it as the canonical Jikji agent-map handoff for this query.",
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        "Policy: use candidate paths first, preserve relative paths exactly, read original files only for final verification, and never mutate files.",
+        "Route order: candidates -> rerun jikji search with sharper query -> .jikji/file_cards.jsonl + chunk_map.jsonl -> .jikji/doc_text -> original files excluding .jikji.",
+    ]
     return lines
 
 
 def _mode_family(mode: str) -> str:
     normalized = mode.strip().lower().replace("_", "-")
-    if normalized in {"jikji", "jikji-tool", "tool", "tool-first"}:
+    if normalized in {"jikji", "jikji-brief", "brief", "map", "jikji-map"}:
+        return "jikji-brief"
+    if normalized in {"jikji-tool", "tool", "tool-first"}:
         return "jikji-tool"
     if normalized in {"jikji-passive", "passive"}:
         return "jikji-passive"
@@ -127,6 +154,15 @@ def _prompt(root: Path, mode: str, case: dict, *, candidate_top_k: int = 0, retr
             "This benchmark measures whether a local agent can skip exploratory filesystem work when Jikji has already ranked candidates.",
         ])
         base.extend(_candidate_lines(root, str(case.get("query") or ""), top_k=candidate_top_k))
+    elif mode_family == "jikji-brief":
+        base.extend([
+            "JIKJI BRIEF MODE: Treat Jikji as an agent map/router, not a one-shot answer oracle.",
+            "A compact query-specific brief is provided below. Use it to avoid slow raw filesystem exploration.",
+            "If the brief contains plausible candidates, return those ranked paths directly.",
+            "Only inspect original files or generated Jikji artifacts when the brief is ambiguous or empty.",
+            "This benchmark measures whether Jikji can make agent exploration shorter while preserving accuracy.",
+        ])
+        base.extend(_brief_lines(root, str(case.get("query") or ""), top_k=candidate_top_k))
     elif mode_family == "jikji-passive":
         base.extend([
             "JIKJI PASSIVE MODE: First read 000_JIKJI_AGENT_MAP.md and .jikji/agent_routes.md if present.",
@@ -289,7 +325,8 @@ def run_hermes_benchmark(
         "hermes_bin": hermes_bin,
         "mode_protocols": {
             "raw": "Hermes searches original files/folders and must ignore Jikji artifacts.",
-            "jikji": "Alias for jikji-tool: Jikji search candidates are provided; Hermes should choose from them without browsing.",
+            "jikji": "Alias for jikji-brief: query-specific Jikji route brief and candidates are provided to avoid raw browsing.",
+            "jikji-brief": "Agent-map brief handoff; Hermes receives candidate paths, evidence, and fallback route order.",
             "jikji-tool": "Tool-first Jikji handoff; candidate list replaces exploratory filesystem work.",
             "jikji-passive": "Legacy/passive map-reading mode; Hermes may inspect Jikji artifacts.",
         },

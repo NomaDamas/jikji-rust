@@ -433,20 +433,52 @@ def _scan_files_and_dirs(root: Path, config: Config) -> tuple[list[Path], list[P
     return sorted(files, key=lambda p: str(p)), sorted(dirs, key=lambda p: str(p))
 
 
+_TOKEN_TEXT_RE = re.compile(r"[0-9A-Za-z가-힣ぁ-ゟ゠-ヿ一-鿿][0-9A-Za-z가-힣ぁ-ゟ゠-ヿ一-鿿._-]*")
+_CJK_RE = re.compile(r"[가-힣ぁ-ゟ゠-ヿ一-鿿]")
+
+
+def _cjk_ngrams(text: str, *, limit: int = 24) -> list[str]:
+    compact = re.sub(r"[^0-9a-z가-힣ぁ-ゟ゠-ヿ一-鿿]+", "", (text or "").casefold())
+    if len(compact) < 2 or not _CJK_RE.search(compact):
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for n in (4, 3, 2):
+        if len(compact) < n:
+            continue
+        for idx in range(0, len(compact) - n + 1):
+            gram = compact[idx:idx + n]
+            if gram in seen:
+                continue
+            seen.add(gram)
+            out.append(gram)
+            if len(out) >= limit:
+                return out
+    return out
+
+
 def _tokens_from_text(text: str, *, limit: int = 16) -> list[str]:
     tokens = []
     seen = set()
-    for raw in re.findall(r"[0-9A-Za-z가-힣][0-9A-Za-z가-힣._-]*", text or ""):
+    for raw in _TOKEN_TEXT_RE.findall(text or ""):
         tok = raw.strip("._-")
-        if len(tok) < 2:
-            continue
-        norm = tok.casefold()
-        if norm in seen or norm in {"jikji", "file", "data", "문서", "파일", "자료"}:
-            continue
-        seen.add(norm)
-        tokens.append(tok)
-        if len(tokens) >= limit:
-            break
+        candidates = [tok]
+        if _CJK_RE.search(tok) and len(tok) >= 3:
+            # Japanese and Chinese text often arrives as long script runs
+            # without whitespace. Add bounded character n-grams so a query for
+            # a remembered phrase can still route to the right file without an
+            # embedding model or language-specific tokenizer.
+            candidates.extend(_cjk_ngrams(tok, limit=max(limit * 4, 64)))
+        for candidate in candidates:
+            if len(candidate) < 2:
+                continue
+            norm = candidate.casefold()
+            if norm in seen or norm in {"jikji", "file", "data", "文書", "문서", "파일", "資料", "자료"}:
+                continue
+            seen.add(norm)
+            tokens.append(candidate)
+            if len(tokens) >= limit:
+                return tokens
     return tokens
 
 
@@ -529,9 +561,9 @@ def _clean_map_terms(text: str, *, rel_path: str = "", limit: int = 80) -> list[
         digit_ratio = sum(ch.isdigit() for ch in token) / max(1, len(token))
         if digit_ratio > 0.35:
             continue
-        has_ko = bool(re.search(r"[가-힣]", token))
+        has_cjk = bool(_CJK_RE.search(token))
         has_alpha = bool(re.search(r"[A-Za-z]", token))
-        if not has_ko and (not has_alpha or len(token) < 4):
+        if not has_cjk and (not has_alpha or len(token) < 4):
             continue
         seen.add(norm)
         out.append(token)
@@ -602,7 +634,7 @@ def _normalised_duplicate_stem(path: str) -> str:
 
 
 def _compact_filename_lookup_text(text: str) -> str:
-    return re.sub(r"[^0-9a-z가-힣]+", "", (text or "").casefold())
+    return re.sub(r"[^0-9a-z가-힣ぁ-ゟ゠-ヿ一-鿿]+", "", (text or "").casefold())
 
 
 def _filename_lookup_keys(path_or_name: str) -> list[str]:
