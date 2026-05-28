@@ -71,12 +71,18 @@ jikji hermes-bench ./benchmarks/hippocamp/Adam_Subset \
   --modes raw,jikji \
   --candidate-top-k 10 \
   --skills jikji --json
+
+# Public enterprise-PDF benchmark: EDiTh / Véracier Industries
+jikji edith-summary .benchmarks/edith_public --json
+jikji edith-suite .benchmarks/edith_public_run \
+  --cases 3 --max-docs 42 --top-k 10 \
+  --max-download-bytes 2000000000 --json
 ```
 
-In `hermes-bench`, `jikji` is a tool-first mode: Jikji search candidates are
-provided up front so Hermes can choose from ranked paths instead of spending
-turns manually browsing `.jikji` indexes. Use `jikji-passive` only for legacy
-map-reading diagnostics.
+In `hermes-bench`, `jikji` is a brief-first mode: the actual `jikji brief`
+payload is provided up front so Hermes can choose from ranked paths and evidence
+instead of spending turns manually browsing `.jikji` indexes. Use `jikji-passive`
+only for legacy map-reading diagnostics.
 
 `map` is only the route guide. Full metadata lives in `.jikji/*.jsonl`; extracted parser text lives in `.jikji/doc_text/`.
 `prepare` also builds `.jikji/search_index.sqlite`, an Everything-style
@@ -121,6 +127,21 @@ This small actual-agent run shows equal Hit@5, higher Hit@10, and about 1.38x
 lower elapsed agent time. The public corpus/eval are under
 `.benchmarks/miracl_vision_public_doc_bench/`; generated run evidence is
 reproducible with `jikji hermes-bench ... --modes raw,jikji`.
+
+Hermes was also run on a bounded EDiTh / Véracier Industries enterprise-PDF
+subset: 42 public PDFs extracted from the 1.5GB archive, with 3 file-retrieval
+questions from the answer key.
+
+```text
+Dataset            Agent mode     Cases  Hit@1   Hit@3   Hit@5   Hit@10  Seconds  Avg sec/case
+EDiTh PDF subset   hermes raw     3      1.0000  1.0000  1.0000  1.0000  152.777  50.926
+EDiTh PDF subset   hermes+jikji   3      1.0000  1.0000  1.0000  1.0000  120.852  40.284
+```
+
+This EDiTh run is intentionally small because the public archive is large and
+the answer key has only a few explicit file-list retrieval questions, but it is
+closer to Jikji's target than Markdown-only corpora: real PDF files,
+searchable/scanned/mixed formats, multiple languages, and multi-file answers.
 
 ### Public deterministic retrieval suites
 
@@ -167,6 +188,14 @@ MIRACL-VISION ko/en/ja/fr  raw    80     0.6125  0.7250  0.7875  0.8875  0.6962 
 MIRACL-VISION ko/en/ja/fr  jikji  80     0.6875  0.9000  0.9250  0.9750  0.7903   7.421
 ```
 
+EDiTh / Véracier Industries bounded enterprise-PDF check:
+
+```text
+Dataset           Mode   Cases  Hit@1   Hit@3   Hit@5   Hit@10  SetR@5  MRR     Seconds
+EDiTh PDF subset  raw    3      0.3333  0.6667  0.6667  0.6667  0.4000  0.4444  0.009
+EDiTh PDF subset  jikji  3      0.3333  1.0000  1.0000  1.0000  0.6667  0.6667  0.024
+```
+
 Reproducible commands:
 
 ```bash
@@ -177,6 +206,10 @@ jikji beir-suite .benchmarks/public_beir \
 jikji bench-run .benchmarks/hippocamp-large/Adam_Subset \
   --eval-set .benchmarks/hippocamp_eval_set_220_noleak.jsonl \
   --modes raw,jikji --top-k 10 --json
+
+jikji edith-suite .benchmarks/edith_public_run \
+  --cases 3 --max-docs 42 --top-k 10 \
+  --max-download-bytes 2000000000 --json
 ```
 
 Validation commands for this snapshot:
@@ -187,7 +220,7 @@ Validation commands for this snapshot:
 .venv/bin/python -m compileall -q src tests
 ```
 
-Result: `ruff` passed, `pytest` passed with 31 tests, and `compileall` passed.
+Result: `ruff` passed, `pytest` passed with 38 tests, and `compileall` passed.
 
 ## Content extraction coverage
 
@@ -233,6 +266,7 @@ python3 -m venv .venv
 - Schema reference: `docs/schema.md`
 - Agent usage: `docs/agent-usage.md`
 - HippoCamp benchmark adapter: `docs/hippocamp-benchmark.md`
+- Public benchmark catalog: `docs/public-benchmark-catalog.md`
 - Generic skill template: `skills/jikji/SKILL.md`
 
 Jikji is separate from Folder1004:

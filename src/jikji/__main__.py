@@ -13,6 +13,7 @@ from .agent_brief import brief_markdown, build_agent_brief_payload
 from .agent_index import AGENT_DIR_NAME, build_agent_index
 from .beir import materialize_beir_dataset, run_beir_suite
 from .config import Config
+from .edith import edith_answer_summary, materialize_edith_dataset, run_edith_suite
 from .eval import (
     analyze_eval_failures,
     generate_eval_set,
@@ -777,6 +778,103 @@ def cmd_beir_suite(args) -> int:
     return 0
 
 
+def cmd_edith_summary(args) -> int:
+    result = edith_answer_summary(Path(args.dest))
+    if args.json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print("EDiTh benchmark metadata")
+        print(f"- source={result['source']}")
+        print(f"- master_rows={result['master_rows']} answer_questions={result['answer_questions']}")
+        print(
+            f"- file_retrieval_questions={result['file_retrieval_questions']} "
+            f"referenced_docs={result['referenced_docs']}"
+        )
+        print(f"- formats={result['formats']}")
+        print(f"- languages={result['languages']}")
+    return 0
+
+
+def cmd_edith_import(args) -> int:
+    result = materialize_edith_dataset(
+        Path(args.dest),
+        max_cases=args.cases,
+        max_docs=args.max_docs,
+        download_docs=not args.no_docs,
+        max_download_bytes=args.max_download_bytes,
+    )
+    payload = {
+        "metadata_dir": str(result.metadata_dir),
+        "corpus_root": str(result.corpus_root),
+        "eval_set": str(result.eval_set_path),
+        "selected_questions": result.selected_questions,
+        "selected_docs": result.selected_docs,
+        "extracted_docs": result.extracted_docs,
+        "skipped_questions": result.skipped_questions,
+        "archive_bytes_read": result.archive_bytes_read,
+        "archive_byte_limit": result.archive_byte_limit,
+        "archive_truncated": result.archive_truncated,
+        "public_benchmark": True,
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print("EDiTh benchmark materialized")
+        print(f"- corpus={result.corpus_root}")
+        print(f"- eval_set={result.eval_set_path}")
+        print(
+            f"- questions={result.selected_questions} selected_docs={result.selected_docs} "
+            f"extracted_docs={result.extracted_docs}"
+        )
+    return 0
+
+
+def cmd_edith_suite(args) -> int:
+    result = run_edith_suite(
+        Path(args.dest),
+        max_cases=args.cases,
+        max_docs=args.max_docs,
+        top_k=args.top_k,
+        download_docs=not args.no_docs,
+        prepare=not args.no_prepare,
+        max_download_bytes=args.max_download_bytes,
+    )
+    payload = {
+        "report": str(result.report_path),
+        "materialized": {
+            "metadata_dir": str(result.materialized.metadata_dir),
+            "corpus_root": str(result.materialized.corpus_root),
+            "eval_set": str(result.materialized.eval_set_path),
+            "selected_questions": result.materialized.selected_questions,
+            "selected_docs": result.materialized.selected_docs,
+            "extracted_docs": result.materialized.extracted_docs,
+            "skipped_questions": result.materialized.skipped_questions,
+            "archive_bytes_read": result.materialized.archive_bytes_read,
+            "archive_byte_limit": result.materialized.archive_byte_limit,
+            "archive_truncated": result.materialized.archive_truncated,
+        },
+        "prepare_seconds": result.prepare_seconds,
+        "metrics": result.metrics,
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"EDiTh suite complete: {result.report_path}")
+        if "metadata_only" in result.metrics or "no_document_cases" in result.metrics:
+            mode = "metadata_only" if "metadata_only" in result.metrics else "no_document_cases"
+            metrics = result.metrics[mode]
+            print(f"- {mode}: cases={metrics.get('cases')} selected_docs={metrics.get('selected_docs')}")
+            print(f"- note: {metrics.get('note')}")
+        else:
+            for mode, metrics in result.metrics.items():
+                print(
+                    f"- {mode}: cases={metrics.get('cases')} hit@1={metrics.get('hit_at_1')} "
+                    f"hit@5={metrics.get('hit_at_5')} hit@10={metrics.get('hit_at_10')} "
+                    f"mrr={metrics.get('mrr')} seconds={metrics.get('seconds')}"
+                )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jikji", description="Prepare local files as agent-readable knowledge maps.")
     parser.add_argument("--version", action="version", version=f"jikji {__version__}")
@@ -994,6 +1092,44 @@ def main(argv: list[str] | None = None) -> int:
     p_beir_suite.add_argument("--no-prepare", action="store_true")
     p_beir_suite.add_argument("--json", action="store_true")
     p_beir_suite.set_defaults(func=cmd_beir_suite)
+
+    p_edith_summary = sub.add_parser("edith-summary", help="inspect public EDiTh benchmark metadata")
+    p_edith_summary.add_argument("dest")
+    p_edith_summary.add_argument("--json", action="store_true")
+    p_edith_summary.set_defaults(func=cmd_edith_summary)
+
+    p_edith_import = sub.add_parser(
+        "edith-import",
+        help="materialize a bounded EDiTh enterprise-PDF file-retrieval benchmark",
+    )
+    p_edith_import.add_argument("dest")
+    p_edith_import.add_argument("--cases", type=int, default=8)
+    p_edith_import.add_argument("--max-docs", type=int, default=60)
+    p_edith_import.add_argument(
+        "--max-download-bytes",
+        type=int,
+        default=2_000_000_000,
+        help="compressed archive transfer budget for streaming PDFs (default: 2GB)",
+    )
+    p_edith_import.add_argument("--no-docs", action="store_true", help="download metadata/eval only; do not stream-extract PDFs")
+    p_edith_import.add_argument("--json", action="store_true")
+    p_edith_import.set_defaults(func=cmd_edith_import)
+
+    p_edith_suite = sub.add_parser("edith-suite", help="run bounded public EDiTh raw-vs-Jikji suite")
+    p_edith_suite.add_argument("dest")
+    p_edith_suite.add_argument("--cases", type=int, default=8)
+    p_edith_suite.add_argument("--max-docs", type=int, default=60)
+    p_edith_suite.add_argument("--top-k", type=int, default=10)
+    p_edith_suite.add_argument(
+        "--max-download-bytes",
+        type=int,
+        default=2_000_000_000,
+        help="compressed archive transfer budget for streaming PDFs (default: 2GB)",
+    )
+    p_edith_suite.add_argument("--no-docs", action="store_true", help="metadata/eval only; skips prepare/Jikji comparison")
+    p_edith_suite.add_argument("--no-prepare", action="store_true")
+    p_edith_suite.add_argument("--json", action="store_true")
+    p_edith_suite.set_defaults(func=cmd_edith_suite)
 
     args = parser.parse_args(argv)
     if args.cmd is None:

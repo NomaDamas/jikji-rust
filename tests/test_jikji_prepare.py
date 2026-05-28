@@ -353,6 +353,53 @@ def test_brief_streams_candidate_sidecars_without_read_text_materialization(tmp_
     assert brief["candidates"][0]["path"] == "stream/target.md"
 
 
+def test_edith_ground_truth_paths_are_flattened_and_mapped():
+    from jikji.edith import _question_doc_paths, _select_eval_cases
+
+    master = [
+        {
+            "question_id": "CEO-01",
+            "entity": "precistec",
+            "filename": "contrats/acquired/precistec_client_severneft_supply_2019.pdf",
+            "format": "scanned",
+            "language": "fr",
+        },
+        {
+            "question_id": "CEO-01",
+            "entity": "precistec",
+            "filename": "contrats/acquired/precistec_client_enoceanes_msa_2021.pdf",
+            "format": "searchable",
+            "language": "fr",
+        },
+    ]
+    answer = {
+        "question": "Risk map",
+        "ground_truth": {
+            "sanctions_risk": ["precistec_client_severneft_supply_2019.pdf"],
+            "all_review": ["contrats/acquired/precistec_client_enoceanes_msa_2021.pdf"],
+            "trap": {"closed.pdf": "not an expected document because value is explanatory text"},
+        },
+    }
+
+    paths = _question_doc_paths(answer, master)
+
+    assert paths == [
+        "contrats/acquired/precistec_client_enoceanes_msa_2021.pdf",
+        "contrats/acquired/precistec_client_severneft_supply_2019.pdf",
+    ]
+
+    cases, selected_docs, skipped = _select_eval_cases(
+        {"CEO-01": answer, "EMPTY": {"question": "none", "ground_truth": {}}},
+        master,
+        max_cases=4,
+        max_docs=10,
+    )
+    assert skipped == 1
+    assert cases[0]["scenario"] == "edith_enterprise_pdf"
+    assert cases[0]["expected_source_paths"] == paths
+    assert selected_docs == set(paths)
+
+
 def test_search_auto_prepares_missing_index(tmp_path, capsys):
     from jikji.__main__ import main
 
@@ -733,3 +780,81 @@ def test_image_ocr_uses_absolute_path_for_dash_prefixed_names(tmp_path, monkeypa
     first_arg = calls.read_text(encoding="utf-8").strip()
     assert first_arg == str(image.resolve())
     assert not first_arg.startswith("-")
+
+
+def test_edith_suite_no_docs_is_metadata_only(tmp_path, monkeypatch):
+    from jikji import edith
+
+    metadata = tmp_path / "metadata"
+    metadata.mkdir()
+    (metadata / "MASTER_INDEX.csv").write_text(
+        "filename,format,language\nEntity/doc.pdf,searchable,en\n",
+        encoding="utf-8",
+    )
+    (metadata / "ANSWER_KEY.json").write_text(
+        json.dumps({
+            "q1": {
+                "question": "Which enterprise document mentions the target policy?",
+                "ground_truth": ["doc.pdf"],
+            }
+        }),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(edith, "fetch_edith_metadata", lambda dest: metadata)
+
+    def fail_benchmark(*args, **kwargs):  # noqa: ARG001
+        raise AssertionError("metadata-only EDiTh suite must not run corpus benchmark")
+
+    monkeypatch.setattr(edith, "run_benchmark", fail_benchmark)
+
+    result = edith.run_edith_suite(
+        tmp_path / "bench",
+        max_cases=1,
+        max_docs=1,
+        download_docs=False,
+    )
+
+    assert result.metrics["metadata_only"]["cases"] == 1
+    assert result.materialized.extracted_docs == 0
+    assert not result.materialized.corpus_root.exists()
+    report = json.loads(result.report_path.read_text(encoding="utf-8"))
+    assert report["benchmark_report"] is None
+    assert report["metrics"]["metadata_only"]["download_docs"] is False
+
+
+def test_edith_stream_extraction_respects_byte_budget(tmp_path, monkeypatch):
+    import io
+    import tarfile
+
+    import pytest
+
+    from jikji import edith
+
+    tar_bytes = io.BytesIO()
+    payload = b"%PDF-1.4\nselected benchmark fixture\n"
+    with tarfile.open(fileobj=tar_bytes, mode="w:gz") as archive:
+        info = tarfile.TarInfo("by_entity/Entity/doc.pdf")
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+    archive_blob = tar_bytes.getvalue()
+
+    monkeypatch.setattr(edith.urllib.request, "urlopen", lambda *args, **kwargs: io.BytesIO(archive_blob))
+
+    with pytest.raises(edith.EdithDownloadLimitExceeded):
+        edith._stream_extract_selected_docs(
+            tmp_path / "capped",
+            {"Entity/doc.pdf"},
+            max_download_bytes=1,
+        )
+
+    extracted = edith._stream_extract_selected_docs(
+        tmp_path / "ok",
+        {"Entity/doc.pdf"},
+        max_download_bytes=len(archive_blob) + 1024,
+    )
+
+    assert extracted.found == {"Entity/doc.pdf": "Entity/doc.pdf"}
+    assert extracted.byte_limit == len(archive_blob) + 1024
+    assert extracted.bytes_read <= extracted.byte_limit
+    assert (tmp_path / "ok" / "Entity" / "doc.pdf").read_bytes() == payload
