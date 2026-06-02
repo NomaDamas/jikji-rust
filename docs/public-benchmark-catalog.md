@@ -9,6 +9,7 @@ chunk retrieval tasks.
 | Benchmark | Best use | Caveat |
 |---|---|---|
 | Korean public-data messy-folder benchmark | Korean spreadsheet/document-name/content search with human-ish noisy folders and actual Hermes raw vs Jikji comparison | Current builder uses Seoul Data Hub public XLSX fallback when data.go.kr is unavailable; XLSX-heavy |
+| Workspace-Bench-Lite file-discovery | Workspace exploration, cross-file task context, and task-supporting file discovery | Jikji adapter measures file discovery only, not full output-generation Workspace-Bench scoring |
 | HippoCamp | Personal-computer style file search and agent QA | Full dataset is large; some tasks evaluate final QA more than retrieval |
 | EDiTh / Véracier Industries | Enterprise PDFs, scanned/searchable/mixed formats, multilingual, multi-file answers | Public archive is ~1.5GB and only a few answer-key questions are explicit file-list retrieval |
 | MIRACL-VISION materialized docs | Multilingual file-level retrieval regression | Materialized as Markdown, so raw lexical search is strong |
@@ -16,6 +17,46 @@ chunk retrieval tasks.
 | SDS KoPub VDR | Korean public PDF page-level retrieval | Corpus parquet is very large; needs page-to-file conversion |
 | UniDoc-Bench | Large PDF page/QA stress test | Multimodal/page-centric; needs file-level conversion |
 | docx-corpus | DOCX parser/indexing scale stress | No retrieval QA; needs synthetic/label-derived eval |
+
+## Workspace-Bench-Lite file-discovery run
+
+Workspace-Bench-Lite is relevant because it tests whether an agent can explore a
+workspace and identify task-supporting files before producing an output. Jikji's
+adapter keeps the claim narrower: it converts each Lite task into a no-leak
+file-discovery case and does not claim full Workspace-Bench task-completion
+scoring.
+
+```bash
+jikji workspacebench-suite .benchmarks/workspacebench_lite_jikji/run_20260602 \
+  --max-tasks 12 --top-k 10 --json
+jikji hermes-bench .benchmarks/workspacebench_lite_jikji/run_20260602/corpus \
+  --eval-set .benchmarks/workspacebench_lite_jikji/run_20260602/eval/workspacebench_lite_eval.jsonl \
+  --modes raw,jikji --cases 6 --candidate-top-k 10 \
+  --skills jikji --yolo --json
+```
+
+Bounded actual-agent comparison on the first 6 cases:
+
+```text
+Agent mode       Cases  Hit@1   Hit@3   Hit@5   Hit@10  Seconds  Avg sec/case
+---------------  -----  ------  ------  ------  ------  -------  ------------
+raw Hermes           6  1.0000  1.0000  1.0000  1.0000  249.454        41.576
+Hermes + Jikji       6  0.8333  1.0000  1.0000  1.0000  203.742        33.957
+```
+
+Interpretation: raw Hermes already solved this small slice at Hit@5/Hit@10.
+Jikji preserved top-k accuracy and reduced elapsed time by about 1.22x. The
+deterministic 12-task diagnostic is secondary evidence for map/index ranking:
+
+```text
+Mode                      Cases  Hit@1   Hit@3   Hit@5   Hit@10  SetR@5  SetR@10  MRR     Seconds
+------------------------  -----  ------  ------  ------  ------  ------  -------  ------  -------
+raw lexical diagnostic       12  0.4167  0.6667  0.7500  0.8333  0.5222   0.6861  0.5687    0.115
+Jikji index diagnostic       12  0.5833  0.7500  0.9167  0.9167  0.6028   0.6944  0.6764    0.452
+```
+
+See `docs/workspacebench-benchmark.md` for the exact adaptation and honesty
+limits.
 
 ## Korean public-data messy-folder run
 

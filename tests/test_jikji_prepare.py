@@ -894,3 +894,75 @@ def test_publicdata_case_generation_uses_messy_paths_and_content_clues(tmp_path)
     assert cases[0]["scenario"] == "filename_vague"
     assert cases[1]["scenario"] == "content_lexical"
     assert "희귀단서도서관B" in cases[1]["query"]
+
+
+def test_workspacebench_eval_case_uses_file_dependencies():
+    from jikji.workspacebench import build_eval_case
+
+    metadata = {
+        "absolute_id": 107,
+        "persona": "Operations Manager",
+        "task": "Create the strategy report from regional order files.",
+        "task_diff": "hard",
+        "output_files": ["Global_Product_Strategy.md"],
+        "tested_capabilities": ["Workspace Exploration"],
+        "file_dep_graph": [
+            {"from": "USCA_orders.csv", "to": "Global_Product_Strategy.md"},
+            {"from": "product_info.csv", "to": "Global_Product_Strategy.md"},
+        ],
+        "data_manifest": [
+            {"filename": "USCA_orders.csv", "stored_relpath": "data/a_USCA_orders.csv"},
+            {"filename": "product_info.csv", "stored_relpath": "data/b_product_info.csv"},
+            {"filename": "unused_notes.txt", "stored_relpath": "data/c_unused_notes.txt"},
+        ],
+    }
+
+    case = build_eval_case("task_107", metadata)
+
+    assert case["id"] == "workspacebench-107"
+    assert case["scenario"] == "workspace_task_supporting_files"
+    assert "Operations Manager" in case["query"]
+    assert "Create the strategy report" in case["query"]
+    assert case["expected_paths"] == [
+        "task_107/data/a_USCA_orders.csv",
+        "task_107/data/b_product_info.csv",
+    ]
+    assert case["expected_count"] == 2
+
+
+def test_workspacebench_eval_case_falls_back_to_manifest_when_graph_absent():
+    from jikji.workspacebench import build_eval_case
+
+    metadata = {
+        "absolute_id": 100,
+        "persona": "Logistics Manager",
+        "task": "Integrate four host scripts.",
+        "data_manifest": [
+            {"filename": "host_script_1.docx", "stored_relpath": "data/a_host_script_1.docx"},
+            {"filename": "host_script_2.docx", "stored_relpath": "data/b_host_script_2.docx"},
+        ],
+    }
+
+    case = build_eval_case("task_100", metadata)
+
+    assert case["expected_paths"] == [
+        "task_100/data/a_host_script_1.docx",
+        "task_100/data/b_host_script_2.docx",
+    ]
+
+
+def test_workspacebench_eval_case_rejects_unsafe_manifest_paths():
+    import pytest
+
+    from jikji.workspacebench import build_eval_case
+
+    metadata = {
+        "absolute_id": 101,
+        "task": "Use the attached file.",
+        "data_manifest": [
+            {"filename": "escape.txt", "stored_relpath": "../escape.txt"},
+        ],
+    }
+
+    with pytest.raises(ValueError, match="unsafe Workspace-Bench path"):
+        build_eval_case("task_101", metadata)

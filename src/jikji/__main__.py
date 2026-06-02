@@ -28,6 +28,12 @@ from .improvement_loop import run_improvement_loop
 from .publicdata_bench import build_publicdata_benchmark, run_publicdata_suite
 from .search_index import instant_index_path
 from .version import __version__
+from .workspacebench import (
+    DEFAULT_MAX_FILE_BYTES,
+    DEFAULT_MAX_TOTAL_BYTES,
+    build_workspacebench_benchmark,
+    run_workspacebench_suite,
+)
 
 
 def _config_from_args(args) -> Config:
@@ -950,6 +956,71 @@ def cmd_publicdata_suite(args) -> int:
     return 0
 
 
+def cmd_workspacebench_build(args) -> int:
+    result = build_workspacebench_benchmark(
+        Path(args.dest),
+        max_tasks=args.max_tasks,
+        start=args.start,
+        max_file_bytes=args.max_file_bytes,
+        max_total_bytes=args.max_total_bytes,
+    )
+    payload = {
+        "dest": str(result.dest),
+        "corpus_root": str(result.corpus_root),
+        "eval_set": str(result.eval_set_path),
+        "manifest": str(result.manifest_path),
+        "tasks": result.tasks,
+        "files_downloaded": result.files_downloaded,
+        "bytes_downloaded": result.bytes_downloaded,
+        "eval_cases": result.eval_cases,
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print("Workspace-Bench-Lite file-discovery benchmark built")
+        print(f"- corpus={result.corpus_root}")
+        print(f"- tasks={result.tasks} files={result.files_downloaded} eval_cases={result.eval_cases}")
+        print(f"- eval_set={result.eval_set_path}")
+    return 0
+
+
+def cmd_workspacebench_suite(args) -> int:
+    result = run_workspacebench_suite(
+        Path(args.dest),
+        max_tasks=args.max_tasks,
+        start=args.start,
+        top_k=args.top_k,
+        max_file_bytes=args.max_file_bytes,
+        max_total_bytes=args.max_total_bytes,
+    )
+    payload = {
+        "report": str(result.report_path),
+        "build": {
+            "dest": str(result.build.dest),
+            "corpus_root": str(result.build.corpus_root),
+            "eval_set": str(result.build.eval_set_path),
+            "manifest": str(result.build.manifest_path),
+            "tasks": result.build.tasks,
+            "files_downloaded": result.build.files_downloaded,
+            "bytes_downloaded": result.build.bytes_downloaded,
+            "eval_cases": result.build.eval_cases,
+        },
+        "prepare_seconds": result.prepare_seconds,
+        "deterministic_report": str(result.deterministic_report),
+        "deterministic_metrics": result.deterministic_metrics,
+    }
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        print(f"Workspace-Bench-Lite suite complete: {result.report_path}")
+        for mode, metrics in result.deterministic_metrics.items():
+            print(
+                f"- {mode}: cases={metrics.get('cases')} hit@5={metrics.get('hit_at_5')} "
+                f"hit@10={metrics.get('hit_at_10')} mrr={metrics.get('mrr')} seconds={metrics.get('seconds')}"
+            )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jikji", description="Prepare local files as agent-readable knowledge maps.")
     parser.add_argument("--version", action="version", version=f"jikji {__version__}")
@@ -1230,6 +1301,31 @@ def main(argv: list[str] | None = None) -> int:
     p_publicdata_suite.add_argument("--top-k", type=int, default=10)
     p_publicdata_suite.add_argument("--json", action="store_true")
     p_publicdata_suite.set_defaults(func=cmd_publicdata_suite)
+
+    p_workspacebench_build = sub.add_parser(
+        "workspacebench-build",
+        help="build a bounded Workspace-Bench-Lite file-discovery corpus",
+    )
+    p_workspacebench_build.add_argument("dest")
+    p_workspacebench_build.add_argument("--max-tasks", type=int, default=12)
+    p_workspacebench_build.add_argument("--start", type=int, default=0)
+    p_workspacebench_build.add_argument("--max-file-bytes", type=int, default=DEFAULT_MAX_FILE_BYTES)
+    p_workspacebench_build.add_argument("--max-total-bytes", type=int, default=DEFAULT_MAX_TOTAL_BYTES)
+    p_workspacebench_build.add_argument("--json", action="store_true")
+    p_workspacebench_build.set_defaults(func=cmd_workspacebench_build)
+
+    p_workspacebench_suite = sub.add_parser(
+        "workspacebench-suite",
+        help="build and run Workspace-Bench-Lite file-discovery diagnostics",
+    )
+    p_workspacebench_suite.add_argument("dest")
+    p_workspacebench_suite.add_argument("--max-tasks", type=int, default=12)
+    p_workspacebench_suite.add_argument("--start", type=int, default=0)
+    p_workspacebench_suite.add_argument("--top-k", type=int, default=10)
+    p_workspacebench_suite.add_argument("--max-file-bytes", type=int, default=DEFAULT_MAX_FILE_BYTES)
+    p_workspacebench_suite.add_argument("--max-total-bytes", type=int, default=DEFAULT_MAX_TOTAL_BYTES)
+    p_workspacebench_suite.add_argument("--json", action="store_true")
+    p_workspacebench_suite.set_defaults(func=cmd_workspacebench_suite)
 
     args = parser.parse_args(argv)
     if args.cmd is None:

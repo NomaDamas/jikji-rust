@@ -87,6 +87,14 @@ jikji hermes-bench .benchmarks/publicdata_agent_bench/run_20260529/corpus/test \
   --eval-set .benchmarks/publicdata_agent_bench/run_20260529/eval/publicdata_test_eval.jsonl \
   --modes raw,jikji --cases 18 --candidate-top-k 10 \
   --skills jikji --yolo --json
+
+# Workspace-Bench-Lite file-discovery adaptation
+jikji workspacebench-suite .benchmarks/workspacebench_lite_jikji/run_20260602 \
+  --max-tasks 12 --top-k 10 --json
+jikji hermes-bench .benchmarks/workspacebench_lite_jikji/run_20260602/corpus \
+  --eval-set .benchmarks/workspacebench_lite_jikji/run_20260602/eval/workspacebench_lite_eval.jsonl \
+  --modes raw,jikji --cases 6 --candidate-top-k 10 \
+  --skills jikji --yolo --json
 ```
 
 In `hermes-bench`, `jikji` is a brief-first mode: the actual `jikji brief`
@@ -170,6 +178,22 @@ the answer key has only a few explicit file-list retrieval questions, but it is
 closer to Jikji's target than Markdown-only corpora: real PDF files,
 searchable/scanned/mixed formats, multiple languages, and multi-file answers.
 
+Workspace-Bench-Lite is relevant to Jikji because it stresses workspace
+exploration and task-supporting file discovery. Jikji's adapter does **not**
+claim full Workspace-Bench task-completion scoring; it converts each task into
+\"find the source/input files needed for this workspace task\".
+
+```text
+Dataset                         Agent mode       Cases  Hit@1   Hit@3   Hit@5   Hit@10  Seconds  Avg sec/case
+------------------------------  ---------------  -----  ------  ------  ------  ------  -------  ------------
+Workspace-Bench-Lite file find  raw Hermes           6  1.0000  1.0000  1.0000  1.0000  249.454        41.576
+Workspace-Bench-Lite file find  Hermes + Jikji       6  0.8333  1.0000  1.0000  1.0000  203.742        33.957
+```
+
+Interpretation: on this small actual-agent slice, raw Hermes already found a
+required source file for every case, while Jikji preserved Hit@5/Hit@10 and cut
+elapsed time by about 1.22x.
+
 ### Public deterministic retrieval suites — secondary diagnostics
 
 The deterministic harness is not a replacement for a raw-agent vs Jikji-agent benchmark; it is a
@@ -187,6 +211,15 @@ Mode                      Cases  Hit@1   Hit@3   Hit@5   Hit@10  MRR     Seconds
 ------------------------  -----  ------  ------  ------  ------  ------  -------
 raw lexical diagnostic       18  0.7222  0.8889  0.8889  0.9444  0.8111    0.123
 Jikji index diagnostic       18  0.9444  1.0000  1.0000  1.0000  0.9722    0.423
+```
+
+Workspace-Bench-Lite file-discovery diagnostic:
+
+```text
+Mode                      Cases  Hit@1   Hit@3   Hit@5   Hit@10  SetR@5  SetR@10  MRR     Seconds
+------------------------  -----  ------  ------  ------  ------  ------  -------  ------  -------
+raw lexical diagnostic       12  0.4167  0.6667  0.7500  0.8333  0.5222   0.6861  0.5687    0.115
+Jikji index diagnostic       12  0.5833  0.7500  0.9167  0.9167  0.6028   0.6944  0.6764    0.452
 ```
 
 | Dataset | Mode | Cases | Hit@1 | Hit@3 | Hit@5 | Hit@10 | MRR | Seconds |
@@ -251,9 +284,8 @@ Validation commands for this snapshot:
 .venv/bin/python -m compileall -q src tests
 ```
 
-Result: `ruff` passed, `pytest` passed with 38 tests, and `compileall` passed.
-Current result after the public-data benchmark additions: `ruff` passed,
-`pytest` passed with 39 tests, and `compileall` passed.
+Result on 2026-06-02 after the public benchmark additions: `ruff` passed,
+`pytest` passed with 42 tests, and `compileall` passed.
 
 ## Content extraction coverage
 
@@ -301,6 +333,7 @@ python3 -m venv .venv
 - HippoCamp benchmark adapter: `docs/hippocamp-benchmark.md`
 - Public benchmark catalog: `docs/public-benchmark-catalog.md`
 - Korean public-data agent benchmark: `docs/publicdata-agent-benchmark.md`
+- Workspace-Bench-Lite adapter: `docs/workspacebench-benchmark.md`
 - Generic skill template: `skills/jikji/SKILL.md`
 
 Jikji is separate from Folder1004:
