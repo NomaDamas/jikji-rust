@@ -1,102 +1,104 @@
 ---
 name: jikji
-description: Prepare an explicit local folder for agent search with Jikji, then search generated indexes and document text caches without moving user files.
+description: Use Jikji to find local files, folders, metadata, and parsed document text through a non-destructive prebuilt agent map/search index.
 ---
 
-# Jikji Local Search Skill
+# Jikji Local File Discovery Skill
 
-Use this skill when you need to discover files or document text inside a local
-folder the user has explicitly provided.
+Use this skill when the user asks you to find, identify, compare, or verify local
+files/documents under an explicit root path. Jikji is for agent discovery, not
+physical file organization.
 
-## Safety
+## Safety contract
 
 - Never move, rename, delete, or reorganize source files.
-- Never scan all drives by default; require an explicit root path.
+- Never scan all drives by default; require or infer a bounded explicit root.
 - Treat `.jikji/doc_text/` as sensitive because it may contain extracted document
   text.
+- Do not commit `.jikji/` or `000_JIKJI_AGENT_MAP.md` unless the user explicitly
+  wants generated artifacts tracked.
+- Open original files only for final verification after Jikji has returned
+  likely paths.
 
-## Workflow
+## Fast agent protocol
 
-Fast path for finding files:
+Default to `brief` for autonomous work:
 
 ```bash
 jikji brief /explicit/root "natural language file clue" --top-k 10 --json
+```
+
+Use `search` when you only need ranked candidates:
+
+```bash
 jikji search /explicit/root "natural language file clue" --top-k 10 --json
 ```
 
-Prefer `brief` when acting as an autonomous local agent: it returns candidate
-paths plus evidence, folder context, and fallback route commands. Use `search`
-when you only need the ranked candidates. Do not manually grep large `.jikji`
-JSONL files unless `brief`/`search` returns no useful candidate.
+Interpretation:
 
-Prepare or refresh the map only when the root has not been prepared or may be
-stale:
+- `candidates[].path` is the relative path to return or inspect.
+- `evidence` and `matched_terms` explain why the candidate was ranked.
+- `candidate_folders` gives folder context.
+- `commands` contains fallback searches if the candidate list is insufficient.
+- Preserve paths exactly as returned.
+
+## Direct handoff rule
+
+If the candidate list is plausible, do **not** perform a new broad `find`, `ls`,
+`rg`, or manual filesystem crawl. Use Jikji's ranked paths directly and verify
+only the top candidates when needed.
+
+This is the intended speed benefit: Jikji has already done the repeated file-map
+work before the agent receives the task.
+
+## Prepare/refresh/admin commands
+
+`brief` and `search` can auto-prepare a missing explicit root. Use these admin
+commands when the user asks for setup, refresh, diagnostics, or cleanup:
 
 ```bash
 jikji prepare /explicit/root --json
-jikji doctor /explicit/root
-jikji brief /explicit/root "natural language file clue" --top-k 10 --json
-jikji search /explicit/root "natural language file clue" --top-k 10 --json
+jikji refresh /explicit/root --json
+jikji doctor /explicit/root --json
+jikji map /explicit/root
+jikji clean /explicit/root --dry-run --json
+jikji clean /explicit/root --json
 ```
 
-Fallback: search generated indexes directly only when the fast path is not
-enough:
+## Fallback route
+
+Only when `brief`/`search` is empty or clearly wrong:
 
 ```bash
+cat /explicit/root/000_JIKJI_AGENT_MAP.md
+cat /explicit/root/.jikji/agent_routes.md
 rg "keyword" /explicit/root/.jikji/*.jsonl
-jq 'select(.ext==".pdf")' /explicit/root/.jikji/document_index.jsonl
-```
-
-Search parser-required document text:
-
-```bash
 rg "keyword" /explicit/root/.jikji/doc_text
-```
-
-Search native text files in the original tree:
-
-```bash
 rg "keyword" /explicit/root --glob '!**/.jikji/**'
 ```
 
-Open source files only through paths found in Jikji index rows.
-
+Use parser-extracted `.jikji/doc_text/` for PDF/HWP/HWPX/Office document bodies.
+Search native text-like files in original locations as a final fallback.
 
 ## Evaluation
 
-Use Jikji's local evaluator when you need to measure whether the current map and
-indexes help find files. It creates only generated artifacts under `.jikji/eval/`.
+To test whether Jikji helps on a root:
 
 ```bash
 jikji eval-generate /explicit/root --cases 80 --json
 jikji eval /explicit/root --json
 ```
 
-The generated cases cover filename lookup, lexical content lookup, semantic-style
-natural-language descriptions, and file-description lookup. Metrics include
-hit@1, hit@3, hit@5, MRR, and per-scenario breakdowns.
-
-
-## HippoCamp raw-vs-Jikji benchmark
-
-To compare raw filesystem lookup with Jikji-assisted lookup on a public
-personal-file benchmark:
+For actual-agent comparison with Hermes:
 
 ```bash
-jikji hippocamp-fetch ./benchmarks/hippocamp --profile Adam --split Subset --json
-jikji prepare ./benchmarks/hippocamp/Adam_Subset --json
-jikji hippocamp-import ./benchmarks/hippocamp/Adam_Subset \
-  --annotation ./benchmarks/hippocamp/Adam_Subset.annotation.json \
-  --json
-jikji bench-run ./benchmarks/hippocamp/Adam_Subset \
-  --eval-set ./benchmarks/hippocamp/Adam_Subset_hippocamp_eval_set.jsonl \
-  --modes raw,jikji \
-  --json
+jikji hermes-skill-install --json
+jikji hermes-bench /benchmark/root \
+  --eval-set /external/eval.jsonl \
+  --modes raw,jikji-fast,jikji-direct \
+  --candidate-top-k 10 --skills jikji --json
 ```
 
-Use bounded download flags (`--max-files`, `--max-file-bytes`,
-`--max-total-bytes`) before increasing corpus size.
-
-Keep HippoCamp annotations/eval sets outside the benchmark root. For actual
-Hermes runs, install the skill with `jikji hermes-skill-install` and pass an
-external eval set to `jikji hermes-bench`.
+`raw` means no Jikji. `jikji-fast` gives Hermes a compact map-first handoff.
+`jikji-direct` measures the tool/skill behavior where the agent accepts Jikji's
+ranked candidates without an extra exploratory chat turn.

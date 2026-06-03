@@ -1,6 +1,34 @@
 # Jikji
 
-Jikji makes local files legible to AI agents without moving, renaming, or deleting the user's files.
+**Agent-installable local file maps.** Jikji makes local files legible to AI agents without moving, renaming, or deleting the user's files.
+
+Local agents such as Claude Code, Codex, Hermes, OpenCode/OpenClone-style tools, or any CLI-capable assistant can install Jikji from GitHub and use one tool-first command to find files by filename, folder memory, metadata, or parsed document body text.
+
+```bash
+git clone https://github.com/Cheol-H-Jeong/jikji.git
+cd jikji
+python3 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/jikji brief ~/Documents "contract pdf from last spring" --top-k 10 --json
+```
+
+```text
+Raw local agent:       repeatedly list/grep/open folders and documents
+Agent + Jikji:         ask prebuilt map/search index for ranked paths + evidence
+Jikji safety boundary: never move, rename, delete, or reorganize original files
+Core artifacts:        .jikji/ + 000_JIKJI_AGENT_MAP.md
+No core RAG:           no embeddings, vector DB, cloud parser, or LLM required
+```
+
+Agent manual and promotion page:
+
+- [Agent installation manual](docs/agent-installation.md)
+- [Local-agent search standard](docs/local-agent-search-standard.md)
+- [Promo webpage source](docs/jikji-value.html) and [GitHub Pages entry](docs/index.html)
+- [Hardbench benchmark report](docs/hardbench-benchmark.md)
+
+## Quick commands
+
 
 ```bash
 jikji search ~/Documents "contract pdf from last spring" --json

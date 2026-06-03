@@ -1,5 +1,8 @@
 # Using Jikji from a Local Agent
 
+For a full cross-agent installation and skill attachment guide, see
+[`docs/agent-installation.md`](agent-installation.md).
+
 Install from a checkout:
 
 ```bash
@@ -64,3 +67,11 @@ jikji eval /path/to/folder --json
 
 Use `.jikji/eval/eval_report.json` to compare hit@k and MRR before/after map or
 indexing changes.
+
+
+## Direct handoff mode
+
+For the clearest agent-speed benefit, treat Jikji as a tool handoff: call
+`jikji brief` or `jikji search`, accept plausible ranked candidates, and avoid a
+new broad filesystem crawl. The Hermes benchmark mode `jikji-direct` measures
+this behavior against `raw` agent search.
