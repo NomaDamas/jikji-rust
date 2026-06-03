@@ -1,142 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
-  <title id="title">Jikji — Local file maps for AI agents</title>
-  <desc id="desc">A visual overview of raw agent filesystem crawling versus Jikji map-first local file discovery.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Jikji — AI agents stop wandering through files</title>
+  <desc id="desc">As-is: an agent endlessly searches many files. To-be: an agent uses a Jikji map and finds the target directly.</desc>
   <defs>
-    <radialGradient id="bg1" cx="16%" cy="0%" r="55%">
-      <stop offset="0%" stop-color="#7dd9ff" stop-opacity="0.32"/>
-      <stop offset="70%" stop-color="#7dd9ff" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="bg2" cx="90%" cy="4%" r="48%">
-      <stop offset="0%" stop-color="#b8a1ff" stop-opacity="0.32"/>
-      <stop offset="72%" stop-color="#b8a1ff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#7dd9ff"/>
-      <stop offset="100%" stop-color="#65f2ad"/>
-    </linearGradient>
-    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="45%" stop-color="#7dd9ff"/>
-      <stop offset="100%" stop-color="#65f2ad"/>
-    </linearGradient>
-    <linearGradient id="bad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffd166"/>
-      <stop offset="100%" stop-color="#ff8e8e"/>
-    </linearGradient>
-    <linearGradient id="good" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#65f2ad"/>
-      <stop offset="100%" stop-color="#7dd9ff"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000000" flood-opacity="0.35"/>
-    </filter>
+    <radialGradient id="bgA" cx="18%" cy="0%" r="58%"><stop offset="0" stop-color="#7dd9ff" stop-opacity=".28"/><stop offset=".72" stop-color="#7dd9ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="bgB" cx="88%" cy="5%" r="52%"><stop offset="0" stop-color="#b8a1ff" stop-opacity=".25"/><stop offset=".72" stop-color="#b8a1ff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7dd9ff"/><stop offset="1" stop-color="#65f2ad"/></linearGradient>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#7dd9ff"/><stop offset="1" stop-color="#65f2ad"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#000" flood-opacity=".35"/></filter>
     <style>
-      .sans { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", Arial, sans-serif; }
-      .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
-      .muted { fill: #aab5ca; }
-      .text { fill: #f5f8ff; }
-      .blue { fill: #7dd9ff; }
-      .green { fill: #65f2ad; }
-      .amber { fill: #ffd166; }
-      .panel { fill: rgba(255,255,255,0.055); stroke: rgba(255,255,255,0.14); stroke-width: 1.2; }
-      .inner { fill: rgba(7,11,20,0.63); stroke: rgba(255,255,255,0.12); stroke-width: 1; }
+      .sans{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",Arial,sans-serif}.mono{font-family:"SFMono-Regular",Consolas,monospace}.text{fill:#f5f8ff}.muted{fill:#aab5ca}.blue{fill:#7dd9ff}.green{fill:#65f2ad}.amber{fill:#ffd166}.panel{fill:rgba(255,255,255,.055);stroke:rgba(255,255,255,.14);stroke-width:1.2}.inner{fill:rgba(7,11,20,.66);stroke:rgba(255,255,255,.12);stroke-width:1}.file{fill:#151f33;stroke:#42506b;stroke-width:1}.paper{fill:#f5f8ff}.folder{fill:#ffd166}.map{fill:#65f2ad}.line{stroke:#7dd9ff;stroke-width:3;stroke-linecap:round;stroke-dasharray:8 10}.direct{stroke:#65f2ad;stroke-width:6;stroke-linecap:round}.thin{stroke:rgba(255,255,255,.18);stroke-width:1}
     </style>
   </defs>
-
-  <rect width="1200" height="675" fill="#070b14"/>
-  <rect width="1200" height="675" fill="url(#bg1)"/>
-  <rect width="1200" height="675" fill="url(#bg2)"/>
-
+  <rect width="1200" height="620" fill="#070b14"/><rect width="1200" height="620" fill="url(#bgA)"/><rect width="1200" height="620" fill="url(#bgB)"/>
   <g class="sans">
-    <g transform="translate(64 42)">
-      <rect x="0" y="0" width="42" height="42" rx="14" fill="url(#mark)"/>
-      <text x="21" y="28" text-anchor="middle" font-size="22" font-weight="950" fill="#06101c">직</text>
-      <text x="56" y="29" font-size="26" font-weight="950" class="text">Jikji</text>
-      <rect x="878" y="4" width="218" height="34" rx="17" fill="rgba(255,255,255,0.055)" stroke="rgba(255,255,255,0.15)"/>
-      <text x="987" y="27" text-anchor="middle" font-size="14" font-weight="750" class="muted">Local file maps for AI agents</text>
-    </g>
+    <g transform="translate(64 38)"><rect width="42" height="42" rx="14" fill="url(#brand)"/><text x="21" y="28" text-anchor="middle" font-size="22" font-weight="950" fill="#06101c">직</text><text x="56" y="29" font-size="26" font-weight="950" class="text">Jikji</text><text x="1010" y="27" text-anchor="end" font-size="14" font-weight="750" class="muted">Local file maps for AI agents · 로컬 에이전트 파일 지도</text></g>
+    <text x="600" y="126" text-anchor="middle" font-size="56" font-weight="950" letter-spacing="-3" fill="url(#titleGrad)">Stop wandering. Read the map.</text>
+    <text x="600" y="160" text-anchor="middle" font-size="21" font-weight="700" class="muted">헤매며 찾지 말고, 지도를 보고 바로 찾게 한다.</text>
 
-    <text x="600" y="128" text-anchor="middle" font-size="63" font-weight="950" letter-spacing="-3.6" fill="url(#titleGrad)">Agents find files without wandering</text>
-    <text x="600" y="167" text-anchor="middle" font-size="21" font-weight="520" class="muted">Non-destructive maps, document text caches, and instant search indexes for local AI agents.</text>
-
-    <g transform="translate(84 204)" filter="url(#shadow)">
-      <rect class="panel" x="0" y="0" width="504" height="276" rx="28"/>
-      <rect x="24" y="22" width="76" height="26" rx="13" fill="rgba(255,209,102,0.14)"/>
-      <text x="62" y="40" text-anchor="middle" font-size="12" font-weight="950" class="amber">AS-IS</text>
-      <text x="24" y="82" font-size="28" font-weight="900" class="text">Raw agent crawls</text>
-
-      <g transform="translate(24 108)">
-        <rect class="inner" x="0" y="0" width="456" height="44" rx="15"/>
-        <circle cx="23" cy="22" r="14" fill="url(#bad)"/><text x="23" y="27" text-anchor="middle" font-size="13" font-weight="900" fill="#07101c">1</text>
-        <text x="48" y="19" font-size="15" font-weight="850" class="text">Guess search terms repeatedly</text>
-        <text x="48" y="34" font-size="12" class="muted">키워드가 빗나가면 다시 시도</text>
-      </g>
-      <g transform="translate(24 160)">
-        <rect class="inner" x="0" y="0" width="456" height="44" rx="15"/>
-        <circle cx="23" cy="22" r="14" fill="url(#bad)"/><text x="23" y="27" text-anchor="middle" font-size="13" font-weight="900" fill="#07101c">2</text>
-        <text x="48" y="19" font-size="15" font-weight="850" class="text">List, grep, open many folders</text>
-        <text x="48" y="34" font-size="12" class="muted">PDF/HWP/Office 본문 확인 반복</text>
-      </g>
-      <g transform="translate(24 212)">
-        <rect class="inner" x="0" y="0" width="456" height="44" rx="15"/>
-        <circle cx="23" cy="22" r="14" fill="url(#bad)"/><text x="23" y="27" text-anchor="middle" font-size="13" font-weight="900" fill="#07101c">3</text>
-        <text x="48" y="19" font-size="15" font-weight="850" class="text">Spend exploratory turns</text>
-        <text x="48" y="34" font-size="12" class="muted">중복·decoy·비슷한 파일에서 헤맴</text>
+    <g transform="translate(70 205)" filter="url(#shadow)">
+      <rect class="panel" width="520" height="330" rx="30"/>
+      <text x="28" y="50" font-size="16" font-weight="950" class="amber">AS-IS · Raw agent</text>
+      <text x="28" y="84" font-size="27" font-weight="950" class="text">Endless file hunting</text>
+      <text x="28" y="112" font-size="17" font-weight="700" class="muted">무한히 폴더와 파일을 뒤진다</text>
+      <g transform="translate(34 142)">
+        <path class="line" d="M60 100 C90 20,150 20,170 88 S260 170,292 70 S390 18,430 92" fill="none"/>
+        <g transform="translate(18 10)"><rect class="file" x="0" y="0" width="58" height="70" rx="8"/><path class="paper" d="M13 16h31v5H13zm0 14h34v5H13zm0 14h22v5H13z" opacity=".75"/></g>
+        <g transform="translate(128 42)"><rect class="file" x="0" y="0" width="58" height="70" rx="8"/><path class="paper" d="M13 16h31v5H13zm0 14h20v5H13zm0 14h32v5H13z" opacity=".75"/></g>
+        <g transform="translate(250 6)"><rect class="file" x="0" y="0" width="58" height="70" rx="8"/><path class="paper" d="M13 16h28v5H13zm0 14h34v5H13zm0 14h17v5H13z" opacity=".75"/></g>
+        <g transform="translate(370 44)"><rect class="file" x="0" y="0" width="58" height="70" rx="8"/><path class="paper" d="M13 16h31v5H13zm0 14h34v5H13zm0 14h24v5H13z" opacity=".75"/></g>
+        <g transform="translate(188 134)"><path class="folder" d="M0 16h62l8 12h116v86H0z" opacity=".95"/><rect x="0" y="28" width="186" height="92" rx="10" fill="#d89d35" opacity=".9"/><text x="93" y="82" text-anchor="middle" font-size="18" font-weight="900" fill="#271a06">?</text></g>
+        <text x="228" y="270" text-anchor="middle" font-size="18" font-weight="850" class="muted">guess → list → grep → open → repeat</text>
       </g>
     </g>
 
-    <g transform="translate(612 204)" filter="url(#shadow)">
-      <rect class="panel" x="0" y="0" width="504" height="276" rx="28"/>
-      <rect x="24" y="22" width="76" height="26" rx="13" fill="rgba(101,242,173,0.14)"/>
-      <text x="62" y="40" text-anchor="middle" font-size="12" font-weight="950" class="green">TO-BE</text>
-      <text x="24" y="82" font-size="28" font-weight="900" class="text">Agent + Jikji map</text>
-
-      <g transform="translate(24 108)">
-        <rect class="inner" x="0" y="0" width="456" height="44" rx="15"/>
-        <circle cx="23" cy="22" r="14" fill="url(#good)"/><text x="23" y="27" text-anchor="middle" font-size="13" font-weight="900" fill="#07101c">1</text>
-        <text x="48" y="19" font-size="15" font-weight="850" class="text">Call jikji brief ROOT "query"</text>
-        <text x="48" y="34" font-size="12" class="muted">ranked paths + evidence + folder context</text>
-      </g>
-      <g transform="translate(24 160)">
-        <rect class="inner" x="0" y="0" width="456" height="44" rx="15"/>
-        <circle cx="23" cy="22" r="14" fill="url(#good)"/><text x="23" y="27" text-anchor="middle" font-size="13" font-weight="900" fill="#07101c">2</text>
-        <text x="48" y="19" font-size="15" font-weight="850" class="text">Reuse parser caches and index</text>
-        <text x="48" y="34" font-size="12" class="muted">.jikji/doc_text + search_index.sqlite</text>
-      </g>
-      <g transform="translate(24 212)">
-        <rect class="inner" x="0" y="0" width="456" height="44" rx="15"/>
-        <circle cx="23" cy="22" r="14" fill="url(#good)"/><text x="23" y="27" text-anchor="middle" font-size="13" font-weight="900" fill="#07101c">3</text>
-        <text x="48" y="19" font-size="15" font-weight="850" class="text">Verify only best candidates</text>
-        <text x="48" y="34" font-size="12" class="muted">원본 파일 이동·삭제·이름변경 없음</text>
+    <g transform="translate(610 205)" filter="url(#shadow)">
+      <rect class="panel" width="520" height="330" rx="30"/>
+      <text x="28" y="50" font-size="16" font-weight="950" class="green">TO-BE · Agent + Jikji</text>
+      <text x="28" y="84" font-size="27" font-weight="950" class="text">Map-first discovery</text>
+      <text x="28" y="112" font-size="17" font-weight="700" class="muted">직지맵을 보고 바로 찾는다</text>
+      <g transform="translate(38 144)">
+        <g transform="translate(0 42)"><rect class="inner" width="118" height="98" rx="18"/><circle cx="59" cy="34" r="18" fill="#7dd9ff" opacity=".9"/><text x="59" y="70" text-anchor="middle" font-size="15" font-weight="900" class="text">Agent</text></g>
+        <path class="direct" d="M130 92 L210 92"/>
+        <polygon points="210,92 194,82 194,102" fill="#65f2ad"/>
+        <g transform="translate(224 14)"><rect width="140" height="154" rx="20" fill="#10291e" stroke="#65f2ad" stroke-width="2"/><path d="M34 34 L105 26 L105 116 L34 126 Z" fill="#65f2ad" opacity=".88"/><path d="M52 42 L52 118 M72 36 L72 122 M92 31 L92 112 M39 62 L101 54 M39 82 L101 74 M39 102 L101 94" class="thin"/><text x="70" y="146" text-anchor="middle" font-size="15" font-weight="950" class="green">Jikji Map</text></g>
+        <path class="direct" d="M378 92 L440 92"/>
+        <polygon points="440,92 424,82 424,102" fill="#65f2ad"/>
+        <g transform="translate(438 42)"><rect class="file" width="70" height="88" rx="10" fill="#102033" stroke="#65f2ad" stroke-width="2"/><path class="paper" d="M16 20h38v6H16zm0 18h42v6H16zm0 18h30v6H16z" opacity=".82"/><circle cx="58" cy="18" r="12" fill="#65f2ad"/><path d="M52 18l5 5 10-12" fill="none" stroke="#06101c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+        <text x="254" y="214" text-anchor="middle" font-size="18" font-weight="850" class="muted">brief → ranked path → verify</text>
       </g>
     </g>
 
-    <g transform="translate(84 508)">
-      <rect class="panel" x="0" y="0" width="1092" height="104" rx="28"/>
-      <g transform="translate(34 25)">
-        <text x="0" y="18" font-size="13" font-weight="800" class="muted">RAW HERMES AVG</text>
-        <text x="0" y="56" font-size="38" font-weight="950" class="amber">91.571s</text>
-      </g>
-      <g transform="translate(300 25)">
-        <text x="0" y="18" font-size="13" font-weight="800" class="muted">JIKJI DIRECT AVG</text>
-        <text x="0" y="56" font-size="38" font-weight="950" class="green">0.800s</text>
-      </g>
-      <g transform="translate(560 25)">
-        <text x="0" y="18" font-size="13" font-weight="800" class="muted">LATENCY BENEFIT</text>
-        <text x="0" y="56" font-size="38" font-weight="950" class="green">114x</text>
-      </g>
-      <g transform="translate(820 25)">
-        <text x="0" y="18" font-size="13" font-weight="800" class="muted">HIT@10</text>
-        <text x="0" y="56" font-size="38" font-weight="950" class="green">0.75 → 1.00</text>
-      </g>
-    </g>
-
-    <g transform="translate(84 635)" class="mono">
-      <text x="0" y="0" font-size="15" class="blue">000_JIKJI_AGENT_MAP.md</text>
-      <text x="245" y="0" font-size="15" class="muted">.jikji/search_index.sqlite</text>
-      <text x="505" y="0" font-size="15" class="muted">.jikji/doc_text/</text>
-      <text x="695" y="0" font-size="15" class="muted">file_cards.jsonl</text>
-      <text x="890" y="0" font-size="15" class="muted">agent_routes.md</text>
+    <g transform="translate(106 575)" class="mono">
+      <text x="0" y="0" font-size="15" class="blue">000_JIKJI_AGENT_MAP.md</text><text x="250" y="0" font-size="15" class="muted">.jikji/search_index.sqlite</text><text x="520" y="0" font-size="15" class="muted">.jikji/doc_text/</text><text x="710" y="0" font-size="15" class="muted">file_cards.jsonl</text><text x="900" y="0" font-size="15" class="muted">agent_routes.md</text>
     </g>
   </g>
 </svg>
