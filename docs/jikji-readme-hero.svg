@@ -66,7 +66,7 @@
       <text x="26" y="106" font-size="24" font-weight="820" class="title">Map-first discovery</text>
 
       <g class="mono" font-size="15" transform="translate(26 138)">
-        <text y="0" class="cmd">$ jikji brief ~/Documents "contract last spring"</text>
+        <text y="0" class="cmd">$ jikji brief ~/Documents "contract last spring" --top-k 3</text>
         <text y="27" class="comment">{</text>
         <text y="54" class="good">  "rank": 1,</text>
         <text y="81" class="cmd">  "path": "Contracts/2025/vendor-renewal.pdf",</text>
@@ -90,13 +90,14 @@
       <path d="M54 42 l-12 -8 v16 z" fill="#65f2ad"/>
     </g>
 
-    <g transform="translate(160 536)">
-      <rect class="panel2" width="880" height="48" rx="14"/>
+    <g transform="translate(100 536)">
+      <rect class="panel2" width="1000" height="48" rx="14"/>
       <g class="mono" font-size="14">
-        <text x="28" y="30" class="green">000_JIKJI_AGENT_MAP.md</text>
-        <text x="250" y="30" class="dim">.jikji/search_index.sqlite</text>
-        <text x="480" y="30" class="dim">.jikji/doc_text/</text>
-        <text x="650" y="30" class="dim">file_cards.jsonl</text>
+        <text x="28" y="30" class="dim">benchmark</text>
+        <text x="128" y="30" class="bad">raw 36.1s</text>
+        <text x="246" y="30" class="green">jikji-fast 10.4s</text>
+        <text x="410" y="30" class="cyan">jikji-direct 0.004s</text>
+        <text x="650" y="30" class="dim">.jikji/search_index.sqlite · doc_text/ · file_cards.jsonl</text>
       </g>
     </g>
   </g>
