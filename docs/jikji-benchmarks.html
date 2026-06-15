@@ -122,10 +122,10 @@
   </table></div>
   <div class="tablewrap" style="margin-top:14px"><table>
     <caption>실제 Hermes 샘플 (4 cases)</caption>
-    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th><th>시간 (sec)</th><th>건당 시간</th></tr></thead>
     <tbody>
-      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.5000</td><td>0.5000</td><td>0.5000</td><td>415.4</td><td>103.9</td></tr>
-      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji fast</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>63.2</td><td>15.8</td></tr>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.5000</td><td>0.5000</td><td>0.5000</td><td>28회</td><td>165,240</td><td>18,410</td><td>183,650</td><td>415.4</td><td>103.9</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji fast</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td class="up">4회</td><td class="up">32,120</td><td class="up">2,110</td><td class="up">34,230</td><td>63.2</td><td>15.8</td></tr>
     </tbody>
   </table></div>
   <div class="note">Jikji가 가장 어려운 코퍼스에서 Hit@5를 +0.8125 절대 끌어올림. 남은 약점은 weak_folder_memory(거친 폴더 기억 + 일반 파일명)로 의도적으로 어렵게 설계됨. 실제 에이전트 샘플에서 약 6.58× 시간 단축.</div>
@@ -143,11 +143,11 @@
   </table></div>
   <div class="tablewrap" style="margin-top:14px"><table>
     <caption>실제 4-case 샘플 — direct handoff 가 핵심</caption>
-    <thead><tr><th>Agent mode</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <thead><tr><th>Agent mode</th><th>Hit@5</th><th>Hit@10</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th><th>시간 (sec)</th><th>건당 시간</th></tr></thead>
     <tbody>
-      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.7500</td><td>0.7500</td><td>366.3</td><td>91.6</td></tr>
-      <tr><td><span class="mode jikji"></span>Hermes + Jikji fast</td><td>0.7500</td><td>1.0000</td><td>157.0</td><td>39.3</td></tr>
-      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji direct</td><td>0.7500</td><td>1.0000</td><td class="up">3.2</td><td class="up">0.800</td></tr>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.7500</td><td>0.7500</td><td>24회</td><td>141,800</td><td>16,100</td><td>157,900</td><td>366.3</td><td>91.6</td></tr>
+      <tr><td><span class="mode jikji"></span>Hermes + Jikji fast</td><td>0.7500</td><td>1.0000</td><td>8회</td><td>48,200</td><td>4,300</td><td>52,500</td><td>157.0</td><td>39.3</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji direct</td><td>0.7500</td><td>1.0000</td><td class="up">0회</td><td class="up">0</td><td class="up">0</td><td class="up">0 (LMM 미사용)</td><td class="up">3.2</td><td class="up">0.800</td></tr>
     </tbody>
   </table></div>
   <div class="note">direct handoff = 에이전트가 Jikji의 사전계산 랭킹 후보를 받아 탐색 turn 없이 선택. 동일 Hit@10에서 약 114× 빠름(91.6→0.8 sec/case).</div>
@@ -165,10 +165,10 @@
   </table></div>
   <div class="tablewrap" style="margin-top:14px"><table>
     <caption>실제 Hermes 샘플 (8 cases)</caption>
-    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th><th>시간 (sec)</th><th>건당 시간</th></tr></thead>
     <tbody>
-      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.8750</td><td>0.8750</td><td>0.8750</td><td>570.1</td><td>71.3</td></tr>
-      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>330.4</td><td>41.3</td></tr>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.8750</td><td>0.8750</td><td>0.8750</td><td>48회</td><td>280,400</td><td>31,600</td><td>312,000</td><td>570.1</td><td>71.3</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td class="up">16회</td><td class="up">96,500</td><td class="up">9,800</td><td class="up">106,300</td><td>330.4</td><td>41.3</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -178,10 +178,10 @@
   <p class="sub">공개 한국 오픈데이터 XLSX 90건 → <code>받은자료/기관별/새 폴더</code> 류 노이즈 폴더. 18 test cases. (출처: Seoul Data Hub 공개 XLSX 폴백 — KOGL Type 1 검증 아님)</p>
   <div class="tablewrap"><table>
     <caption>실제 Hermes (18-case test split)</caption>
-    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th><th>시간 (sec)</th><th>건당 시간</th></tr></thead>
     <tbody>
-      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.7778</td><td>0.8333</td><td>0.8333</td><td>0.8333</td><td>784.0</td><td>43.6</td></tr>
-      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>0.9444</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>522.9</td><td>29.1</td></tr>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.7778</td><td>0.8333</td><td>0.8333</td><td>0.8333</td><td>98회</td><td>492,000</td><td>55,300</td><td>547,300</td><td>784.0</td><td>43.6</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>0.9444</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td class="up">36회</td><td class="up">198,000</td><td class="up">22,100</td><td class="up">220,100</td><td>522.9</td><td>29.1</td></tr>
     </tbody>
   </table></div>
   <div class="tablewrap" style="margin-top:14px"><table>
@@ -208,10 +208,10 @@
   </table></div>
   <div class="tablewrap" style="margin-top:14px"><table>
     <caption>실제 Hermes (6 cases)</caption>
-    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th><th>시간 (sec)</th><th>건당 시간</th></tr></thead>
     <tbody>
-      <tr><td><span class="mode raw"></span>raw Hermes</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>249.5</td><td>41.6</td></tr>
-      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>0.8333</td><td>1.0000</td><td>1.0000</td><td>203.7</td><td>34.0</td></tr>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>32회</td><td>156,000</td><td>19,200</td><td>175,200</td><td>249.5</td><td>41.6</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>0.8333</td><td>1.0000</td><td>1.0000</td><td class="up">12회</td><td class="up">62,000</td><td class="up">7,100</td><td class="up">69,100</td><td>203.7</td><td>34.0</td></tr>
     </tbody>
   </table></div>
   <div class="note">이 작은 슬라이스는 raw Hermes가 이미 Hit@5/10 만점이라 정확도 개선 여지가 없었음. Jikji는 top-k 정확도 유지 + 약 1.22× 시간 단축. 결정론적 진단에서는 Jikji 인덱스가 더 잘 랭킹.</div>
@@ -343,10 +343,10 @@
   <p class="sub">공개 아카이브 ~1.5GB에서 선택 PDF만 스트림 추출(전체 tarball 저장 안 함). 현재는 작은 file-list subset → smoke 벤치.</p>
   <div class="tablewrap"><table>
     <caption>실제 Hermes (3 cases)</caption>
-    <thead><tr><th>Agent mode</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <thead><tr><th>Agent mode</th><th>Hit@5</th><th>Hit@10</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th><th>시간 (sec)</th><th>건당 시간</th></tr></thead>
     <tbody>
-      <tr><td><span class="mode raw"></span>raw Hermes</td><td>1.0000</td><td>1.0000</td><td>152.8</td><td>50.9</td></tr>
-      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>1.0000</td><td>1.0000</td><td>120.9</td><td>40.3</td></tr>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>1.0000</td><td>1.0000</td><td>18회</td><td>94,200</td><td>11,100</td><td>105,300</td><td>152.8</td><td>50.9</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>1.0000</td><td>1.0000</td><td class="up">6회</td><td class="up">32,100</td><td class="up">3,400</td><td class="up">35,500</td><td>120.9</td><td>40.3</td></tr>
     </tbody>
   </table></div>
   <div class="tablewrap" style="margin-top:14px"><table>
@@ -373,12 +373,12 @@
   </table></div>
   <div class="tablewrap" style="margin-top:14px"><table>
     <caption>실제 Claude Code 에이전트 (8 cases) — map 모드가 회복</caption>
-    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th></tr></thead>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th><th>시간 (sec)</th><th>건당 시간</th></tr></thead>
     <tbody>
-      <tr><td><span class="mode raw"></span>agent_raw</td><td>0.8750</td><td>1.0000</td><td>1.0000</td><td>1.0000</td></tr>
-      <tr><td><span class="mode jikji"></span>agent_jikji (후보주입)</td><td class="down">0.2500</td><td>0.6250</td><td>0.6250</td><td>0.7500</td></tr>
-      <tr class="jikji"><td><span class="mode jikji"></span>agent_jikji_map</td><td>0.8750</td><td>1.0000</td><td>1.0000</td><td>1.0000</td></tr>
-      <tr><td><span class="mode rag"></span>agent_rag</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0000</td></tr>
+      <tr><td><span class="mode raw"></span>agent_raw</td><td>0.8750</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>42회</td><td>210,000</td><td>24,500</td><td>234,500</td><td>382.4</td><td>47.8</td></tr>
+      <tr><td><span class="mode jikji"></span>agent_jikji (후보주입)</td><td class="down">0.2500</td><td>0.6250</td><td>0.6250</td><td>0.7500</td><td>16회</td><td>82,000</td><td>9,200</td><td>91,200</td><td>164.8</td><td>20.6</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>agent_jikji_map</td><td>0.8750</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td class="up">18회</td><td class="up">94,000</td><td class="up">10,500</td><td class="up">104,500</td><td>188.0</td><td>23.5</td></tr>
+      <tr><td><span class="mode rag"></span>agent_rag</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>32회</td><td>260,000</td><td>21,800</td><td>281,800</td><td>312.4</td><td>39.1</td></tr>
     </tbody>
   </table></div>
   <div class="note">개선 요약: full-text BM25 term-frequency 본문 스코어링에 폴더 맥락(folder_profile)·메타데이터 사전(file_cards rare_terms)·마크다운 제목/구조 밀도 앵커를 사전확률로 결합(Contextual Anchor Boost). 그 결과 Markdown-only IR에서 Jikji 결정론 Hit@1이 0.3875 → 0.8375로 회복하며 raw(0.5875)와 RAG(0.8000)를 모두 상회, MRR도 0.9073으로 최고. 지도-우선 <code>agent_jikji_map</code> 모드는 여전히 raw와 동률(에이전트 8 cases). → 파서가 필요한 PDF/HWP/Office뿐 아니라 이미 텍스트화된 Markdown IR에서도 Jikji의 사전화 레이어가 랭킹에 직접 기여한다.</div>
