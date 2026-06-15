@@ -35,7 +35,8 @@ def test_prepare_is_non_destructive_and_writes_jikji_artifacts(tmp_path):
     assert doc.exists()
     assert result.files == 1
     assert (tmp_path / ".jikji" / "agent_map.md").exists()
-    assert (tmp_path / "000_JIKJI_AGENT_MAP.md").exists()
+    assert (tmp_path / ".jikji_agent_map.md").exists()
+    assert not (tmp_path / "000_JIKJI_AGENT_MAP.md").exists()
     rows = _jsonl(tmp_path / ".jikji" / "file_index.jsonl")
     assert rows[0]["path"] == "기존/회의/회의록.txt"
 
@@ -128,7 +129,7 @@ def test_clean_removes_only_jikji_artifacts(tmp_path, capsys):
     capsys.readouterr()
 
     assert (tmp_path / ".jikji").exists()
-    assert (tmp_path / "000_JIKJI_AGENT_MAP.md").exists()
+    assert (tmp_path / ".jikji_agent_map.md").exists()
     assert main(["clean", str(tmp_path), "--dry-run", "--json"]) == 0
     dry = json.loads(capsys.readouterr().out)
     assert dry["dry_run"] is True
@@ -141,7 +142,7 @@ def test_clean_removes_only_jikji_artifacts(tmp_path, capsys):
     assert cleaned["ok"] is True
     assert cleaned["preserved_original_files"] is True
     assert not (tmp_path / ".jikji").exists()
-    assert not (tmp_path / "000_JIKJI_AGENT_MAP.md").exists()
+    assert not (tmp_path / ".jikji_agent_map.md").exists()
     assert doc.read_text(encoding="utf-8") == "original file must survive"
 
 

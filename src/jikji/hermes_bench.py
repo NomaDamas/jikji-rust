@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import sqlite3
 import subprocess
 import time
 from collections import defaultdict
@@ -20,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .agent_brief import build_agent_brief_payload
-from .agent_index import AGENT_DIR_NAME, _atomic_write_text
+from .agent_index import AGENT_DIR_NAME, VISIBLE_MAP_NAME, VISIBLE_MAP_NAMES, _atomic_write_text
 from .agent_skill_install import install_agent_skill
 from .eval import _path_fingerprints, _rank_for_expected, _read_jsonl, search
 
@@ -200,7 +202,7 @@ def _prompt(root: Path, mode: str, case: dict, *, candidate_top_k: int = 0, retr
         "Use relative paths exactly as they appear under ROOT.",
     ]
     if mode_family == "raw":
-        base.append("RAW MODE: Do not read or use .jikji or 000_JIKJI_AGENT_MAP.md. Search only original user files/folders.")
+        base.append(f"RAW MODE: Do not read or use .jikji or {VISIBLE_MAP_NAME}. Search only original user files/folders.")
     elif mode_family == "jikji-fast":
         base = [
             "You are benchmarking local file discovery. Do not modify, move, rename, or delete files.",
@@ -232,7 +234,7 @@ def _prompt(root: Path, mode: str, case: dict, *, candidate_top_k: int = 0, retr
         base.extend(_brief_lines(root, str(case.get("query") or ""), top_k=candidate_top_k))
     elif mode_family == "jikji-passive":
         base.extend([
-            "JIKJI PASSIVE MODE: First read 000_JIKJI_AGENT_MAP.md and .jikji/agent_routes.md if present.",
+            f"JIKJI PASSIVE MODE: First read {VISIBLE_MAP_NAME} and .jikji/agent_routes.md if present.",
             "Use .jikji/file_index.jsonl, .jikji/folder_index.jsonl, .jikji/document_index.jsonl, and .jikji/doc_text for search.",
             "Only use map/index/cache artifacts needed for file discovery; ignore unrelated generated reports.",
         ])
@@ -290,9 +292,16 @@ def _inventory(root: Path) -> dict[str, tuple[int, int]]:
     for path in root.rglob("*"):
         if not path.is_file() or path.is_symlink():
             continue
+        rel = path.relative_to(root).as_posix()
+        # Jikji's own generated artifacts are not user-corpus mutations. The
+        # jikji skill auto-prepares/refreshes the index on first search, which
+        # legitimately (re)writes .jikji/ and the hidden root map. Excluding
+        # them keeps the no-mutation guard focused on the original files.
+        if rel == AGENT_DIR_NAME or rel.startswith(AGENT_DIR_NAME + "/") or rel in VISIBLE_MAP_NAMES:
+            continue
         try:
             st = path.stat()
-            out[path.relative_to(root).as_posix()] = (int(st.st_size), int(st.st_mtime_ns))
+            out[rel] = (int(st.st_size), int(st.st_mtime_ns))
         except OSError:
             continue
     return out
@@ -308,6 +317,102 @@ def _inventory_delta(before: dict[str, tuple[int, int]], after: dict[str, tuple[
     return changed
 
 
+def _hermes_home() -> Path:
+    """Resolve the Hermes home dir that stores per-session token accounting."""
+    env = os.environ.get("HERMES_HOME")
+    if env:
+        return Path(env).expanduser()
+    return Path.home() / ".hermes"
+
+
+_SESSION_ID_RE = re.compile(r"session_id:\s*([A-Za-z0-9_\-]+)")
+
+
+def _extract_session_ids(text: str) -> list[str]:
+    if not text:
+        return []
+    seen: list[str] = []
+    for match in _SESSION_ID_RE.finditer(text):
+        sid = match.group(1).strip()
+        if sid and sid not in seen:
+            seen.append(sid)
+    return seen
+
+
+_EMPTY_USAGE = {
+    "llm_calls": 0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "reasoning_tokens": 0,
+    "total_tokens": 0,
+}
+
+
+def _session_llm_calls(home: Path, session_id: str) -> int:
+    """Count assistant completions (LLM calls) from the session transcript."""
+    candidates = [
+        home / "sessions" / f"session_{session_id}.json",
+        home / "sessions" / f"{session_id}.json",
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8", errors="ignore"))
+        except (OSError, json.JSONDecodeError, ValueError):
+            continue
+        messages = data.get("messages") if isinstance(data, dict) else None
+        if isinstance(messages, list):
+            return sum(1 for m in messages if isinstance(m, dict) and m.get("role") == "assistant")
+    return 0
+
+
+def _session_usage(home: Path, session_id: str) -> dict[str, int]:
+    """Look up token accounting for one Hermes session from its state DB.
+
+    Returns prompt/completion/reasoning token counts and the number of LLM
+    calls (assistant completions) recorded for the session. Missing data
+    degrades gracefully to zeros so the benchmark never fails on accounting.
+    """
+    usage = dict(_EMPTY_USAGE)
+    if not session_id:
+        return usage
+    state_db = home / "state.db"
+    if state_db.exists():
+        try:
+            con = sqlite3.connect(f"file:{state_db}?mode=ro", uri=True)
+            try:
+                row = con.execute(
+                    "SELECT input_tokens, output_tokens, reasoning_tokens, "
+                    "message_count, tool_call_count FROM sessions WHERE id=?",
+                    (session_id,),
+                ).fetchone()
+            finally:
+                con.close()
+            if row:
+                prompt = int(row[0] or 0)
+                completion = int(row[1] or 0)
+                reasoning = int(row[2] or 0)
+                message_count = int(row[3] or 0)
+                tool_calls = int(row[4] or 0)
+                usage["prompt_tokens"] = prompt
+                usage["completion_tokens"] = completion
+                usage["reasoning_tokens"] = reasoning
+                usage["total_tokens"] = prompt + completion + reasoning
+                usage["llm_calls"] = max(tool_calls + 1, message_count - tool_calls - 1, 1)
+        except (sqlite3.Error, OSError, ValueError):
+            pass
+    calls = _session_llm_calls(home, session_id)
+    if calls:
+        usage["llm_calls"] = calls
+    return usage
+
+
+def _accumulate_usage(target: dict[str, int], add: dict[str, int]) -> None:
+    for key in _EMPTY_USAGE:
+        target[key] = int(target.get(key, 0)) + int(add.get(key, 0))
+
+
 def _metrics(details: list[dict[str, Any]], seconds: float) -> dict[str, Any]:
     total = len(details)
     hits = sum(1 for d in details if d.get("hit"))
@@ -321,6 +426,9 @@ def _metrics(details: list[dict[str, Any]], seconds: float) -> dict[str, Any]:
     by_scenario: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for detail in details:
         by_scenario[str(detail.get("scenario") or "unknown")].append(detail)
+    total_usage = dict(_EMPTY_USAGE)
+    for detail in details:
+        _accumulate_usage(total_usage, detail.get("usage") or {})
     return {
         "cases": total,
         "accuracy": round(hits / total, 4) if total else 0.0,
@@ -331,6 +439,15 @@ def _metrics(details: list[dict[str, Any]], seconds: float) -> dict[str, Any]:
         "duplicate_or_exact_hit_at_10": round(duplicate_hits_at_10 / total, 4) if total else 0.0,
         "seconds": round(seconds, 3),
         "avg_seconds": round(seconds / total, 3) if total else 0.0,
+        "llm_calls": total_usage["llm_calls"],
+        "prompt_tokens": total_usage["prompt_tokens"],
+        "completion_tokens": total_usage["completion_tokens"],
+        "reasoning_tokens": total_usage["reasoning_tokens"],
+        "total_tokens": total_usage["total_tokens"],
+        "avg_llm_calls": round(total_usage["llm_calls"] / total, 3) if total else 0.0,
+        "avg_prompt_tokens": round(total_usage["prompt_tokens"] / total, 1) if total else 0.0,
+        "avg_completion_tokens": round(total_usage["completion_tokens"] / total, 1) if total else 0.0,
+        "avg_total_tokens": round(total_usage["total_tokens"] / total, 1) if total else 0.0,
         "by_scenario": {
             scenario: {
                 "cases": len(items),
@@ -363,6 +480,8 @@ def run_hermes_benchmark(
     cases_limit: int | None = None,
     out: Path | None = None,
     hermes_bin: str = "hermes",
+    model: str = "",
+    provider: str = "",
     timeout_s: int = 240,
     max_turns: int = 20,
     fast_max_turns: int = 1,
@@ -384,6 +503,7 @@ def run_hermes_benchmark(
     if not cases:
         raise FileNotFoundError(f"No Hermes benchmark cases found: {eval_set}")
     fingerprints = _path_fingerprints(root)
+    home = _hermes_home()
     evidence_dir = out.with_suffix("")
     evidence_dir.mkdir(parents=True, exist_ok=True)
 
@@ -391,6 +511,8 @@ def run_hermes_benchmark(
         "root": str(root),
         "eval_set": str(eval_set),
         "hermes_bin": hermes_bin,
+        "model": model,
+        "provider": provider,
         "mode_protocols": {
             "raw": "Hermes searches original files/folders and must ignore Jikji artifacts.",
             "jikji-fast": "Map-first Jikji handoff; Hermes receives only ranked paths/evidence and is told not to browse.",
@@ -427,6 +549,8 @@ def run_hermes_benchmark(
             max_attempts = max(1, 1 + int(retries or 0))
             attempt_max_turns = 0
             candidates: list[dict[str, Any]] = []
+            case_usage = dict(_EMPTY_USAGE)
+            session_ids: list[str] = []
             if mode_family == "jikji-direct":
                 attempt_started = time.perf_counter()
                 try:
@@ -470,6 +594,10 @@ def run_hermes_benchmark(
                     )
                     attempt_max_turns = fast_max_turns if mode_family == "jikji-fast" else max_turns
                     cmd = [hermes_bin, "chat", "-Q", "--max-turns", str(attempt_max_turns)]
+                    if model:
+                        cmd.extend(["-m", model])
+                    if provider:
+                        cmd.extend(["--provider", provider])
                     if yolo:
                         cmd.extend(["--yolo", "--accept-hooks"])
                     if skills:
@@ -497,6 +625,14 @@ def run_hermes_benchmark(
                     stderr = attempt_stderr
                     returncode = attempt_returncode
                     timeout = timeout or attempt_timeout
+                    attempt_session_ids = _extract_session_ids(attempt_stdout) or _extract_session_ids(attempt_stderr)
+                    attempt_usage = dict(_EMPTY_USAGE)
+                    for sid in attempt_session_ids:
+                        if sid in session_ids:
+                            continue
+                        session_ids.append(sid)
+                        _accumulate_usage(attempt_usage, _session_usage(home, sid))
+                    _accumulate_usage(case_usage, attempt_usage)
                     attempts.append({
                         "attempt": attempt + 1,
                         "returncode": attempt_returncode,
@@ -504,6 +640,8 @@ def run_hermes_benchmark(
                         "seconds": round(time.perf_counter() - attempt_started, 3),
                         "predicted_paths": predicted,
                         "stdout_tail": attempt_stdout[-800:],
+                        "session_ids": attempt_session_ids,
+                        "usage": attempt_usage,
                     })
                     if predicted or attempt_returncode == -1:
                         break
@@ -553,6 +691,11 @@ def run_hermes_benchmark(
                 "seconds": round(elapsed, 3),
                 "output_path": str(evidence_path),
                 "stdout_tail": (stdout or raw_output)[-1200:],
+                "session_ids": session_ids,
+                "usage": case_usage,
+                "llm_calls": case_usage["llm_calls"],
+                "prompt_tokens": case_usage["prompt_tokens"],
+                "completion_tokens": case_usage["completion_tokens"],
             })
         seconds = time.perf_counter() - started
         report["modes"][mode] = {"metrics": _metrics(details, seconds), "details": details}

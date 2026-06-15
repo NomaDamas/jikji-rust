@@ -5,7 +5,7 @@ Jikji is a separate project from Folder1004.
 ## Product identity
 
 - Jikji prepares local folders for AI-agent discovery without moving, renaming, or deleting user files.
-- It creates text-first knowledge maps and parser caches under `.jikji/` plus a root `000_JIKJI_AGENT_MAP.md`.
+- It creates text-first knowledge maps and parser caches under `.jikji/` plus a root `.jikji_agent_map.md` (legacy `000_JIKJI_AGENT_MAP.md`).
 - It is meant to be used by local agents such as Hermes/Codex through CLI commands or skills.
 - Folder1004 remains the GUI product for physically organizing messy Desktop/Downloads-style folders.
 
@@ -13,12 +13,12 @@ Jikji is a separate project from Folder1004.
 
 - Default and expected behavior is non-destructive.
 - Never reorganize user folders in this repo unless a future feature explicitly adds a separate, warned physical mode.
-- `.jikji/` and `000_JIKJI_AGENT_MAP.md` are generated artifacts and may be regenerated.
+- `.jikji/` and `.jikji_agent_map.md` are generated artifacts and may be regenerated.
 
 
 ## Generated artifact ownership
 
-Jikji may regenerate only its documented artifacts: `.jikji/manifest.json`, `.jikji/*.jsonl`, `.jikji/search_index.sqlite`, `.jikji/agent_map.md`, `.jikji/agent_routes.md`, `.jikji/agent_skill_context.md`, `.jikji/human_guide.md`, `.jikji/doc_text/`, `.jikji/doc_meta/`, `.jikji/eval/`, `.jikji/.lock`, and root `000_JIKJI_AGENT_MAP.md`. Retired generated artifacts listed in `manifest.json` under `retired_cleanup_paths` may be removed during prepare. Do not delete arbitrary user-created files under `.jikji/`.
+Jikji may regenerate only its documented artifacts: `.jikji/manifest.json`, `.jikji/*.jsonl`, `.jikji/search_index.sqlite`, `.jikji/agent_map.md`, `.jikji/agent_routes.md`, `.jikji/agent_skill_context.md`, `.jikji/human_guide.md`, `.jikji/doc_text/`, `.jikji/doc_meta/`, `.jikji/eval/`, `.jikji/.lock`, and root `.jikji_agent_map.md` (legacy `000_JIKJI_AGENT_MAP.md`). Retired generated artifacts listed in `manifest.json` under `retired_cleanup_paths` may be removed during prepare. Do not delete arbitrary user-created files under `.jikji/`.
 
 Local-agent standard docs live in `docs/local-agent-search-standard.md`, `docs/schema.md`, and `docs/agent-usage.md`.
 

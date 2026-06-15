@@ -50,7 +50,7 @@ compact payload. Use `search` for a smaller ranked-candidate-only response.
    indexes:
 
 ```bash
-cat /path/to/folder/000_JIKJI_AGENT_MAP.md
+cat /path/to/folder/.jikji_agent_map.md
 cat /path/to/folder/.jikji/agent_routes.md
 rg "keyword" /path/to/folder/.jikji/*.jsonl
 ```
@@ -74,7 +74,7 @@ Recommended `.gitignore` for indexed roots that are also Git repositories:
 
 ```gitignore
 .jikji/
-000_JIKJI_AGENT_MAP.md
+.jikji_agent_map.md
 ```
 
 

@@ -118,7 +118,7 @@ and parser-coverage improvements.
 ## What Jikji creates
 
 ```text
-000_JIKJI_AGENT_MAP.md      root guide for humans and agents
+.jikji_agent_map.md      root guide for humans and agents
 .jikji/search_index.sqlite  instant lexical/content/metadata search index
 .jikji/doc_text/            parsed PDF/HWP/HWPX/Office/etc. text cache
 .jikji/file_cards.jsonl     per-file cards, tags, parse status, evidence
@@ -199,7 +199,7 @@ Recommended `.gitignore` for indexed roots:
 
 ```gitignore
 .jikji/
-000_JIKJI_AGENT_MAP.md
+.jikji_agent_map.md
 ```
 
 ## Docs

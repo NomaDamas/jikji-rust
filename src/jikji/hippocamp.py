@@ -28,7 +28,7 @@ from .eval import (
 from .search_index import instant_index_path
 
 HF_REPO = "MMMem-org/HippoCamp"
-HF_API_TREE = f"https://huggingface.co/api/datasets/{HF_REPO}/tree/main?recursive=true"
+HF_API_TREE_BASE = f"https://huggingface.co/api/datasets/{HF_REPO}/tree/main"
 HF_RESOLVE = f"https://huggingface.co/datasets/{HF_REPO}/resolve/main/"
 DEFAULT_TEXT_EXTENSIONS = {
     ".txt",
@@ -93,10 +93,39 @@ def _url(path: str) -> str:
     return HF_RESOLVE + urllib.parse.quote(path)
 
 
-def _load_hf_tree() -> list[dict]:
-    with urllib.request.urlopen(HF_API_TREE, timeout=30) as resp:
-        data = json.load(resp)
-    return data if isinstance(data, list) else []
+def _load_hf_tree(subpath: str = "") -> list[dict]:
+    """List files under a repo subpath, following cursor pagination.
+
+    The non-scoped recursive endpoint is capped at 1000 entries by the Hub,
+    which silently drops files for later profiles (e.g. Bei/Victoria). Scoping
+    the listing to the profile subtree and paginating avoids that truncation.
+    """
+    base = HF_API_TREE_BASE
+    if subpath:
+        base += "/" + urllib.parse.quote(subpath.strip("/"))
+    out: list[dict] = []
+    cursor: str | None = None
+    while True:
+        url = base + "?recursive=true&expand=true"
+        if cursor:
+            url += "&cursor=" + urllib.parse.quote(cursor)
+        req = urllib.request.Request(url, headers={"User-Agent": "jikji-hippocamp"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.load(resp)
+            link = resp.headers.get("Link", "")
+        if isinstance(data, list):
+            out.extend(data)
+        else:
+            break
+        cursor = None
+        for part in link.split(","):
+            if 'rel="next"' in part:
+                start = part.find("cursor=")
+                if start != -1:
+                    cursor = part[start + 7 :].split("&")[0].split(">")[0]
+        if not cursor:
+            break
+    return out
 
 
 def _download(url: str, dest: Path, *, max_bytes: int | None = None) -> int:
@@ -184,7 +213,7 @@ def fetch_subset(
     annotation_path = dest / f"{inner}.annotation.json"
     total += _download(_url(annotation_remote), annotation_path, max_bytes=max_file_bytes if max_file_bytes > 0 else None)
 
-    tree = _load_hf_tree()
+    tree = _load_hf_tree(f"{profile}/{split}/{inner}")
     for item in tree:
         if item.get("type") != "file":
             continue

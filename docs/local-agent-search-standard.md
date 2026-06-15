@@ -20,7 +20,7 @@ paths the user or agent already has permission to read.
 Jikji must:
 
 - create/update agent-readable artifacts under `.jikji/`;
-- create/update a root signpost named `000_JIKJI_AGENT_MAP.md`;
+- create/update a root signpost named `.jikji_agent_map.md`;
 - preserve original user file paths and folder layout;
 - work through explicit CLI commands and generated skill context;
 - prefer deterministic text-first, grep-friendly outputs.
@@ -72,7 +72,7 @@ Defaults must remain safe and non-destructive.
 
 ### 4.1 Root signpost
 
-`000_JIKJI_AGENT_MAP.md` is intentionally short. It is a visible entry point for
+`.jikji_agent_map.md` is intentionally short. It is a visible entry point for
 humans and agents, not a dump of every file or every document body.
 
 ### 4.2 `.jikji/agent_map.md`
@@ -179,7 +179,7 @@ A local agent using Jikji should follow this sequence:
    sheet. Use its candidate paths first when evidence/reasons match.
 2. Run `jikji search ROOT "query" --json` when only ranked candidates are
    needed or when refining the query.
-3. Read `000_JIKJI_AGENT_MAP.md`.
+3. Read `.jikji_agent_map.md`.
 4. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md`.
 5. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
    `.jikji/document_index.jsonl` with `rg`/`jq`.
@@ -212,13 +212,13 @@ Nested explicit roots are allowed but independent: each root owns only its own
 - `.jikji/*.jsonl` can contain file names, paths, timestamps, and hashes.
 - Defaults skip hidden files and safety-denied names such as `.env`, private
   keys, certificate material, `.git`, `node_modules`, and virtualenv/cache dirs.
-- Users should review before committing `.jikji/` or `000_JIKJI_AGENT_MAP.md` to
+- Users should review before committing `.jikji/` or `.jikji_agent_map.md` to
   Git.
 - Recommended `.gitignore`:
 
 ```gitignore
 .jikji/
-000_JIKJI_AGENT_MAP.md
+.jikji_agent_map.md
 ```
 
 - Jikji does not bypass filesystem permissions.
@@ -251,7 +251,7 @@ Exit codes:
 
 A Jikji build satisfies the local-agent search baseline when:
 
-- `jikji prepare ROOT --json` creates `.jikji/` and `000_JIKJI_AGENT_MAP.md`.
+- `jikji prepare ROOT --json` creates `.jikji/` and `.jikji_agent_map.md`.
 - Original files and folders remain unchanged.
 - `jikji map ROOT` prints a route to the full indexes.
 - `jikji doctor ROOT` verifies required artifacts and cache references.

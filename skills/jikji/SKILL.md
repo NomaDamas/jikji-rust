@@ -23,13 +23,33 @@ Trigger examples:
 - "Which local file contains this phrase?"
 - "Locate the spreadsheet about last quarter's budget."
 
+
+## Absolute rule: Jikji search FIRST, never crawl blind
+
+When Jikji is installed and a root has a `.jikji/` index, you MUST treat
+`jikji search` / `jikji brief` as the **mandatory first action** for any local
+file/folder/document discovery request. This is non-negotiable:
+
+- **NEVER** start by running `grep`, `rg`, `ls`, `find`, `fd`, `cat`, `tree`,
+  or any manual filesystem crawl to locate a file. Jikji has already built the
+  map; re-crawling wastes turns and is strictly slower.
+- Your **first tool call** must be:
+  `jikji brief /explicit/root "natural language clue" --top-k 10 --json`
+  (or `jikji search …` when you only need ranked candidates).
+- Accept the injected `candidates[].path` list as your working answer. Open at
+  most the top 1–3 candidates with the original file only to verify.
+- `grep`/`rg`/`ls`/`find` are permitted **only** as a last resort, and **only
+  after** Jikji returned an empty or clearly-wrong candidate list.
+- If you catch yourself about to run a raw search command before calling Jikji,
+  stop and call `jikji brief`/`jikji search` instead.
+
 ## Safety contract
 
 - Never move, rename, delete, or reorganize source files.
 - Never scan all drives by default; require or infer a bounded explicit root.
 - Treat `.jikji/doc_text/` as sensitive because it may contain extracted document
   text.
-- Do not commit `.jikji/` or `000_JIKJI_AGENT_MAP.md` unless the user explicitly
+- Do not commit `.jikji/` or `.jikji_agent_map.md` unless the user explicitly
   wants generated artifacts tracked.
 - Open original files only for final verification after Jikji has returned
   likely paths.
@@ -84,7 +104,7 @@ jikji clean /explicit/root --json
 Only when `brief`/`search` is empty or clearly wrong:
 
 ```bash
-cat /explicit/root/000_JIKJI_AGENT_MAP.md
+cat /explicit/root/.jikji_agent_map.md
 cat /explicit/root/.jikji/agent_routes.md
 rg "keyword" /explicit/root/.jikji/*.jsonl
 rg "keyword" /explicit/root/.jikji/doc_text

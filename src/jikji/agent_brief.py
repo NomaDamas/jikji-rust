@@ -6,7 +6,7 @@ import shlex
 from pathlib import Path
 from typing import Any
 
-from .agent_index import AGENT_DIR_NAME
+from .agent_index import AGENT_DIR_NAME, VISIBLE_MAP_NAME
 
 
 def _read_json_obj(path: Path) -> dict[str, Any]:
@@ -165,7 +165,7 @@ def build_agent_brief_payload(
         "candidates": enriched,
         "commands": commands,
         "artifacts": {
-            "visible_map": str(root / "000_JIKJI_AGENT_MAP.md"),
+            "visible_map": str(root / VISIBLE_MAP_NAME),
             "agent_routes": str(root / AGENT_DIR_NAME / "agent_routes.md"),
             "file_cards": str(root / AGENT_DIR_NAME / "file_cards.jsonl"),
             "chunk_map": str(root / AGENT_DIR_NAME / "chunk_map.jsonl"),

@@ -47,6 +47,21 @@ _STOPWORDS = {
     "맥락", "파악", "참고", "원본", "평가", "점수", "산정", "근거",
 }
 
+# File extensions are format signals, not content discriminators. Without this,
+# a query like "그 보고서 pdf" overfits to every *.pdf in the corpus and buries
+# the real answer. Format/extension intent is still recovered separately via
+# `_query_formats`/`_FORMAT_QUERY_ALIASES`, which scan the raw query string.
+_EXTENSION_STOPWORDS = {
+    "pdf", "png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif", "webp", "svg",
+    "doc", "docx", "ppt", "pptx", "xls", "xlsx", "csv", "tsv",
+    "hwp", "hwpx", "txt", "md", "rtf", "odt", "ods", "odp",
+    "json", "jsonl", "xml", "yaml", "yml", "html", "htm",
+    "zip", "tar", "gz", "tgz", "rar", "7z",
+    "epub", "eml", "msg", "mp3", "mp4", "mov", "avi", "mkv", "wav",
+    "log", "ini", "cfg", "conf", "db", "sqlite",
+}
+_STOPWORDS |= _EXTENSION_STOPWORDS
+
 # Small, generic local-search expansions. These are not benchmark labels; they
 # encode common human descriptions that local agents frequently use when they do
 # not remember an exact filename.
@@ -1242,24 +1257,28 @@ def _score_map(query: str, row: dict, *, idf: dict[str, float] | None = None) ->
     quoted_hits = 0
     for token in tokens:
         rare = min(4.0, (idf or {}).get(token, 1.0))
+        # Sharpen rarity: split filename component words and common nouns
+        # (e.g. "form", "model", "company") should not inflate decoys, while a
+        # genuinely distinctive token (e.g. "penguin") dominates the headline.
+        rare_w = max(0.2, rare - 0.85)
         is_original = token in original_tokens
         mult = 1.25 if is_original else 0.65
         token_score = 0.0
         if token in content_text:
-            token_score += 24 * rare
+            token_score += 24 * rare_w
         if token in rare_text:
             token_score += 35 * rare
         if token in phrase_text:
             token_score += 42 * rare
         if token in evidence_text:
-            token_score += 18 * rare
+            token_score += 18 * rare_w
         if token in map_text:
-            token_score += 5 * rare
+            token_score += 5 * rare_w
         if token in path_lookup_text:
             # Folder/path clues are structural evidence. They are especially
             # important for local-agent discovery tasks where the user often
             # remembers "that folder under shared drive" rather than content.
-            token_score += (34 if folder_context_query else 11) * rare
+            token_score += (34 if folder_context_query else 11) * rare_w
         if token_score:
             score += token_score * mult
             if token not in matched_terms and is_original:
@@ -1267,6 +1286,26 @@ def _score_map(query: str, row: dict, *, idf: dict[str, float] | None = None) ->
                 original_hits += 1
             if token in quoted_terms:
                 quoted_hits += 1
+
+    # Distinctive (high-idf) query tokens that surface in the filename or folder
+    # path are the single strongest local-discovery signal: a scattered clue
+    # like "microsoft", "penguin", or a rare project codename should pull the
+    # right document to the headline (Hit@1) even when content-rich decoys share
+    # generic vocabulary. Keep generic/common tokens out of this boost.
+    for token in original_tokens:
+        if len(token) < 3:
+            continue
+        rare = min(4.0, (idf or {}).get(token, 1.0))
+        if rare < 2.0:
+            continue
+        if token in name_text:
+            score += 70 * rare
+            if "rare-token-in-name" not in reasons:
+                reasons.append("rare-token-in-name")
+        elif token in path_lookup_text:
+            score += 30 * rare
+            if "rare-token-in-path" not in reasons:
+                reasons.append("rare-token-in-path")
 
     for term in quoted_terms:
         term_score = 0.0

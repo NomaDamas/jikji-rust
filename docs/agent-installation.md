@@ -165,7 +165,7 @@ Jikji does not reorganize user files. It creates generated artifacts only under
 one explicit root:
 
 ```text
-000_JIKJI_AGENT_MAP.md          visible route guide for humans/agents
+.jikji_agent_map.md          visible route guide for humans/agents
 .jikji/agent_routes.md          fallback route order for agents
 .jikji/file_index.jsonl         file names, paths, size/time/hash metadata
 .jikji/folder_index.jsonl       folder inventory and counts
@@ -182,7 +182,7 @@ add:
 
 ```gitignore
 .jikji/
-000_JIKJI_AGENT_MAP.md
+.jikji_agent_map.md
 ```
 
 ## 5. Direct handoff mode

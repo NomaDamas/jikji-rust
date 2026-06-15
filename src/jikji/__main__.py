@@ -11,7 +11,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .agent_brief import brief_markdown, build_agent_brief_payload
-from .agent_index import AGENT_DIR_NAME, build_agent_index
+from .agent_index import (
+    AGENT_DIR_NAME,
+    VISIBLE_MAP_NAME,
+    VISIBLE_MAP_NAMES,
+    build_agent_index,
+)
 from .agent_skill_install import (
     CUSTOM_AGENT_NAMES,
     expand_agent_selection,
@@ -83,7 +88,7 @@ def cmd_prepare(args) -> int:
 
 
 def _clean_targets(root: Path) -> list[Path]:
-    return [root / AGENT_DIR_NAME, root / "000_JIKJI_AGENT_MAP.md"]
+    return [root / AGENT_DIR_NAME, *(root / name for name in VISIBLE_MAP_NAMES)]
 
 
 def _read_manifest_for_clean(root: Path) -> dict:
@@ -164,7 +169,9 @@ def cmd_clean(args) -> int:
 
 def cmd_map(args) -> int:
     root = Path(args.path).expanduser().resolve()
-    for candidate in (root / "000_JIKJI_AGENT_MAP.md", root / ".jikji" / "agent_map.md"):
+    candidates = [root / name for name in VISIBLE_MAP_NAMES]
+    candidates.append(root / ".jikji" / "agent_map.md")
+    for candidate in candidates:
         if candidate.exists():
             print(candidate.read_text(encoding="utf-8", errors="ignore")[: args.max_chars])
             return 0
@@ -199,10 +206,11 @@ def cmd_doctor(args) -> int:
         ".jikji/autorag_manifest.json",
         ".jikji/parse_errors.jsonl",
         ".jikji/agent_map.md",
-        "000_JIKJI_AGENT_MAP.md",
     ]
     for rel in required:
         check_file(rel)
+    if not any((root / name).is_file() for name in VISIBLE_MAP_NAMES):
+        errors.append(f"missing required artifact: {VISIBLE_MAP_NAME}")
 
     manifest = {}
     manifest_path = root / ".jikji" / "manifest.json"
@@ -699,6 +707,8 @@ def cmd_hermes_bench(args) -> int:
         cases_limit=args.cases if args.cases > 0 else None,
         out=Path(args.out).expanduser().resolve() if args.out else None,
         hermes_bin=args.hermes_bin,
+        model=args.model,
+        provider=args.provider,
         timeout_s=args.timeout,
         max_turns=args.max_turns,
         fast_max_turns=args.fast_max_turns,
@@ -718,6 +728,10 @@ def cmd_hermes_bench(args) -> int:
                 f"- {mode}: cases={metrics.get('cases')} hit@3={metrics.get('hit_at_3')} "
                 f"hit@5={metrics.get('hit_at_5')} hit@10={metrics.get('hit_at_10')} "
                 f"dup@10={metrics.get('duplicate_or_exact_hit_at_10')} avg_seconds={metrics.get('avg_seconds')}"
+            )
+            print(
+                f"    llm_calls={metrics.get('llm_calls')} prompt_tokens={metrics.get('prompt_tokens')} "
+                f"completion_tokens={metrics.get('completion_tokens')} total_tokens={metrics.get('total_tokens')}"
             )
     return 0
 
@@ -1662,6 +1676,8 @@ def main(argv: list[str] | None = None) -> int:
     p_hb.add_argument("--cases", type=int, default=0, help="limit cases; 0 means all")
     p_hb.add_argument("--out", default="")
     p_hb.add_argument("--hermes-bin", default="hermes")
+    p_hb.add_argument("--model", default="", help="Hermes model override (e.g. anthropic/claude-sonnet-4); blank uses config default")
+    p_hb.add_argument("--provider", default="", help="Hermes inference provider override; blank uses config default")
     p_hb.add_argument("--timeout", type=int, default=240)
     p_hb.add_argument("--max-turns", type=int, default=20)
     p_hb.add_argument(

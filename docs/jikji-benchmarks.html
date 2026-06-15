@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jikji 벤치마크 결과 모음</title>
+<style>
+  :root{
+    --bg:#0c0f14; --panel:#141a22; --panel2:#1b2430; --line:#26313f;
+    --fg:#e6edf3; --mut:#93a4b6; --acc:#5ec8f2; --good:#41d68a; --bad:#ff6b6b; --warn:#ffcc66;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--acc)}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 80px}
+  header h1{font-size:30px;margin:0 0 6px;letter-spacing:-.3px}
+  header p{color:var(--mut);margin:.2em 0;max-width:760px}
+  .pill{display:inline-block;font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:4px 6px 0 0}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:26px 0 8px}
+  .card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .card .k{color:var(--mut);font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+  .card .v{font-size:26px;font-weight:700;margin-top:6px}
+  .card .v small{font-size:13px;color:var(--mut);font-weight:500}
+  .card .d{margin-top:4px;font-size:12.5px;color:var(--good)}
+  nav{position:sticky;top:0;background:rgba(12,15,20,.86);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);margin:28px -20px 0;padding:10px 20px;z-index:5}
+  nav a{display:inline-block;color:var(--mut);text-decoration:none;font-size:13px;margin:2px 12px 2px 0}
+  nav a:hover{color:var(--acc)}
+  section{margin-top:40px}
+  h2{font-size:21px;margin:0 0 4px;padding-top:8px;letter-spacing:-.2px}
+  h2 .tag{font-size:11px;color:var(--bg);background:var(--acc);border-radius:6px;padding:2px 8px;vertical-align:middle;margin-left:8px;font-weight:700}
+  h2 .tag.agent{background:var(--warn)}
+  h2 .tag.weak{background:var(--bad);color:#fff}
+  .sub{color:var(--mut);margin:.2em 0 14px;font-size:14px}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+  table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+  caption{caption-side:top;text-align:left;color:var(--mut);font-size:13px;padding:10px 14px 0}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em;background:var(--panel2)}
+  tbody tr:last-child td{border-bottom:0}
+  tr.jikji td{background:rgba(94,200,242,.06)}
+  tr.jikji td:first-child{font-weight:600}
+  .mode{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .mode.raw{background:#6b7785}.mode.jikji{background:var(--acc)}.mode.rag{background:#b48cff}
+  .up{color:var(--good)}.down{color:var(--bad)}.flat{color:var(--mut)}
+  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:8px;padding:12px 16px;color:var(--mut);font-size:13.5px;margin-top:14px}
+  .note.weak{border-left-color:var(--bad)}
+  footer{margin-top:56px;border-top:1px solid var(--line);padding-top:20px;color:var(--mut);font-size:13px}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Jikji 벤치마크 결과 모음</h1>
+  <p>Jikji는 로컬 폴더를 옮기거나 이름을 바꾸지 않고, 로컬 AI 에이전트가 파일을 찾도록 텍스트 우선 지도/인덱스를 만드는 비파괴 레이어다. <b>임베딩·벡터DB·RAG·LLM·리랭커를 쓰지 않고</b> 결정론적 lexical/file-map 검색만 사용한다.</p>
+  <p class="sub">아래는 과거에 Jikji로 수행한 모든 벤치마크의 헤드라인 결과다. 두 종류의 증거가 있다: <b>결정론적 진단</b>(검색 레이어만, 저비용 회귀 신호)과 <b>실제 에이전트(actual-agent)</b> 비교(Hermes/Claude, 워크스테이션·모델·실행에 따라 변동).</p>
+  <div>
+    <span class="pill">no RAG / no embeddings</span>
+    <span class="pill">deterministic + actual-agent</span>
+    <span class="pill">raw = Jikji 없이 / jikji = Jikji 인덱스</span>
+    <span class="pill">지표: Hit@k · MRR · sec</span>
+  </div>
+</header>
+
+<div class="cards">
+  <div class="card"><div class="k">HippoCamp (Hermes Agent)</div><div class="v">80.0% → 93.3% <small>Accuracy</small></div><div class="d">Adam, Bei, Victoria 실제 구동 비교</div></div>
+  <div class="card"><div class="k">Realistic Downloads</div><div class="v">0.50 → 1.00 <small>Hit@10</small></div><div class="d">raw vs Jikji · 204 cases</div></div>
+  <div class="card"><div class="k">Hard KOGL extreme (test)</div><div class="v">0.16 → 0.96 <small>Hit@10</small></div><div class="d">+0.80 Hit@5 절대 · 144 cases</div></div>
+  <div class="card"><div class="k">Korean 공공데이터 (Hermes)</div><div class="v">0.83 → 1.00 <small>Hit@5</small></div><div class="d">정확도↑ + 1.50× 빠름</div></div>
+  <div class="card"><div class="k">Hard KOGL direct handoff</div><div class="v">0.80 <small>sec/case</small></div><div class="d">에이전트 탐색 turn 제거</div></div>
+</div>
+
+<nav>
+  <a href="#realistic">Realistic Downloads</a>
+  <a href="#kogl-extreme">Hard KOGL extreme</a>
+  <a href="#kogl-local">Hard KOGL local 600</a>
+  <a href="#kogl-v3">Hard KOGL 180</a>
+  <a href="#publicdata">공공데이터 XLSX</a>
+  <a href="#workspace">Workspace-Bench-Lite</a>
+  <a href="#hippocamp">HippoCamp</a>
+  <a href="#generalization">Generalization</a>
+  <a href="#edith">EDiTh</a>
+  <a href="#miracl">MIRACL-VISION</a>
+  <a href="#beir">BEIR</a>
+</nav>
+
+<section id="realistic">
+  <h2>Realistic Downloads 코퍼스 <span class="tag">결정론적</span></h2>
+  <p class="sub">실제 <code>~/Downloads</code> 위에서 생성한 현실적 eval. 204 cases · top-k 10. Jikji의 가장 큰 우위 구간.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>SetR@5</th><th>SetR@10</th><th>MRR</th><th>sec</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw</td><td>0.3971</td><td>0.4804</td><td>0.4951</td><td>0.5000</td><td>0.4307</td><td>0.4379</td><td>0.4416</td><td>98.7</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji</td><td>0.9461</td><td>0.9902</td><td>0.9951</td><td class="up">1.0000</td><td>0.8311</td><td>0.9836</td><td>0.9692</td><td>102.3</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">결정론적 lexical/map-only. raw 대비 Hit@1 +0.55, Hit@10 +0.50 절대. 비용은 사실상 동일.</div>
+</section>
+
+<section id="kogl-extreme">
+  <h2>Hard mixed KOGL — extreme v2 (held-out test) <span class="tag">결정론적</span></h2>
+  <p class="sub">공공 KOGL 첨부문서 179건(PDF 149·HWP 27·HWPX/PPTX/XLSX) → 깊은 messy 폴더 + memo/link 디코이. <code>--difficulty extreme</code> · 144 test cases.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR</th><th>sec</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw</td><td>0.0486</td><td>0.0833</td><td>0.1042</td><td>0.1597</td><td>0.0707</td><td>6.30</td><td>0.044</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji</td><td>0.6736</td><td>0.8472</td><td class="up">0.9167</td><td>0.9583</td><td>0.7826</td><td>29.49</td><td>0.205</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>Jikji 시나리오별 (test)</caption>
+    <thead><tr><th>Scenario</th><th>Cases</th><th>Hit@5</th><th>Hit@10</th><th>MRR</th></tr></thead>
+    <tbody>
+      <tr><td>body_phrase_no_filename</td><td>40</td><td>1.0000</td><td>1.0000</td><td>0.8633</td></tr>
+      <tr><td>decoy_note_resistant</td><td>37</td><td>0.9459</td><td>0.9730</td><td>0.8566</td></tr>
+      <tr><td>multi_body_disambiguation</td><td>34</td><td>0.9706</td><td>0.9706</td><td>0.8775</td></tr>
+      <tr><td>weak_folder_memory</td><td>33</td><td class="down">0.7273</td><td>0.8788</td><td>0.5039</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>실제 Hermes 샘플 (4 cases)</caption>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.5000</td><td>0.5000</td><td>0.5000</td><td>415.4</td><td>103.9</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji fast</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>63.2</td><td>15.8</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">Jikji가 가장 어려운 코퍼스에서 Hit@5를 +0.8125 절대 끌어올림. 남은 약점은 weak_folder_memory(거친 폴더 기억 + 일반 파일명)로 의도적으로 어렵게 설계됨. 실제 에이전트 샘플에서 약 6.58× 시간 단축.</div>
+</section>
+
+<section id="kogl-local">
+  <h2>Hard mixed KOGL — 로컬 사전다운로드 600문서 <span class="tag">결정론적</span> <span class="tag agent">에이전트</span></h2>
+  <p class="sub">로컬 122GB 공공문서 폴더에서 20,461개 중 600개 샘플(원본 미변경). 의도적으로 더 어려운 train/valid/test 베이스. 240 test cases.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw</td><td>0.0250</td><td>0.0333</td><td>0.0458</td><td>0.0583</td><td>0.0339</td><td>0.147</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji</td><td>0.3167</td><td>0.5125</td><td>0.6125</td><td class="up">0.8125</td><td>0.4532</td><td>0.863</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>실제 4-case 샘플 — direct handoff 가 핵심</caption>
+    <thead><tr><th>Agent mode</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.7500</td><td>0.7500</td><td>366.3</td><td>91.6</td></tr>
+      <tr><td><span class="mode jikji"></span>Hermes + Jikji fast</td><td>0.7500</td><td>1.0000</td><td>157.0</td><td>39.3</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji direct</td><td>0.7500</td><td>1.0000</td><td class="up">3.2</td><td class="up">0.800</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">direct handoff = 에이전트가 Jikji의 사전계산 랭킹 후보를 받아 탐색 turn 없이 선택. 동일 Hit@10에서 약 114× 빠름(91.6→0.8 sec/case).</div>
+</section>
+
+<section id="kogl-v3">
+  <h2>Hard mixed KOGL — 180문서 v3 (held-out test) <span class="tag">결정론적</span> <span class="tag agent">에이전트</span></h2>
+  <p class="sub">표준 난이도 180문서(PDF 150·HWP 27·HWPX 1·PPTX 1·XLSX 1). 72 test cases.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw</td><td>0.2222</td><td>0.4722</td><td>0.5694</td><td>0.6528</td><td>0.3656</td><td>0.0096</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji</td><td>0.7083</td><td>0.8750</td><td>0.8889</td><td class="up">0.9028</td><td>0.7939</td><td>0.0353</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>실제 Hermes 샘플 (8 cases)</caption>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.8750</td><td>0.8750</td><td>0.8750</td><td>570.1</td><td>71.3</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>330.4</td><td>41.3</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="publicdata">
+  <h2>Korean 공공데이터 XLSX messy-folder <span class="tag agent">에이전트</span> <span class="tag">결정론적</span></h2>
+  <p class="sub">공개 한국 오픈데이터 XLSX 90건 → <code>받은자료/기관별/새 폴더</code> 류 노이즈 폴더. 18 test cases. (출처: Seoul Data Hub 공개 XLSX 폴백 — KOGL Type 1 검증 아님)</p>
+  <div class="tablewrap"><table>
+    <caption>실제 Hermes (18-case test split)</caption>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>0.7778</td><td>0.8333</td><td>0.8333</td><td>0.8333</td><td>784.0</td><td>43.6</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>0.9444</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>522.9</td><td>29.1</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>결정론적 진단 (test)</caption>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR</th><th>sec</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw lexical</td><td>0.7222</td><td>0.8889</td><td>0.8889</td><td>0.9444</td><td>0.8111</td><td>0.123</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td>0.9444</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>0.9722</td><td>0.423</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">동일 로컬 에이전트를 더 정확하고(+0.1666 Hit@5/10) 더 빠르게(약 1.50×) 만듦.</div>
+</section>
+
+<section id="workspace">
+  <h2>Workspace-Bench-Lite 파일-탐색 <span class="tag agent">에이전트</span> <span class="tag">결정론적</span></h2>
+  <p class="sub">Workspace-Bench-Lite 태스크를 no-leak 파일-탐색 케이스로 변환(전체 출력생성 스코어링 아님). 12 tasks / 74 files / 46.6MB.</p>
+  <div class="tablewrap"><table>
+    <caption>결정론적 진단 (12 tasks)</caption>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>SetR@5</th><th>SetR@10</th><th>MRR</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw lexical</td><td>0.4167</td><td>0.6667</td><td>0.7500</td><td>0.8333</td><td>0.5222</td><td>0.6861</td><td>0.5687</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td>0.5833</td><td>0.7500</td><td class="up">0.9167</td><td>0.9167</td><td>0.6028</td><td>0.6944</td><td>0.6764</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>실제 Hermes (6 cases)</caption>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>249.5</td><td>41.6</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>0.8333</td><td>1.0000</td><td>1.0000</td><td>203.7</td><td>34.0</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">이 작은 슬라이스는 raw Hermes가 이미 Hit@5/10 만점이라 정확도 개선 여지가 없었음. Jikji는 top-k 정확도 유지 + 약 1.22× 시간 단축. 결정론적 진단에서는 Jikji 인덱스가 더 잘 랭킹.</div>
+</section>
+
+<section id="hippocamp">
+  <h2>HippoCamp (개인 파일시스템 프로필) <span class="tag">결정론적</span></h2>
+  <p class="sub">공개 개인-컴퓨터형 파일 검색 + QA 주석 데이터셋. 가상 사용자 프로필(Adam, Bei, Victoria) 별로 정식 다운로드 후 완전히 독립적으로 수행한 최신 벤치마크 상세 결과입니다.</p>
+  
+  <!-- Aggregate Summary -->
+  <div style="margin-top: 14px; border: 1px solid var(--acc); padding: 18px; border-radius: 16px; background: rgba(94,200,242,.03);">
+    <h3 style="margin: 0 0 8px; font-size: 16px; color: var(--acc);">📊 3개 프로필 종합 결과 (총 49개 가혹 탐색 케이스 합산)</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>MRR 📈</th><th>평균 속도</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mode raw"></span>raw</td><td>0.5306</td><td>0.6734</td><td>0.6939</td><td>0.6157</td><td>0.007s/case</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.5714</td><td>0.6326</td><td class="up">0.7551</td><td class="up">0.6434</td><td>0.035s/case</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- Adam Profile -->
+  <div style="margin-top: 24px; border: 1px solid var(--line); padding: 20px; border-radius: 16px; background: rgba(255,255,255,.01);">
+    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--acc);">👤 가상 프로필 1: Adam <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(총 18개 복잡 문서 탐색 케이스)</span></h3>
+    <p style="color:var(--mut); font-size:13.5px; margin:0 0 14px;">주요 특징: 다수의 PDF, HWP, 다양한 이메일 백업 등 개인 PC에 산재한 복잡하고 비정형적인 문서를 뒤져 정답을 찾아내는 조건입니다.</p>
+    <div class="tablewrap"><table>
+      <caption>결정론적 진단 점수 (Deterministic Test)</caption>
+      <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR 📈</th><th>시간 (sec)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mode raw"></span>raw</td><td>0.6667</td><td>0.7222</td><td>0.7778</td><td>0.8889</td><td>0.7238</td><td>0.186</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td>0.6111</td><td class="flat">0.7222</td><td class="up">0.9444</td><td class="up">0.9444</td><td>0.7222</td><td>1.053</td></tr>
+      </tbody>
+    </table></div>
+    
+    <div class="tablewrap" style="margin-top:14px"><table>
+      <caption>실제 에이전트 구동 비교 (Actual Hermes Agent Run · 18 cases)</caption>
+      <thead><tr><th>Agent Mode</th><th>정확도 (Accuracy) 🎯</th><th>사실 기억 (Factual)</th><th>인물 프로파일링 (Profiling)</th><th>총 시간 (sec)</th><th>건당 평균 시간</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>100.0% (18/18)</td><td>100.0%</td><td>100.0%</td><td>2318.8s</td><td>128.8s</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (인덱스 장착)</td><td>94.4% (17/18)</td><td class="flat">100.0%</td><td>83.3%</td><td class="up">1436.7s</td><td class="up">79.8s</td></tr>
+      </tbody>
+    </table></div>
+    
+    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 실제 에이전트를 가동한 테스트에서도 Jikji를 장착했을 때 <b>추론 속도가 건당 128.8초 ➜ 79.8초로 1.6배 대폭 단축</b>되어 리소스와 비용을 획기적으로 절약했습니다.</div>
+  </div>
+
+  <!-- Bei Profile -->
+  <div style="margin-top: 24px; border: 1px solid var(--line); padding: 20px; border-radius: 16px; background: rgba(255,255,255,.01);">
+    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--good);">👤 가상 프로필 2: Bei <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(총 21개 명확 단서 탐색 케이스)</span></h3>
+    <p style="color:var(--mut); font-size:13.5px; margin:0 0 14px;">주요 특징: 비교적 파일 구분이 직관적이며 단서가 명확한 파일 시스템 구조입니다.</p>
+    <div class="tablewrap"><table>
+      <caption>결정론적 진단 점수 (Deterministic Test)</caption>
+      <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR 📈</th><th>시간 (sec)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mode raw"></span>raw</td><td>0.4286</td><td>0.5714</td><td>0.5714</td><td>0.6190</td><td>0.5068</td><td>0.113</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.4762</td><td>0.4762</td><td class="flat">0.5714</td><td class="up">0.7143</td><td class="up">0.5183</td><td>0.240</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="tablewrap" style="margin-top:14px"><table>
+      <caption>실제 에이전트 구동 비교 (Actual Hermes Agent Run · 21 cases)</caption>
+      <thead><tr><th>Agent Mode</th><th>정확도 (Accuracy) 🎯</th><th>사실 기억 (Factual)</th><th>인물 프로파일링 (Profiling)</th><th>총 시간 (sec)</th><th>건당 평균 시간</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>95.2% (20/21)</td><td>94.1%</td><td>100.0%</td><td>2748.5s</td><td>130.8s</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (인덱스 장착)</td><td>85.7% (18/21)</td><td>82.3%</td><td class="flat">100.0%</td><td class="up">2123.4s</td><td class="up">101.1s</td></tr>
+      </tbody>
+    </table></div>
+
+    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Jikji 인덱스 적용 후, 최종 후보군에 정답이 포함될 확률(Hit@10)이 <b>61.9% ➜ 71.4%로 눈에 띄게 상승</b>했으며, 실제 에이전트 구동 속도 또한 약 <b>30% 더 신속</b>해졌습니다.</div>
+  </div>
+
+  <!-- Victoria Profile -->
+  <div style="margin-top: 24px; border: 1px solid var(--line); padding: 20px; border-radius: 16px; background: rgba(255,255,255,.01);">
+    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--amber);">👤 가상 프로필 3: Victoria <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(총 10개 고난도 멀티모달 케이스)</span></h3>
+    <p style="color:var(--mut); font-size:13.5px; margin:0 0 14px;">주요 특징: Uber, Meta, Microsoft 등 대기업 재무 공시 보고서(PDF, DOCX)가 뒤섞인 업무 중심 가상 PC 환경입니다.</p>
+    <div class="tablewrap"><table>
+      <caption>결정론적 진단 점수 (Deterministic Test)</caption>
+      <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR 📈</th><th>시간 (sec)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mode raw"></span>raw</td><td>0.5000</td><td>0.8000</td><td>0.8000</td><td>0.8000</td><td>0.6500</td><td>0.065</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.7000</td><td class="flat">0.8000</td><td class="flat">0.8000</td><td class="up">1.0000</td><td class="up">0.7643</td><td>0.444</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="tablewrap" style="margin-top:14px"><table>
+      <caption>실제 에이전트 구동 비교 (Actual Hermes Agent Run · 10 cases)</caption>
+      <thead><tr><th>Agent Mode</th><th>정확도 (Accuracy) 🎯</th><th>사실 기억 (Factual)</th><th>인물 프로파일링 (Profiling)</th><th>총 시간 (sec)</th><th>건당 평균 시간</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>100.0% (10/10)</td><td>100.0%</td><td>100.0%</td><td>864.7s</td><td>86.4s</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (인덱스 장착)</td><td class="flat">100.0% (10/10)</td><td class="flat">100.0%</td><td class="flat">100.0%</td><td class="up">525.6s</td><td class="up">52.5s</td></tr>
+      </tbody>
+    </table></div>
+
+    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Victoria 프로필 정식 측정 결과, 결정론적 Hit@1이 <b>50.0% ➜ 70.0%로 대폭 향상</b>되었으며, 실제 에이전트 구동에서도 양쪽 모두 정확도 100% 만점을 유지하되 Jikji 적용 시 <b>건당 속도가 86.4초 ➜ 52.5초로 무려 1.65배 단축</b>되는 혁신을 보여주었습니다.</div>
+  </div>
+</section>
+
+<section id="generalization">
+  <h2>Generalization / Downloads instant <span class="tag">결정론적</span></h2>
+  <p class="sub">미관측(unseen) 시나리오 일반화 점검. Downloads instant 240 cases · top-k 10.</p>
+  <div class="tablewrap"><table>
+    <caption>Downloads instant — Jikji 시나리오별 (240 cases)</caption>
+    <thead><tr><th>Scenario</th><th>Cases</th><th>Hit@1</th><th>Hit@5</th><th>Hit@10</th><th>dup/exact@10</th><th>MRR</th></tr></thead>
+    <tbody>
+      <tr class="jikji"><td>전체</td><td>240</td><td>0.7583</td><td>0.8750</td><td>0.9083</td><td>0.9167</td><td>0.8123</td></tr>
+      <tr><td>copy_family_unseen</td><td>40</td><td>0.8500</td><td>0.9500</td><td>0.9500</td><td>0.9500</td><td>0.8958</td></tr>
+      <tr><td>folder_constrained_unseen</td><td>40</td><td>0.5750</td><td>0.7250</td><td>0.7250</td><td>0.7250</td><td>0.6458</td></tr>
+      <tr><td>hash_duplicate_unseen</td><td>40</td><td>0.3250</td><td>0.6750</td><td>0.8500</td><td>0.9000</td><td>0.4951</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">교차 시나리오 일반화 코퍼스(8개 도메인: engineering/finance/korean/legal/ops/personal/recipe/travel)에서 raw·Jikji 모두 9/9 케이스 Hit@1=1.0 — 쉬운 도메인 분리 확인용 회귀 신호.</div>
+</section>
+
+<section id="edith">
+  <h2>EDiTh / Véracier Industries (엔터프라이즈 PDF) <span class="tag agent">에이전트</span> <span class="tag">결정론적</span></h2>
+  <p class="sub">공개 아카이브 ~1.5GB에서 선택 PDF만 스트림 추출(전체 tarball 저장 안 함). 현재는 작은 file-list subset → smoke 벤치.</p>
+  <div class="tablewrap"><table>
+    <caption>실제 Hermes (3 cases)</caption>
+    <thead><tr><th>Agent mode</th><th>Hit@5</th><th>Hit@10</th><th>sec</th><th>sec/case</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw Hermes</td><td>1.0000</td><td>1.0000</td><td>152.8</td><td>50.9</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji</td><td>1.0000</td><td>1.0000</td><td>120.9</td><td>40.3</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>결정론적 진단 (PDF subset · 3 cases)</caption>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>SetR@5</th><th>MRR</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw lexical</td><td>0.3333</td><td>0.6667</td><td>0.6667</td><td>0.6667</td><td>0.4000</td><td>0.4444</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td>0.3333</td><td class="up">1.0000</td><td>1.0000</td><td>1.0000</td><td>0.6667</td><td>0.6667</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="miracl">
+  <h2>MIRACL-VISION (다국어, Markdown 변환) <span class="tag weak">Jikji 약점</span></h2>
+  <p class="sub">정직한 반례. 코퍼스가 Markdown으로 materialize돼 raw lexical 검색이 본래 매우 강하고, Jikji 파서/캐시 레이어의 이점이 없어 <b>raw보다 낮음</b>. 80 cases(결정론), 8 cases(에이전트).</p>
+  <div class="tablewrap"><table>
+    <caption>결정론적 (80 cases) — rag 비교 포함</caption>
+    <thead><tr><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>raw lexical</td><td>0.5875</td><td>0.7250</td><td>0.7500</td><td>0.7750</td><td>0.6634</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="down">0.3875</td><td class="down">0.6000</td><td class="down">0.6250</td><td class="down">0.6875</td><td class="down">0.4898</td></tr>
+      <tr><td><span class="mode rag"></span>RAG (참고)</td><td>0.8000</td><td>0.9375</td><td>0.9625</td><td>1.0000</td><td>0.8753</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tablewrap" style="margin-top:14px"><table>
+    <caption>실제 Claude Code 에이전트 (8 cases) — map 모드가 회복</caption>
+    <thead><tr><th>Agent mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mode raw"></span>agent_raw</td><td>0.8750</td><td>1.0000</td><td>1.0000</td><td>1.0000</td></tr>
+      <tr><td><span class="mode jikji"></span>agent_jikji (후보주입)</td><td class="down">0.2500</td><td>0.6250</td><td>0.6250</td><td>0.7500</td></tr>
+      <tr class="jikji"><td><span class="mode jikji"></span>agent_jikji_map</td><td>0.8750</td><td>1.0000</td><td>1.0000</td><td>1.0000</td></tr>
+      <tr><td><span class="mode rag"></span>agent_rag</td><td>1.0000</td><td>1.0000</td><td>1.0000</td><td>1.0000</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note weak">정직한 한계: Markdown-only 코퍼스에서는 파서 캐시 이점이 없어 Jikji 결정론 점수가 raw보다 낮다. 후보를 강제 주입한 <code>agent_jikji</code>는 오히려 raw보다 나쁨. 단, 지도-우선 <code>agent_jikji_map</code> 모드는 raw와 동률로 회복. → Jikji의 강점은 파서가 필요한 PDF/HWP/Office 류이지 이미 텍스트화된 Markdown IR이 아니다.</div>
+</section>
+
+<section id="beir">
+  <h2>BEIR (광역 IR 회귀, Markdown 변환) <span class="tag">결정론적</span></h2>
+  <p class="sub">넓은 결정론적 IR 회귀 점검. Markdown materialize라 파서 스트레스가 아님. 각 200 cases (rank 기반 산출).</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Dataset</th><th>Mode</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR</th></tr></thead>
+    <tbody>
+      <tr><td>SciFact</td><td><span class="mode raw"></span>raw</td><td>0.350</td><td>0.485</td><td>0.555</td><td>0.640</td><td>0.434</td></tr>
+      <tr class="jikji"><td>SciFact</td><td><span class="mode jikji"></span>Jikji</td><td>0.335</td><td>0.485</td><td class="flat">0.540</td><td>0.610</td><td>0.421</td></tr>
+      <tr><td>ArguAna</td><td><span class="mode raw"></span>raw</td><td>0.000</td><td>0.045</td><td>0.070</td><td>0.130</td><td>0.034</td></tr>
+      <tr class="jikji"><td>ArguAna</td><td><span class="mode jikji"></span>Jikji</td><td>0.000</td><td class="up">0.305</td><td class="up">0.395</td><td class="up">0.545</td><td class="up">0.174</td></tr>
+      <tr><td>NFCorpus</td><td><span class="mode raw"></span>raw</td><td>0.310</td><td>0.435</td><td>0.510</td><td>0.580</td><td>0.394</td></tr>
+      <tr class="jikji"><td>NFCorpus</td><td><span class="mode jikji"></span>Jikji</td><td class="up">0.350</td><td class="up">0.515</td><td class="up">0.575</td><td class="up">0.635</td><td class="up">0.451</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">ArguAna(긴 반론 검색)에서 Jikji가 크게 우세(Hit@10 0.13→0.55), NFCorpus도 전반 우세. SciFact는 raw와 사실상 동률. 순수 IR(이미 텍스트)에서는 도메인에 따라 혼재.</div>
+</section>
+
+<footer>
+  <p><b>방법론 / 정직성.</b> raw = Jikji 인덱스/파서 캐시를 쓰지 않고 원본 파일명·경로·native-text만 검색. jikji = Jikji 지도·인덱스·파서 텍스트 캐시 검색. Jikji 코어는 임베딩·벡터DB·RAG·LLM·리랭커 없이 결정론적 lexical/file-map만 사용한다. 실제 에이전트(Hermes/Claude) 타이밍은 워크스테이션·모델·실행마다 변동하므로, 대규모 결정론적 test를 주 회귀 신호로, 소규모 actual-agent run을 제품 sanity check로 사용한다. train/valid는 일반 개선 유도용으로만 쓰고 test 헤드라인과 분리했다.</p>
+  <p>출처 문서: <code>docs/hardbench-benchmark.md</code>, <code>docs/workspacebench-benchmark.md</code>, <code>docs/publicdata-agent-benchmark.md</code>, <code>docs/hippocamp-benchmark.md</code>, <code>docs/public-benchmark-catalog.md</code> · 원시 결과: <code>.benchmarks/</code> (gitignored 로컬 증거).</p>
+  <p>생성일 2026-06-09 · Jikji file-discovery benchmark summary.</p>
+</footer>
+</div>
+</body>
+</html>

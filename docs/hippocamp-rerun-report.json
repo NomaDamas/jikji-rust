@@ -1,0 +1,380 @@
+{
+  "deterministic_suite": {
+    "aggregate": {
+      "raw": {
+        "profiles": 3,
+        "cases": 49,
+        "hit_at_1": 0.5102,
+        "hit_at_3": 0.653,
+        "hit_at_5": 0.6939,
+        "mrr": 0.6004,
+        "seconds": 0.454
+      },
+      "jikji": {
+        "profiles": 3,
+        "cases": 49,
+        "hit_at_1": 0.6327,
+        "hit_at_3": 0.7551,
+        "hit_at_5": 0.8163,
+        "mrr": 0.7058,
+        "seconds": 1.973
+      }
+    },
+    "profiles": {
+      "Adam": {
+        "raw": {
+          "cases": 18,
+          "top_k": 10,
+          "hit_at_1": 0.6667,
+          "hit_at_3": 0.7222,
+          "hit_at_5": 0.7778,
+          "hit_at_10": 0.8889,
+          "set_recall_at_5": 0.3398,
+          "set_recall_at_10": 0.3472,
+          "set_precision_at_5": 0.2556,
+          "set_precision_at_10": 0.1833,
+          "hash_or_exact_hit_at_5": 0.7778,
+          "hash_or_exact_hit_at_10": 0.8889,
+          "duplicate_or_exact_hit_at_5": 0.7778,
+          "duplicate_or_exact_hit_at_10": 0.8889,
+          "mrr": 0.7238,
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 12,
+              "hit_at_1": 0.75,
+              "hit_at_5": 0.8333,
+              "hit_at_10": 0.9167,
+              "set_recall_at_5": 0.3764,
+              "set_recall_at_10": 0.4134,
+              "hash_or_exact_hit_at_10": 0.9167,
+              "duplicate_or_exact_hit_at_10": 0.9167,
+              "mrr": 0.7847
+            },
+            "hippocamp_profiling": {
+              "cases": 6,
+              "hit_at_1": 0.5,
+              "hit_at_5": 0.6667,
+              "hit_at_10": 0.8333,
+              "set_recall_at_5": 0.2667,
+              "set_recall_at_10": 0.2148,
+              "hash_or_exact_hit_at_10": 0.8333,
+              "duplicate_or_exact_hit_at_10": 0.8333,
+              "mrr": 0.6019
+            }
+          },
+          "seconds": 0.247
+        },
+        "jikji": {
+          "cases": 18,
+          "top_k": 10,
+          "hit_at_1": 0.7778,
+          "hit_at_3": 0.8889,
+          "hit_at_5": 0.9444,
+          "hit_at_10": 0.9444,
+          "set_recall_at_5": 0.5343,
+          "set_recall_at_10": 0.5108,
+          "set_precision_at_5": 0.3889,
+          "set_precision_at_10": 0.2611,
+          "hash_or_exact_hit_at_5": 0.9444,
+          "hash_or_exact_hit_at_10": 0.9444,
+          "duplicate_or_exact_hit_at_5": 0.9444,
+          "duplicate_or_exact_hit_at_10": 0.9444,
+          "mrr": 0.8444,
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 12,
+              "hit_at_1": 0.9167,
+              "hit_at_5": 1.0,
+              "hit_at_10": 1.0,
+              "set_recall_at_5": 0.5847,
+              "set_recall_at_10": 0.5884,
+              "hash_or_exact_hit_at_10": 1.0,
+              "duplicate_or_exact_hit_at_10": 1.0,
+              "mrr": 0.9583
+            },
+            "hippocamp_profiling": {
+              "cases": 6,
+              "hit_at_1": 0.5,
+              "hit_at_5": 0.8333,
+              "hit_at_10": 0.8333,
+              "set_recall_at_5": 0.4333,
+              "set_recall_at_10": 0.3556,
+              "hash_or_exact_hit_at_10": 0.8333,
+              "duplicate_or_exact_hit_at_10": 0.8333,
+              "mrr": 0.6167
+            }
+          },
+          "seconds": 1.218
+        }
+      },
+      "Bei": {
+        "raw": {
+          "cases": 21,
+          "top_k": 10,
+          "hit_at_1": 0.4286,
+          "hit_at_3": 0.5238,
+          "hit_at_5": 0.5714,
+          "hit_at_10": 0.619,
+          "set_recall_at_5": 0.4635,
+          "set_recall_at_10": 0.4913,
+          "set_precision_at_5": 0.2667,
+          "set_precision_at_10": 0.2048,
+          "hash_or_exact_hit_at_5": 0.5714,
+          "hash_or_exact_hit_at_10": 0.619,
+          "duplicate_or_exact_hit_at_5": 0.5714,
+          "duplicate_or_exact_hit_at_10": 0.619,
+          "mrr": 0.4949,
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 17,
+              "hit_at_1": 0.4706,
+              "hit_at_5": 0.5882,
+              "hit_at_10": 0.5882,
+              "set_recall_at_5": 0.5078,
+              "set_recall_at_10": 0.5137,
+              "hash_or_exact_hit_at_10": 0.5882,
+              "duplicate_or_exact_hit_at_10": 0.5882,
+              "mrr": 0.5294
+            },
+            "hippocamp_profiling": {
+              "cases": 4,
+              "hit_at_1": 0.25,
+              "hit_at_5": 0.5,
+              "hit_at_10": 0.75,
+              "set_recall_at_5": 0.275,
+              "set_recall_at_10": 0.3958,
+              "hash_or_exact_hit_at_10": 0.75,
+              "duplicate_or_exact_hit_at_10": 0.75,
+              "mrr": 0.3482
+            }
+          },
+          "seconds": 0.112
+        },
+        "jikji": {
+          "cases": 21,
+          "top_k": 10,
+          "hit_at_1": 0.5238,
+          "hit_at_3": 0.619,
+          "hit_at_5": 0.619,
+          "hit_at_10": 0.7619,
+          "set_recall_at_5": 0.4484,
+          "set_recall_at_10": 0.5769,
+          "set_precision_at_5": 0.2571,
+          "set_precision_at_10": 0.2286,
+          "hash_or_exact_hit_at_5": 0.619,
+          "hash_or_exact_hit_at_10": 0.7619,
+          "duplicate_or_exact_hit_at_5": 0.619,
+          "duplicate_or_exact_hit_at_10": 0.7619,
+          "mrr": 0.5762,
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 17,
+              "hit_at_1": 0.4706,
+              "hit_at_5": 0.5882,
+              "hit_at_10": 0.7059,
+              "set_recall_at_5": 0.4804,
+              "set_recall_at_10": 0.593,
+              "hash_or_exact_hit_at_10": 0.7059,
+              "duplicate_or_exact_hit_at_10": 0.7059,
+              "mrr": 0.5255
+            },
+            "hippocamp_profiling": {
+              "cases": 4,
+              "hit_at_1": 0.75,
+              "hit_at_5": 0.75,
+              "hit_at_10": 1.0,
+              "set_recall_at_5": 0.3125,
+              "set_recall_at_10": 0.5083,
+              "hash_or_exact_hit_at_10": 1.0,
+              "duplicate_or_exact_hit_at_10": 1.0,
+              "mrr": 0.7917
+            }
+          },
+          "seconds": 0.259
+        }
+      },
+      "Victoria": {
+        "raw": {
+          "cases": 10,
+          "top_k": 10,
+          "hit_at_1": 0.4,
+          "hit_at_3": 0.8,
+          "hit_at_5": 0.8,
+          "hit_at_10": 0.8,
+          "set_recall_at_5": 0.5617,
+          "set_recall_at_10": 0.615,
+          "set_precision_at_5": 0.44,
+          "set_precision_at_10": 0.36,
+          "hash_or_exact_hit_at_5": 0.8,
+          "hash_or_exact_hit_at_10": 0.8,
+          "duplicate_or_exact_hit_at_5": 0.9,
+          "duplicate_or_exact_hit_at_10": 0.9,
+          "mrr": 0.6,
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 4,
+              "hit_at_1": 0.25,
+              "hit_at_5": 1.0,
+              "hit_at_10": 1.0,
+              "set_recall_at_5": 0.8542,
+              "set_recall_at_10": 0.9375,
+              "hash_or_exact_hit_at_10": 1.0,
+              "duplicate_or_exact_hit_at_10": 1.0,
+              "mrr": 0.625
+            },
+            "hippocamp_profiling": {
+              "cases": 6,
+              "hit_at_1": 0.5,
+              "hit_at_5": 0.6667,
+              "hit_at_10": 0.6667,
+              "set_recall_at_5": 0.3667,
+              "set_recall_at_10": 0.4,
+              "hash_or_exact_hit_at_10": 0.6667,
+              "duplicate_or_exact_hit_at_10": 0.8333,
+              "mrr": 0.5833
+            }
+          },
+          "seconds": 0.095
+        },
+        "jikji": {
+          "cases": 10,
+          "top_k": 10,
+          "hit_at_1": 0.6,
+          "hit_at_3": 0.8,
+          "hit_at_5": 1.0,
+          "hit_at_10": 1.0,
+          "set_recall_at_5": 0.5017,
+          "set_recall_at_10": 0.6117,
+          "set_precision_at_5": 0.42,
+          "set_precision_at_10": 0.35,
+          "hash_or_exact_hit_at_5": 1.0,
+          "hash_or_exact_hit_at_10": 1.0,
+          "duplicate_or_exact_hit_at_5": 1.0,
+          "duplicate_or_exact_hit_at_10": 1.0,
+          "mrr": 0.7283,
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 4,
+              "hit_at_1": 0.5,
+              "hit_at_5": 1.0,
+              "hit_at_10": 1.0,
+              "set_recall_at_5": 0.6042,
+              "set_recall_at_10": 0.9375,
+              "hash_or_exact_hit_at_10": 1.0,
+              "duplicate_or_exact_hit_at_10": 1.0,
+              "mrr": 0.6875
+            },
+            "hippocamp_profiling": {
+              "cases": 6,
+              "hit_at_1": 0.6667,
+              "hit_at_5": 1.0,
+              "hit_at_10": 1.0,
+              "set_recall_at_5": 0.4333,
+              "set_recall_at_10": 0.3944,
+              "hash_or_exact_hit_at_10": 1.0,
+              "duplicate_or_exact_hit_at_10": 1.0,
+              "mrr": 0.7556
+            }
+          },
+          "seconds": 0.496
+        }
+      }
+    }
+  },
+  "hermes_agent_benchmark": {
+    "model": "openai/gpt-4o-mini",
+    "provider": "openrouter",
+    "cases_per_profile": 3,
+    "max_turns": 8,
+    "modes": [
+      "raw",
+      "jikji"
+    ],
+    "profiles": {
+      "Adam": {
+        "jikji": {
+          "cases": 3,
+          "accuracy": 0.6667,
+          "hit_at_1": 0.6667,
+          "hit_at_3": 0.6667,
+          "hit_at_5": 0.6667,
+          "hit_at_10": 0.6667,
+          "avg_seconds": 40.014,
+          "llm_calls": 13,
+          "prompt_tokens": 131623,
+          "completion_tokens": 1847,
+          "total_tokens": 133470
+        },
+        "raw": {
+          "cases": 3,
+          "accuracy": 0.0,
+          "hit_at_1": 0.0,
+          "hit_at_3": 0.0,
+          "hit_at_5": 0.0,
+          "hit_at_10": 0.0,
+          "avg_seconds": 21.824,
+          "llm_calls": 22,
+          "prompt_tokens": 29404,
+          "completion_tokens": 1031,
+          "total_tokens": 30435
+        }
+      },
+      "Bei": {
+        "jikji": {
+          "cases": 3,
+          "accuracy": 1.0,
+          "hit_at_1": 0.6667,
+          "hit_at_3": 0.6667,
+          "hit_at_5": 0.6667,
+          "hit_at_10": 1.0,
+          "avg_seconds": 19.896,
+          "llm_calls": 9,
+          "prompt_tokens": 87897,
+          "completion_tokens": 1807,
+          "total_tokens": 89704
+        },
+        "raw": {
+          "cases": 3,
+          "accuracy": 0.6667,
+          "hit_at_1": 0.3333,
+          "hit_at_3": 0.6667,
+          "hit_at_5": 0.6667,
+          "hit_at_10": 0.6667,
+          "avg_seconds": 23.353,
+          "llm_calls": 16,
+          "prompt_tokens": 26368,
+          "completion_tokens": 734,
+          "total_tokens": 27102
+        }
+      },
+      "Victoria": {
+        "jikji": {
+          "cases": 3,
+          "accuracy": 1.0,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_5": 1.0,
+          "hit_at_10": 1.0,
+          "avg_seconds": 19.532,
+          "llm_calls": 9,
+          "prompt_tokens": 44689,
+          "completion_tokens": 2031,
+          "total_tokens": 46720
+        },
+        "raw": {
+          "cases": 3,
+          "accuracy": 1.0,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_5": 1.0,
+          "hit_at_10": 1.0,
+          "avg_seconds": 17.839,
+          "llm_calls": 14,
+          "prompt_tokens": 16795,
+          "completion_tokens": 996,
+          "total_tokens": 17791
+        }
+      }
+    }
+  }
+}

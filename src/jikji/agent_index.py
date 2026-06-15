@@ -35,6 +35,12 @@ from .search_index import (
 ProgressCB = Callable[[str, float], None]
 
 AGENT_DIR_NAME = ".jikji"
+# Visible root map is now a hidden dotfile so users do not see Jikji's
+# generated agent map in normal file listings. Legacy non-hidden names are
+# still recognized for cleanup and reading on previously prepared roots.
+VISIBLE_MAP_NAME = ".jikji_agent_map.md"
+LEGACY_VISIBLE_MAP_NAMES = ("000_JIKJI_AGENT_MAP.md",)
+VISIBLE_MAP_NAMES = (VISIBLE_MAP_NAME, *LEGACY_VISIBLE_MAP_NAMES)
 DOCUMENT_CACHE_EXTENSIONS = {
     ".pdf",
     ".epub",
@@ -97,7 +103,8 @@ _DEFAULT_CHUNK_CHARS = 1_000_000
 CACHE_KEY_POLICY = "sha256, recomputed only when size or mtime_ns changed or cache is missing"
 LOCK_STALE_AFTER_SECONDS = 60 * 60
 OWNED_GENERATED_PATHS = [
-    "000_JIKJI_AGENT_MAP.md",
+    VISIBLE_MAP_NAME,
+    *LEGACY_VISIBLE_MAP_NAMES,
     ".jikji/manifest.json",
     ".jikji/file_index.jsonl",
     ".jikji/folder_index.jsonl",
@@ -359,7 +366,7 @@ def _ignore_name(name: str, patterns: Iterable[str]) -> bool:
 
     if name == AGENT_DIR_NAME:
         return True
-    if name == "000_JIKJI_AGENT_MAP.md" or name.startswith("Jikji_Report_"):
+    if name in VISIBLE_MAP_NAMES or name.startswith("Jikji_Report_"):
         return True
     return any(fnmatch.fnmatch(name, pat) for pat in patterns)
 
@@ -483,6 +490,12 @@ def _tokens_from_text(text: str, *, limit: int = 16) -> list[str]:
     for raw in _TOKEN_TEXT_RE.findall(text or ""):
         tok = raw.strip("._-")
         candidates = [tok]
+        # Split on internal separators so a filename component word becomes a
+        # first-class token. Without this, "Penguin_Model_Sheet.png" only ever
+        # produces the joined form and a query for "penguin" can never match it,
+        # which badly distorts filename-clue ranking.
+        if tok and re.search(r"[._-]", tok):
+            candidates.extend(part for part in re.split(r"[._-]+", tok) if part)
         if _CJK_RE.search(tok) and len(tok) >= 3:
             # Japanese and Chinese text often arrives as long script runs
             # without whitespace. Add bounded character n-grams so a query for
@@ -1240,8 +1253,17 @@ def _build_agent_index_unlocked(
     _atomic_write_text(agent_map, _agent_map_markdown(root, manifest, folder_rows, doc_rows_sorted, search_terms))
     result.agent_map = agent_map
 
-    # Backwards/convenience visible root map. Keep short and overwrite safely.
-    _atomic_write_text(root / "000_JIKJI_AGENT_MAP.md", _visible_agent_map(agent_map))
+    # Hidden root map (dotfile) so users do not see it in normal listings, while
+    # agents still get a short convenience pointer into .jikji/. Remove any
+    # legacy non-hidden map left over from older Jikji versions.
+    _atomic_write_text(root / VISIBLE_MAP_NAME, _visible_agent_map(agent_map))
+    for legacy_name in LEGACY_VISIBLE_MAP_NAMES:
+        legacy_map = root / legacy_name
+        if legacy_map.exists():
+            try:
+                legacy_map.unlink()
+            except OSError:
+                pass
     if progress:
         progress(
             f"jikji: 완료 — 파일 {result.files}개 / 폴더 {result.folders}개 / 문서 캐시 신규 {result.docs_parsed}개·재사용 {result.docs_reused}개",
@@ -1416,6 +1438,18 @@ def _agent_skill_context_markdown(manifest) -> str:
         "# Jikji Skill Context\n\n"
         "Jikji는 검색기가 아니라 로컬 에이전트가 CLI에서 파일 시스템을 잘 찾도록 준비하는 도구입니다.\n"
         "이 인덱스는 비파괴적으로 생성되었으며 원본 폴더/파일명은 변경하지 않았습니다.\n\n"
+        "## 절대 원칙 (MANDATORY)\n"
+        "이 폴더에는 Jikji 인덱스가 이미 준비되어 있습니다. 로컬 파일/폴더/문서를 "
+        "찾을 때는 **무조건 `jikji search`/`jikji brief`를 가장 먼저 호출**해서 후보군을 "
+        "주입받습니다.\n"
+        "- 금지: 후보를 받기 전에 `grep`/`rg`/`ls`/`find`/`fd`/`cat`으로 파일시스템을 "
+        "헤매는 행위. 이것은 Jikji가 이미 끝낸 작업을 다시 하는 낭비입니다.\n"
+        "- 첫 행동은 항상 `jikji search <root> \"자연어 단서\" --top-k 10 --json` 또는 "
+        "`jikji brief <root> \"자연어 단서\" --top-k 10 --json` 입니다.\n"
+        "- Jikji가 돌려준 `candidates[].path`를 그대로 정답 경로로 사용하고, 필요하면 "
+        "상위 후보만 원본으로 열어 검증합니다.\n"
+        "- `grep`/`rg`/`ls`/`find`는 Jikji 후보가 **비어 있거나 명백히 틀렸을 때만** "
+        "최후의 수단으로 사용합니다.\n\n"
         "검색 규칙: 자연어 후보는 `.jikji/file_cards.jsonl`/`.jikji/chunk_map.jsonl`, 파서 필요 문서는 `.jikji/doc_text/`, 텍스트형 파일은 원본 경로를 검색하세요.\n\n"
         "## Read first\n"
         "- `.jikji/agent_map.md`\n"
