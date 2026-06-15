@@ -1,114 +1,317 @@
 {
+  "split": "Fullset",
+  "note": "Official HippoCamp Full-split (Fullset) benchmark for Adam, Bei, Victoria. Bounded full-set fetch: per-file cap 60MB skips only large video, capturing the entire document+audio corpus.",
+  "fetch": {
+    "Adam": {
+      "files_downloaded": 342,
+      "bytes_downloaded": 355675242,
+      "skipped": 2,
+      "eval_cases": 122,
+      "scenarios": {
+        "hippocamp_factual_retention": 102,
+        "hippocamp_profiling": 20
+      }
+    },
+    "Bei": {
+      "files_downloaded": 826,
+      "bytes_downloaded": 4102851609,
+      "skipped": 49,
+      "eval_cases": 206,
+      "scenarios": {
+        "hippocamp_factual_retention": 186,
+        "hippocamp_profiling": 20
+      }
+    },
+    "Victoria": {
+      "files_downloaded": 705,
+      "bytes_downloaded": 2346713958,
+      "skipped": 1,
+      "eval_cases": 223,
+      "scenarios": {
+        "hippocamp_factual_retention": 203,
+        "hippocamp_profiling": 20
+      }
+    }
+  },
   "deterministic_suite": {
+    "top_k": 10,
     "aggregate": {
       "raw": {
         "profiles": 3,
-        "cases": 49,
-        "hit_at_1": 0.5102,
-        "hit_at_3": 0.653,
-        "hit_at_5": 0.6939,
-        "mrr": 0.6004,
-        "seconds": 0.452
+        "cases": 551,
+        "hit_at_1": 0.285,
+        "hit_at_3": 0.3847,
+        "hit_at_5": 0.4465,
+        "mrr": 0.3606,
+        "seconds": 21.891
       },
       "jikji": {
         "profiles": 3,
-        "cases": 49,
-        "hit_at_1": 0.6327,
-        "hit_at_3": 0.7551,
-        "hit_at_5": 0.8163,
-        "mrr": 0.7047,
-        "seconds": 1.997
+        "cases": 551,
+        "hit_at_1": 0.3666,
+        "hit_at_3": 0.5045,
+        "hit_at_5": 0.5789,
+        "mrr": 0.4587,
+        "seconds": 216.591
       }
     },
     "profiles": {
       "Adam": {
         "raw": {
-          "top_k": 10,
-          "cases": 18,
-          "hit_at_1": 0.6667,
-          "hit_at_3": 0.7222,
-          "hit_at_5": 0.7778,
-          "hit_at_10": 0.8889,
-          "set_recall_at_5": 0.3398,
-          "set_recall_at_10": 0.3472,
-          "hash_or_exact_hit_at_10": 0.8889,
-          "duplicate_or_exact_hit_at_10": 0.8889,
-          "mrr": 0.7238,
-          "seconds": 0.242
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 102,
+              "duplicate_or_exact_hit_at_10": 0.8137,
+              "hash_or_exact_hit_at_10": 0.8137,
+              "hit_at_1": 0.6078,
+              "hit_at_10": 0.8137,
+              "hit_at_5": 0.7647,
+              "mrr": 0.6782,
+              "set_recall_at_10": 0.7339,
+              "set_recall_at_5": 0.6918
+            },
+            "hippocamp_profiling": {
+              "cases": 20,
+              "duplicate_or_exact_hit_at_10": 0.5,
+              "hash_or_exact_hit_at_10": 0.5,
+              "hit_at_1": 0.2,
+              "hit_at_10": 0.5,
+              "hit_at_5": 0.4,
+              "mrr": 0.2956,
+              "set_recall_at_10": 0.1395,
+              "set_recall_at_5": 0.17
+            }
+          },
+          "cases": 122,
+          "duplicate_or_exact_hit_at_10": 0.7623,
+          "duplicate_or_exact_hit_at_5": 0.7049,
+          "hash_or_exact_hit_at_10": 0.7623,
+          "hash_or_exact_hit_at_5": 0.7049,
+          "hit_at_1": 0.541,
+          "hit_at_10": 0.7623,
+          "hit_at_3": 0.6721,
+          "hit_at_5": 0.7049,
+          "mrr": 0.6154,
+          "seconds": 3.447,
+          "set_precision_at_10": 0.1008,
+          "set_precision_at_5": 0.1705,
+          "set_recall_at_10": 0.6365,
+          "set_recall_at_5": 0.6063,
+          "top_k": 10
         },
         "jikji": {
-          "top_k": 10,
-          "cases": 18,
-          "hit_at_1": 0.7778,
-          "hit_at_3": 0.8889,
-          "hit_at_5": 0.9444,
-          "hit_at_10": 0.9444,
-          "set_recall_at_5": 0.5343,
-          "set_recall_at_10": 0.5108,
-          "hash_or_exact_hit_at_10": 0.9444,
-          "duplicate_or_exact_hit_at_10": 0.9444,
-          "mrr": 0.8444,
-          "seconds": 1.22
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 102,
+              "duplicate_or_exact_hit_at_10": 0.951,
+              "hash_or_exact_hit_at_10": 0.951,
+              "hit_at_1": 0.7843,
+              "hit_at_10": 0.951,
+              "hit_at_5": 0.9118,
+              "mrr": 0.8459,
+              "set_recall_at_10": 0.8825,
+              "set_recall_at_5": 0.8426
+            },
+            "hippocamp_profiling": {
+              "cases": 20,
+              "duplicate_or_exact_hit_at_10": 0.7,
+              "hash_or_exact_hit_at_10": 0.7,
+              "hit_at_1": 0.4,
+              "hit_at_10": 0.7,
+              "hit_at_5": 0.5,
+              "mrr": 0.4748,
+              "set_recall_at_10": 0.2551,
+              "set_recall_at_5": 0.27
+            }
+          },
+          "cases": 122,
+          "duplicate_or_exact_hit_at_10": 0.9098,
+          "duplicate_or_exact_hit_at_5": 0.8443,
+          "hash_or_exact_hit_at_10": 0.9098,
+          "hash_or_exact_hit_at_5": 0.8443,
+          "hit_at_1": 0.7213,
+          "hit_at_10": 0.9098,
+          "hit_at_3": 0.8361,
+          "hit_at_5": 0.8443,
+          "mrr": 0.785,
+          "seconds": 28.87,
+          "set_precision_at_10": 0.1336,
+          "set_precision_at_5": 0.2164,
+          "set_recall_at_10": 0.7796,
+          "set_recall_at_5": 0.7488,
+          "top_k": 10
         }
       },
       "Bei": {
         "raw": {
-          "top_k": 10,
-          "cases": 21,
-          "hit_at_1": 0.4286,
-          "hit_at_3": 0.5238,
-          "hit_at_5": 0.5714,
-          "hit_at_10": 0.619,
-          "set_recall_at_5": 0.4635,
-          "set_recall_at_10": 0.4913,
-          "hash_or_exact_hit_at_10": 0.619,
-          "duplicate_or_exact_hit_at_10": 0.619,
-          "mrr": 0.4949,
-          "seconds": 0.113
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 186,
+              "duplicate_or_exact_hit_at_10": 0.4086,
+              "hash_or_exact_hit_at_10": 0.4086,
+              "hit_at_1": 0.2258,
+              "hit_at_10": 0.4086,
+              "hit_at_5": 0.3226,
+              "mrr": 0.2734,
+              "set_recall_at_10": 0.3356,
+              "set_recall_at_5": 0.2797
+            },
+            "hippocamp_profiling": {
+              "cases": 20,
+              "duplicate_or_exact_hit_at_10": 0.4,
+              "hash_or_exact_hit_at_10": 0.4,
+              "hit_at_1": 0.4,
+              "hit_at_10": 0.4,
+              "hit_at_5": 0.4,
+              "mrr": 0.4,
+              "set_recall_at_10": 0.2617,
+              "set_recall_at_5": 0.295
+            }
+          },
+          "cases": 206,
+          "duplicate_or_exact_hit_at_10": 0.4078,
+          "duplicate_or_exact_hit_at_5": 0.3301,
+          "hash_or_exact_hit_at_10": 0.4078,
+          "hash_or_exact_hit_at_5": 0.3301,
+          "hit_at_1": 0.2427,
+          "hit_at_10": 0.4078,
+          "hit_at_3": 0.301,
+          "hit_at_5": 0.3301,
+          "mrr": 0.2857,
+          "seconds": 7.055,
+          "set_precision_at_10": 0.1155,
+          "set_precision_at_5": 0.1437,
+          "set_recall_at_10": 0.3284,
+          "set_recall_at_5": 0.2811,
+          "top_k": 10
         },
         "jikji": {
-          "top_k": 10,
-          "cases": 21,
-          "hit_at_1": 0.5238,
-          "hit_at_3": 0.619,
-          "hit_at_5": 0.619,
-          "hit_at_10": 0.7619,
-          "set_recall_at_5": 0.4484,
-          "set_recall_at_10": 0.5769,
-          "hash_or_exact_hit_at_10": 0.7619,
-          "duplicate_or_exact_hit_at_10": 0.7619,
-          "mrr": 0.5762,
-          "seconds": 0.269
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 186,
+              "duplicate_or_exact_hit_at_10": 0.5161,
+              "hash_or_exact_hit_at_10": 0.5161,
+              "hit_at_1": 0.2796,
+              "hit_at_10": 0.5161,
+              "hit_at_5": 0.4624,
+              "mrr": 0.3543,
+              "set_recall_at_10": 0.4217,
+              "set_recall_at_5": 0.3743
+            },
+            "hippocamp_profiling": {
+              "cases": 20,
+              "duplicate_or_exact_hit_at_10": 0.7,
+              "hash_or_exact_hit_at_10": 0.7,
+              "hit_at_1": 0.35,
+              "hit_at_10": 0.7,
+              "hit_at_5": 0.6,
+              "mrr": 0.4406,
+              "set_recall_at_10": 0.2954,
+              "set_recall_at_5": 0.3125
+            }
+          },
+          "cases": 206,
+          "duplicate_or_exact_hit_at_10": 0.534,
+          "duplicate_or_exact_hit_at_5": 0.4757,
+          "hash_or_exact_hit_at_10": 0.534,
+          "hash_or_exact_hit_at_5": 0.4757,
+          "hit_at_1": 0.2864,
+          "hit_at_10": 0.534,
+          "hit_at_3": 0.4126,
+          "hit_at_5": 0.4757,
+          "mrr": 0.3626,
+          "seconds": 23.82,
+          "set_precision_at_10": 0.1223,
+          "set_precision_at_5": 0.168,
+          "set_recall_at_10": 0.4094,
+          "set_recall_at_5": 0.3683,
+          "top_k": 10
         }
       },
       "Victoria": {
         "raw": {
-          "top_k": 10,
-          "cases": 10,
-          "hit_at_1": 0.4,
-          "hit_at_3": 0.8,
-          "hit_at_5": 0.8,
-          "hit_at_10": 0.8,
-          "set_recall_at_5": 0.5617,
-          "set_recall_at_10": 0.615,
-          "hash_or_exact_hit_at_10": 0.8,
-          "duplicate_or_exact_hit_at_10": 0.9,
-          "mrr": 0.6,
-          "seconds": 0.097
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 203,
+              "duplicate_or_exact_hit_at_10": 0.6256,
+              "hash_or_exact_hit_at_10": 0.6256,
+              "hit_at_1": 0.1626,
+              "hit_at_10": 0.6256,
+              "hit_at_5": 0.3793,
+              "mrr": 0.2653,
+              "set_recall_at_10": 0.5787,
+              "set_recall_at_5": 0.3131
+            },
+            "hippocamp_profiling": {
+              "cases": 20,
+              "duplicate_or_exact_hit_at_10": 0.85,
+              "hash_or_exact_hit_at_10": 0.85,
+              "hit_at_1": 0.4,
+              "hit_at_10": 0.85,
+              "hit_at_5": 0.75,
+              "mrr": 0.5458,
+              "set_recall_at_10": 0.3187,
+              "set_recall_at_5": 0.38
+            }
+          },
+          "cases": 223,
+          "duplicate_or_exact_hit_at_10": 0.6457,
+          "duplicate_or_exact_hit_at_5": 0.4126,
+          "hash_or_exact_hit_at_10": 0.6457,
+          "hash_or_exact_hit_at_5": 0.4126,
+          "hit_at_1": 0.1839,
+          "hit_at_10": 0.6457,
+          "hit_at_3": 0.3049,
+          "hit_at_5": 0.4126,
+          "mrr": 0.2904,
+          "seconds": 11.389,
+          "set_precision_at_10": 0.1076,
+          "set_precision_at_5": 0.1211,
+          "set_recall_at_10": 0.5553,
+          "set_recall_at_5": 0.3191,
+          "top_k": 10
         },
         "jikji": {
-          "top_k": 10,
-          "cases": 10,
-          "hit_at_1": 0.6,
-          "hit_at_3": 0.8,
-          "hit_at_5": 1.0,
-          "hit_at_10": 1.0,
-          "set_recall_at_5": 0.5017,
-          "set_recall_at_10": 0.6367,
-          "hash_or_exact_hit_at_10": 1.0,
-          "duplicate_or_exact_hit_at_10": 1.0,
-          "mrr": 0.7233,
-          "seconds": 0.508
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 203,
+              "duplicate_or_exact_hit_at_10": 0.7291,
+              "hash_or_exact_hit_at_10": 0.7291,
+              "hit_at_1": 0.2315,
+              "hit_at_10": 0.7291,
+              "hit_at_5": 0.5025,
+              "mrr": 0.3507,
+              "set_recall_at_10": 0.6662,
+              "set_recall_at_5": 0.4448
+            },
+            "hippocamp_profiling": {
+              "cases": 20,
+              "duplicate_or_exact_hit_at_10": 0.85,
+              "hash_or_exact_hit_at_10": 0.85,
+              "hit_at_1": 0.4,
+              "hit_at_10": 0.85,
+              "hit_at_5": 0.8,
+              "mrr": 0.5546,
+              "set_recall_at_10": 0.29,
+              "set_recall_at_5": 0.32
+            }
+          },
+          "cases": 223,
+          "duplicate_or_exact_hit_at_10": 0.7399,
+          "duplicate_or_exact_hit_at_5": 0.5291,
+          "hash_or_exact_hit_at_10": 0.7399,
+          "hash_or_exact_hit_at_5": 0.5291,
+          "hit_at_1": 0.2466,
+          "hit_at_10": 0.7399,
+          "hit_at_3": 0.4081,
+          "hit_at_5": 0.5291,
+          "mrr": 0.369,
+          "seconds": 163.901,
+          "set_precision_at_10": 0.1045,
+          "set_precision_at_5": 0.1381,
+          "set_recall_at_10": 0.6325,
+          "set_recall_at_5": 0.4336,
+          "top_k": 10
         }
       }
     }
@@ -129,112 +332,112 @@
     "aggregate": {
       "raw": {
         "cases": 30,
-        "hit_at_1": 0.3,
-        "hit_at_3": 0.4,
-        "hit_at_5": 0.4,
-        "hit_at_10": 0.4,
-        "accuracy": 0.4,
-        "llm_calls": 150,
-        "prompt_tokens": 242395,
-        "completion_tokens": 7919,
-        "total_tokens": 250314
+        "hit_at_1": 0.2,
+        "hit_at_3": 0.2667,
+        "hit_at_5": 0.3,
+        "hit_at_10": 0.3333,
+        "accuracy": 0.3333,
+        "llm_calls": 134,
+        "prompt_tokens": 286723,
+        "completion_tokens": 8170,
+        "total_tokens": 294893
       },
       "jikji": {
         "cases": 30,
-        "hit_at_1": 0.8333,
-        "hit_at_3": 0.8667,
-        "hit_at_5": 0.9,
-        "hit_at_10": 0.9,
-        "accuracy": 0.9,
+        "hit_at_1": 0.5,
+        "hit_at_3": 0.6333,
+        "hit_at_5": 0.7,
+        "hit_at_10": 0.7,
+        "accuracy": 0.7,
         "llm_calls": 30,
-        "prompt_tokens": 65618,
-        "completion_tokens": 2349,
-        "total_tokens": 67967
+        "prompt_tokens": 71646,
+        "completion_tokens": 2526,
+        "total_tokens": 74172
       }
     },
     "profiles": {
       "Adam": {
-        "raw": {
-          "cases": 10,
-          "accuracy": 0.4,
-          "hit_at_1": 0.3,
-          "hit_at_3": 0.4,
-          "hit_at_5": 0.4,
-          "hit_at_10": 0.4,
-          "avg_seconds": 22.509,
-          "llm_calls": 64,
-          "prompt_tokens": 119829,
-          "completion_tokens": 3737,
-          "total_tokens": 123566
-        },
-        "jikji": {
-          "cases": 10,
-          "accuracy": 0.9,
-          "hit_at_1": 0.9,
-          "hit_at_3": 0.9,
-          "hit_at_5": 0.9,
-          "hit_at_10": 0.9,
-          "avg_seconds": 5.84,
-          "llm_calls": 10,
-          "prompt_tokens": 21018,
-          "completion_tokens": 889,
-          "total_tokens": 21907
-        }
-      },
-      "Bei": {
-        "raw": {
-          "cases": 10,
-          "accuracy": 0.3,
-          "hit_at_1": 0.3,
-          "hit_at_3": 0.3,
-          "hit_at_5": 0.3,
-          "hit_at_10": 0.3,
-          "avg_seconds": 16.526,
-          "llm_calls": 51,
-          "prompt_tokens": 62367,
-          "completion_tokens": 1996,
-          "total_tokens": 64363
-        },
         "jikji": {
           "cases": 10,
           "accuracy": 0.8,
-          "hit_at_1": 0.8,
+          "hit_at_1": 0.7,
           "hit_at_3": 0.8,
           "hit_at_5": 0.8,
           "hit_at_10": 0.8,
-          "avg_seconds": 4.877,
+          "avg_seconds": 5.526,
           "llm_calls": 10,
-          "prompt_tokens": 26396,
-          "completion_tokens": 565,
-          "total_tokens": 26961
+          "prompt_tokens": 21088,
+          "completion_tokens": 966,
+          "total_tokens": 22054
+        },
+        "raw": {
+          "cases": 10,
+          "accuracy": 0.0,
+          "hit_at_1": 0.0,
+          "hit_at_3": 0.0,
+          "hit_at_5": 0.0,
+          "hit_at_10": 0.0,
+          "avg_seconds": 24.742,
+          "llm_calls": 60,
+          "prompt_tokens": 106434,
+          "completion_tokens": 2635,
+          "total_tokens": 109069
         }
       },
-      "Victoria": {
-        "raw": {
+      "Bei": {
+        "jikji": {
           "cases": 10,
           "accuracy": 0.5,
           "hit_at_1": 0.3,
-          "hit_at_3": 0.5,
+          "hit_at_3": 0.4,
           "hit_at_5": 0.5,
           "hit_at_10": 0.5,
-          "avg_seconds": 11.526,
-          "llm_calls": 35,
-          "prompt_tokens": 60199,
-          "completion_tokens": 2186,
-          "total_tokens": 62385
+          "avg_seconds": 10.557,
+          "llm_calls": 10,
+          "prompt_tokens": 32770,
+          "completion_tokens": 729,
+          "total_tokens": 33499
         },
+        "raw": {
+          "cases": 10,
+          "accuracy": 0.2,
+          "hit_at_1": 0.1,
+          "hit_at_3": 0.2,
+          "hit_at_5": 0.2,
+          "hit_at_10": 0.2,
+          "avg_seconds": 20.559,
+          "llm_calls": 43,
+          "prompt_tokens": 98970,
+          "completion_tokens": 2802,
+          "total_tokens": 101772
+        }
+      },
+      "Victoria": {
         "jikji": {
           "cases": 10,
-          "accuracy": 1.0,
-          "hit_at_1": 0.8,
-          "hit_at_3": 0.9,
-          "hit_at_5": 1.0,
-          "hit_at_10": 1.0,
-          "avg_seconds": 4.618,
+          "accuracy": 0.8,
+          "hit_at_1": 0.5,
+          "hit_at_3": 0.7,
+          "hit_at_5": 0.8,
+          "hit_at_10": 0.8,
+          "avg_seconds": 5.545,
           "llm_calls": 10,
-          "prompt_tokens": 18204,
-          "completion_tokens": 895,
-          "total_tokens": 19099
+          "prompt_tokens": 17788,
+          "completion_tokens": 831,
+          "total_tokens": 18619
+        },
+        "raw": {
+          "cases": 10,
+          "accuracy": 0.8,
+          "hit_at_1": 0.5,
+          "hit_at_3": 0.6,
+          "hit_at_5": 0.7,
+          "hit_at_10": 0.8,
+          "avg_seconds": 18.627,
+          "llm_calls": 31,
+          "prompt_tokens": 81319,
+          "completion_tokens": 2733,
+          "total_tokens": 84052
         }
       }
     }

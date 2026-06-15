@@ -64,8 +64,8 @@
 </header>
 
 <div class="cards">
-  <div class="card"><div class="k">HippoCamp (Hermes Agent)</div><div class="v">40.0% → 90.0% <small>Hit@10</small></div><div class="d">Adam, Bei, Victoria 실제 구동 · 30 cases</div></div>
-  <div class="card"><div class="k">Jikji 토큰 다이어트</div><div class="v">250K → 68K <small>총 토큰 −72.8%</small></div><div class="d">map-first 1턴 핸드오프 · LLM 호출 150→30</div></div>
+  <div class="card"><div class="k">HippoCamp (Hermes Agent)</div><div class="v">33.3% → 70.0% <small>Hit@10</small></div><div class="d">Full split · Adam, Bei, Victoria 실제 구동 · 30 cases</div></div>
+  <div class="card"><div class="k">Jikji 토큰 다이어트</div><div class="v">295K → 74K <small>총 토큰 −74.8%</small></div><div class="d">map-first 1턴 핸드오프 · LLM 호출 134→30</div></div>
   <div class="card"><div class="k">Realistic Downloads</div><div class="v">0.50 → 1.00 <small>Hit@10</small></div><div class="d">raw vs Jikji · 204 cases</div></div>
   <div class="card"><div class="k">Hard KOGL extreme (test)</div><div class="v">0.16 → 0.96 <small>Hit@10</small></div><div class="d">+0.80 Hit@5 절대 · 144 cases</div></div>
   <div class="card"><div class="k">Korean 공공데이터 (Hermes)</div><div class="v">0.83 → 1.00 <small>Hit@5</small></div><div class="d">정확도↑ + 1.50× 빠름</div></div>
@@ -218,17 +218,17 @@
 </section>
 
 <section id="hippocamp">
-  <h2>HippoCamp (개인 파일시스템 프로필) <span class="tag">결정론적</span></h2>
-  <p class="sub">공개 개인-컴퓨터형 파일 검색 + QA 주석 데이터셋. 파일명 부분 단어 토큰화 및 BM25 고도화 랭킹 코어 업그레이드, 그리고 <b>프롬프트 토큰 다이어트(candidate-top-k 10→5, 후보별 evidence 1개·120자 트렁케이션, map-first 1턴 핸드오프)</b> 적용 후, <b>Adam, Bei, Victoria 전체 프로필을 프로필당 10건 실제 에이전트 표본으로 전면 재측정(Re-run)한 최신 정식 결과</b>입니다. 실제 에이전트 표를 입력 토큰(Prompt)과 출력 토큰(Completion)으로 분리해 기록합니다.</p>
+  <h2>HippoCamp (개인 파일시스템 프로필) <span class="tag">Full split · 결정론적</span></h2>
+  <p class="sub">공개 개인-컴퓨터형 파일 검색 + QA 주석 데이터셋. 기존 <code>Subset</code> 슬라이스가 아닌 <b>정식 Full 스플릿(`Fullset`) 풀셋</b>으로 재측정한 결과입니다. 파일명 부분 단어 토큰화·rarity BM25·Contextual Anchor Weighting 랭킹 코어와 <b>프롬프트 토큰 다이어트(candidate-top-k 5, 후보별 evidence 1개·120자 트렁케이션, map-first 1턴 핸드오프)</b>를 적용해 <b>Adam, Bei, Victoria 전체 프로필을 결정론 551개 케이스 전수 + 프로필당 10건 실제 에이전트 표본으로 재측정(Re-run)</b>했습니다. 60MB 파일 캡으로 대용량 영상만 제외하고 문서·오디오 전체를 받는 bounded 풀셋 fetch를 사용합니다. 실제 에이전트 표는 입력 토큰(Prompt)과 출력 토큰(Completion)을 분리해 기록합니다.</p>
   
   <!-- Aggregate Summary -->
   <div style="margin-top: 14px; border: 1px solid var(--acc); padding: 18px; border-radius: 16px; background: rgba(94,200,242,.03);">
-    <h3 style="margin: 0 0 8px; font-size: 16px; color: var(--acc);">📊 3개 프로필 종합 결과 (총 49개 가혹 탐색 케이스 합산)</h3>
+    <h3 style="margin: 0 0 8px; font-size: 16px; color: var(--acc);">📊 3개 프로필 종합 결과 (Full split · 총 551개 케이스 전수)</h3>
     <div class="tablewrap"><table>
       <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>MRR 📈</th><th>평균 속도</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>raw (Jikji 없음)</td><td>0.5102</td><td>0.6530</td><td>0.6939</td><td>0.6004</td><td>0.007s/case</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index (AFTER)</td><td class="up">0.6327</td><td class="up">0.7551</td><td class="up">0.8163</td><td class="up">0.7047</td><td>0.035s/case</td></tr>
+        <tr><td><span class="mode raw"></span>raw (Jikji 없음)</td><td>0.2850</td><td>0.3847</td><td>0.4465</td><td>0.3606</td><td>0.040s/case</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index (AFTER)</td><td class="up">0.3666</td><td class="up">0.5045</td><td class="up">0.5789</td><td class="up">0.4587</td><td>0.393s/case</td></tr>
       </tbody>
     </table></div>
   </div>
@@ -239,23 +239,23 @@
     <div class="tablewrap"><table>
       <thead><tr><th>Agent Mode</th><th>Hit@10 🎯</th><th>LLM 호출 📞</th><th>입력 토큰 (Prompt)</th><th>출력 토큰 (Completion)</th><th>총 토큰</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>Raw Hermes (Jikji 없음)</td><td>0.400</td><td>150회</td><td>242,395</td><td>7,919</td><td>250,314</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="up">0.900</td><td class="up">30회</td><td class="up">65,618</td><td class="up">2,349</td><td class="up">67,967</td></tr>
+        <tr><td><span class="mode raw"></span>Raw Hermes (Jikji 없음)</td><td>0.333</td><td>134회</td><td>286,723</td><td>8,170</td><td>294,893</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="up">0.700</td><td class="up">30회</td><td class="up">71,646</td><td class="up">2,526</td><td class="up">74,172</td></tr>
       </tbody>
     </table></div>
-    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Jikji 토큰 다이어트로 <b>총 입력 토큰 242K ➜ 66K (−72.9%)</b>, <b>총 토큰 250K ➜ 68K (−72.8%)</b>, <b>LLM 호출 150회 ➜ 30회(케이스당 1회)</b>로 급감하면서 Hit@10 정확도는 0.40 ➜ 0.90으로 상승했습니다.</div>
+    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Jikji 토큰 다이어트로 <b>총 입력 토큰 287K ➜ 72K (−75.0%)</b>, <b>총 토큰 295K ➜ 74K (−74.8%)</b>, <b>LLM 호출 134회 ➜ 30회(케이스당 1회)</b>로 급감하면서 Hit@10 정확도는 0.33 ➜ 0.70으로 상승했습니다. Full 풀셋은 Subset보다 훨씬 크고 어려워 절대 점수는 낮지만 Jikji의 상대 우위는 전 프로필에서 유지됩니다.</div>
   </div>
 
   <!-- Adam Profile -->
   <div style="margin-top: 24px; border: 1px solid var(--line); padding: 20px; border-radius: 16px; background: rgba(255,255,255,.01);">
-    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--acc);">👤 가상 프로필 1: Adam <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(총 18개 복잡 문서 탐색 케이스)</span></h3>
+    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--acc);">👤 가상 프로필 1: Adam <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(Full split · 결정론 122 케이스 / 에이전트 10건)</span></h3>
     <p style="color:var(--mut); font-size:13.5px; margin:0 0 14px;">주요 특징: 다수의 PDF, HWP, 다양한 이메일 백업 등 개인 PC에 산재한 복잡하고 비정형적인 문서를 뒤져 정답을 찾아내는 조건입니다.</p>
     <div class="tablewrap"><table>
       <caption>결정론적 진단 점수 (Deterministic Test)</caption>
       <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR 📈</th><th>시간 (sec)</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>raw</td><td>0.6667</td><td>0.7222</td><td>0.7778</td><td>0.8889</td><td>0.7238</td><td>0.186</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td>0.7778</td><td class="up">0.8889</td><td class="up">0.9444</td><td class="up">0.9444</td><td>0.8350</td><td>1.053</td></tr>
+        <tr><td><span class="mode raw"></span>raw</td><td>0.5410</td><td>0.6721</td><td>0.7049</td><td>0.7623</td><td>0.6154</td><td>3.447</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.7213</td><td class="up">0.8361</td><td class="up">0.8443</td><td class="up">0.9098</td><td class="up">0.7850</td><td>28.870</td></tr>
       </tbody>
     </table></div>
     
@@ -263,24 +263,24 @@
       <caption>실제 에이전트 구동 및 토큰 비용 비교 (Actual Hermes Agent Run)</caption>
       <thead><tr><th>Agent Mode</th><th>정확도 (Hit@10) 🎯</th><th>LLM 호출 횟수 📞</th><th>입력 토큰 수 (Prompt)</th><th>출력 토큰 수 (Completion)</th><th>총 토큰 수</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>40.0% (4/10)</td><td>64회</td><td>119,829</td><td>3,737</td><td>123,566</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="up">90.0% (9/10)</td><td class="up">10회</td><td class="up">21,018</td><td class="up">889</td><td class="up">21,907</td></tr>
+        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>0.0% (0/10)</td><td>60회</td><td>106,434</td><td>2,635</td><td>109,069</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="up">80.0% (8/10)</td><td class="up">10회</td><td class="up">21,088</td><td class="up">966</td><td class="up">22,054</td></tr>
       </tbody>
     </table></div>
     
-    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 <b>토큰 다이어트 효과</b>: map-first 1턴 핸드오프로 <b>입력 토큰 119,829 ➜ 21,018 (−82.5%)</b>, <b>LLM 호출 64회 ➜ 10회</b>로 급감하면서도 정확도(Hit@10)는 <b>40% ➜ 90%</b>로 상승했습니다. 표본을 10건으로 늘리자 raw도 0%가 아닌 현실적 40% 수준을 보입니다.</div>
+    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 <b>토큰 다이어트 효과</b>: map-first 1턴 핸드오프로 <b>입력 토큰 106,434 ➜ 21,088 (−80.2%)</b>, <b>LLM 호출 60회 ➜ 10회</b>로 급감하면서도 정확도(Hit@10)는 <b>0% ➜ 80%</b>로 상승했습니다. 더 커진 Full 코퍼스에서 raw 에이전트는 8턴 안에 증거를 못 찾아 0/10에 그칩니다.</div>
   </div>
 
   <!-- Bei Profile -->
   <div style="margin-top: 24px; border: 1px solid var(--line); padding: 20px; border-radius: 16px; background: rgba(255,255,255,.01);">
-    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--good);">👤 가상 프로필 2: Bei <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(총 21개 명확 단서 탐색 케이스)</span></h3>
+    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--good);">👤 가상 프로필 2: Bei <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(Full split · 결정론 206 케이스 / 에이전트 10건)</span></h3>
     <p style="color:var(--mut); font-size:13.5px; margin:0 0 14px;">주요 특징: 비교적 파일 구분이 직관적이며 단서가 명확한 파일 시스템 구조입니다.</p>
     <div class="tablewrap"><table>
       <caption>결정론적 진단 점수 (Deterministic Test)</caption>
       <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR 📈</th><th>시간 (sec)</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>raw</td><td>0.4286</td><td>0.5714</td><td>0.5714</td><td>0.6190</td><td>0.5068</td><td>0.113</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.5238</td><td class="up">0.6190</td><td class="up">0.6190</td><td class="up">0.7619</td><td class="up">0.5650</td><td>0.240</td></tr>
+        <tr><td><span class="mode raw"></span>raw</td><td>0.2427</td><td>0.3010</td><td>0.3301</td><td>0.4078</td><td>0.2857</td><td>7.055</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.2864</td><td class="up">0.4126</td><td class="up">0.4757</td><td class="up">0.5340</td><td class="up">0.3626</td><td>23.820</td></tr>
       </tbody>
     </table></div>
 
@@ -288,24 +288,24 @@
       <caption>실제 에이전트 구동 및 토큰 비용 비교 (Actual Hermes Agent Run)</caption>
       <thead><tr><th>Agent Mode</th><th>정확도 (Hit@10) 🎯</th><th>LLM 호출 횟수 📞</th><th>입력 토큰 수 (Prompt)</th><th>출력 토큰 수 (Completion)</th><th>총 토큰 수</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>30.0% (3/10)</td><td>51회</td><td>62,367</td><td>1,996</td><td>64,363</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="up">80.0% (8/10)</td><td class="up">10회</td><td class="up">26,396</td><td class="up">565</td><td class="up">26,961</td></tr>
+        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>20.0% (2/10)</td><td>43회</td><td>98,970</td><td>2,802</td><td>101,772</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="up">50.0% (5/10)</td><td class="up">10회</td><td class="up">32,770</td><td class="up">729</td><td class="up">33,499</td></tr>
       </tbody>
     </table></div>
 
-    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Jikji 다이어트 핸드오프로 <b>LLM 호출 51회 ➜ 10회</b>, <b>총 토큰 64,363 ➜ 26,961 (−58.1%)</b>로 줄이면서 정확도(Hit@10)는 <b>30% ➜ 80%</b>로 상승했습니다.</div>
+    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Jikji 다이어트 핸드오프로 <b>LLM 호출 43회 ➜ 10회</b>, <b>총 토큰 101,772 ➜ 33,499 (−67.1%)</b>로 줄이면서 정확도(Hit@10)는 <b>20% ➜ 50%</b>로 상승했습니다.</div>
   </div>
 
   <!-- Victoria Profile -->
   <div style="margin-top: 24px; border: 1px solid var(--line); padding: 20px; border-radius: 16px; background: rgba(255,255,255,.01);">
-    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--amber);">👤 가상 프로필 3: Victoria <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(총 10개 고난도 멀티모달 케이스)</span></h3>
+    <h3 style="margin: 0 0 10px; font-size: 18px; color: var(--amber);">👤 가상 프로필 3: Victoria <span style="font-size:12px; color:var(--mut); font-weight:normal; margin-left:8px;">(Full split · 결정론 223 케이스 / 에이전트 10건)</span></h3>
     <p style="color:var(--mut); font-size:13.5px; margin:0 0 14px;">주요 특징: Uber, Meta, Microsoft 등 대기업 재무 공시 보고서(PDF, DOCX)가 뒤섞인 업무 중심 가상 PC 환경입니다.</p>
     <div class="tablewrap"><table>
       <caption>결정론적 진단 점수 (Deterministic Test)</caption>
       <thead><tr><th>Mode</th><th>Hit@1 🎯</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>MRR 📈</th><th>시간 (sec)</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>raw</td><td>0.5000</td><td>0.8000</td><td>0.8000</td><td>0.8000</td><td>0.6500</td><td>0.065</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.6000</td><td class="flat">0.8000</td><td class="up">1.0000</td><td class="up">1.0000</td><td class="up">0.7150</td><td>0.444</td></tr>
+        <tr><td><span class="mode raw"></span>raw</td><td>0.1839</td><td>0.3049</td><td>0.4126</td><td>0.6457</td><td>0.2904</td><td>11.389</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Jikji index</td><td class="up">0.2466</td><td class="up">0.4081</td><td class="up">0.5291</td><td class="up">0.7399</td><td class="up">0.3690</td><td>163.901</td></tr>
       </tbody>
     </table></div>
 
@@ -313,12 +313,12 @@
       <caption>실제 에이전트 구동 및 토큰 비용 비교 (Actual Hermes Agent Run)</caption>
       <thead><tr><th>Agent Mode</th><th>정확도 (Hit@10) 🎯</th><th>LLM 호출 횟수 📞</th><th>입력 토큰 수 (Prompt)</th><th>출력 토큰 수 (Completion)</th><th>총 토큰 수</th></tr></thead>
       <tbody>
-        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>50.0% (5/10)</td><td>35회</td><td>60,199</td><td>2,186</td><td>62,385</td></tr>
-        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="up">100.0% (10/10)</td><td class="up">10회</td><td class="up">18,204</td><td class="up">895</td><td class="up">19,099</td></tr>
+        <tr><td><span class="mode raw"></span>Raw Hermes (인덱스 없음)</td><td>80.0% (8/10)</td><td>31회</td><td>81,319</td><td>2,733</td><td>84,052</td></tr>
+        <tr class="jikji"><td><span class="mode jikji"></span>Hermes + Jikji (map-first 다이어트)</td><td class="flat">80.0% (8/10)</td><td class="up">10회</td><td class="up">17,788</td><td class="up">831</td><td class="up">18,619</td></tr>
       </tbody>
     </table></div>
 
-    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Victoria 대기업 재무 시나리오에서도 Jikji 다이어트로 <b>LLM 호출 35회 ➜ 10회</b>, <b>총 토큰 62,385 ➜ 19,099 (−69.4%)</b>로 줄이면서 <b>100% 만점(Hit@10)</b>을 달성했습니다.</div>
+    <div style="margin-top: 10px; font-size: 13px; color: var(--good);">💡 Victoria 대기업 재무 시나리오에서는 raw 에이전트도 Hit@10 0.80으로 강하지만, Jikji 다이어트로 <b>LLM 호출 31회 ➜ 10회</b>, <b>총 토큰 84,052 ➜ 18,619 (−77.8%)</b>로 줄이며 동일한 80%를 유지합니다.</div>
   </div>
 </section>
 
@@ -404,7 +404,7 @@
 <footer>
   <p><b>방법론 / 정직성.</b> raw = Jikji 인덱스/파서 캐시를 쓰지 않고 원본 파일명·경로·native-text만 검색. jikji = Jikji 지도·인덱스·파서 텍스트 캐시 검색. Jikji 코어는 임베딩·벡터DB·RAG·LLM·리랭커 없이 결정론적 lexical/file-map만 사용한다. 실제 에이전트(Hermes/Claude) 타이밍은 워크스테이션·모델·실행마다 변동하므로, 대규모 결정론적 test를 주 회귀 신호로, 소규모 actual-agent run을 제품 sanity check로 사용한다. train/valid는 일반 개선 유도용으로만 쓰고 test 헤드라인과 분리했다.</p>
   <p>출처 문서: <code>docs/hardbench-benchmark.md</code>, <code>docs/workspacebench-benchmark.md</code>, <code>docs/publicdata-agent-benchmark.md</code>, <code>docs/hippocamp-benchmark.md</code>, <code>docs/public-benchmark-catalog.md</code> · 원시 결과: <code>.benchmarks/</code> (gitignored 로컬 증거).</p>
-  <p>생성일 2026-06-15 · Jikji file-discovery benchmark summary.</p>
+  <p>생성일 2026-06-15 · HippoCamp Full split(Fullset) 재측정 반영 · Jikji file-discovery benchmark summary.</p>
 </footer>
 </div>
 </body>
