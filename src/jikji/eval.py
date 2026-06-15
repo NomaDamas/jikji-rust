@@ -23,7 +23,7 @@ from .agent_index import (
     _filename_lookup_keys,
     _tokens_from_text,
 )
-from .search_index import INSTANT_SEARCH_SCHEMA_VERSION, instant_index_path
+from .search_index import INSTANT_SEARCH_SCHEMA_VERSION, _read_native_body, instant_index_path
 
 EVAL_DIR = ".jikji/eval"
 EVAL_SET_NAME = "eval_set.jsonl"
@@ -765,6 +765,13 @@ def _map_candidate_docs(root: Path) -> list[dict]:
         intent_tags = [str(x) for x in (card.get("intent_tags") or [])]
         format_hints = [str(x) for x in (card.get("format_hints") or [])]
         evidence_previews = [str(x) for x in (card.get("evidence_previews") or [])]
+        native_body = _read_native_body(root, card)
+        title_line = ""
+        for line in native_body.splitlines():
+            stripped = line.strip()
+            if stripped:
+                title_line = stripped.lstrip("#").strip()
+                break
         row = {
             "path": path,
             "name": card.get("name", ""),
@@ -786,7 +793,9 @@ def _map_candidate_docs(root: Path) -> list[dict]:
                 + list(card.get("folder_terms") or [])
             ),
             "summary": card.get("summary", ""),
-            "_source_text": "\n".join(str(x) for x in card.get("evidence_previews") or []),
+            "_source_text": "\n".join([*(str(x) for x in card.get("evidence_previews") or []), native_body]).strip(),
+            "_body_text": native_body[:24_000].casefold(),
+            "_native_title": title_line.casefold(),
             "_map_card": card,
             "_map_chunks": chunks,
             "_map_text": chunk_text,
@@ -803,6 +812,7 @@ def _map_candidate_docs(root: Path) -> list[dict]:
                 " ".join(intent_tags),
                 " ".join(format_hints),
                 " ".join(evidence_previews),
+                native_body,
                 str(card.get("summary") or ""),
                 chunk_text,
             ]).casefold(),
@@ -1233,7 +1243,7 @@ def _score_map(query: str, row: dict, *, idf: dict[str, float] | None = None) ->
     phrase_text = str(row.get("_map_phrase_text") or " ".join(phrases)).casefold()
     evidence_text = str(row.get("_map_evidence_text") or " ".join(evidence_previews + [str(card.get("summary") or "")])).casefold()
     compact_map_text = _compact_lookup_text(
-        " ".join([content_text, rare_text, phrase_text, evidence_text, map_text, str(row.get("_source_text") or "")])
+        " ".join([content_text, rare_text, phrase_text, evidence_text, map_text, str(row.get("_body_text") or ""), str(row.get("_source_text") or "")])
     )
     compact_path_text = _compact_lookup_text(" ".join([path_text, name_text, path_lookup_text]))
     compact_hits = 0
@@ -1286,6 +1296,54 @@ def _score_map(query: str, row: dict, *, idf: dict[str, float] | None = None) ->
                 original_hits += 1
             if token in quoted_terms:
                 quoted_hits += 1
+
+    # --- Contextual Anchor Weighting (full-text BM25 fused with map priors) ---
+    # Native text/markdown corpora carry their answer in the body, not in a few
+    # extracted card terms. Score the real body with a BM25-style term-frequency
+    # signal, then fuse Jikji's prepared folder-map context and metadata
+    # dictionary as priors: a body match corroborated by the folder route or the
+    # rare-term card is boosted so the "navigation map" directly lifts ranking.
+    body_text = str(row.get("_body_text") or "").casefold()
+    if body_text:
+        blen = max(1, len(body_text))
+        length_norm = 0.5 + 0.5 * min(2.6, blen / 1400.0)
+        title_text = str(row.get("_native_title") or "").casefold()
+        folder_ctx = f"{folder_text} {path_lookup_text}"
+        anchor_hits = 0
+        for token in original_tokens:
+            if len(token) < 2 or token in _STOPWORDS:
+                continue
+            tf = body_text.count(token)
+            if tf <= 0:
+                continue
+            rare = min(4.0, (idf or {}).get(token, 1.6))
+            k1 = 1.4
+            saturation = tf * (k1 + 1.0) / (tf + k1 * length_norm)
+            token_body = 15.0 * rare * saturation
+            if token in folder_ctx:
+                # Folder-context anchor: the prepared folder map agrees.
+                token_body *= 1.6
+                anchor_hits += 1
+            if token in rare_text or token in content_text:
+                # Metadata-dictionary anchor: Jikji's distinctive-term card agrees.
+                token_body *= 1.45
+                anchor_hits += 1
+            if title_text and token in title_text:
+                # Structural density: a heading/title match is a strong anchor.
+                token_body += 90.0 * rare
+            score += token_body
+            if token not in matched_terms:
+                matched_terms.append(token)
+        if anchor_hits:
+            score += 22 + 10 * anchor_hits
+            reasons.append("contextual-anchor")
+        body_coverage = sum(
+            1 for token in original_tokens if len(token) >= 2 and token in body_text
+        )
+        if body_coverage >= 2:
+            # BM25-style multi-term overlap that the card-term layer cannot see.
+            score += 28 + 16 * body_coverage
+            reasons.append("body-coverage")
 
     # Distinctive (high-idf) query tokens that surface in the filename or folder
     # path are the single strongest local-discovery signal: a scattered clue

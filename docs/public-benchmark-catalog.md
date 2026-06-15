@@ -13,7 +13,7 @@ chunk retrieval tasks.
 | Workspace-Bench-Lite file-discovery | Workspace exploration, cross-file task context, and task-supporting file discovery | Jikji adapter measures file discovery only, not full output-generation Workspace-Bench scoring |
 | HippoCamp | Personal-computer style file search and agent QA | Full dataset is large; some tasks evaluate final QA more than retrieval |
 | EDiTh / Véracier Industries | Enterprise PDFs, scanned/searchable/mixed formats, multilingual, multi-file answers | Public archive is ~1.5GB and only a few answer-key questions are explicit file-list retrieval |
-| MIRACL-VISION materialized docs | Multilingual file-level retrieval regression | Materialized as Markdown, so raw lexical search is strong |
+| MIRACL-VISION materialized docs | Multilingual file-level retrieval regression; validates Contextual Anchor Weighting on pure-text IR | Materialized as Markdown; with full-body BM25 fused with folder/metadata priors Jikji now leads raw and char-ngram RAG (Hit@1 0.84 vs 0.59/0.80) |
 | BEIR materialized docs | Wide deterministic IR regression | Materialized as Markdown; not a parser stress test |
 | SDS KoPub VDR | Korean public PDF page-level retrieval | Corpus parquet is very large; needs page-to-file conversion |
 | UniDoc-Bench | Large PDF page/QA stress test | Multimodal/page-centric; needs file-level conversion |

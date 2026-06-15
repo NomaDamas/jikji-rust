@@ -158,9 +158,54 @@ def _read_cached_doc_text(root: Path, cache_path: str, *, limit: int = _DOC_TEXT
     return ""
 
 
+# Native text/markdown corpora (e.g. materialized Markdown IR) never produce a
+# parsed doc_text cache, so without this their full body would be invisible to
+# ranking and Jikji would only see the first handful of extracted card terms.
+# Reading the source body for these files lets the contextual-anchor BM25 layer
+# in `eval._score_map` fuse folder/metadata priors with real full-text matching.
+_NATIVE_BODY_CHARS = 24_000
+_NATIVE_TEXT_EXTENSIONS = {
+    ".md", ".markdown", ".txt", ".text", ".rst", ".log", ".csv", ".tsv",
+    ".json", ".jsonl", ".yaml", ".yml", ".xml", ".html", ".htm", ".ini",
+    ".cfg", ".conf", ".org", ".tex",
+}
+
+
+def _is_native_text_card(card: dict[str, Any]) -> bool:
+    if str(card.get("text_cache_path") or ""):
+        return False
+    parse_status = str(card.get("parse_status") or "").lower()
+    if parse_status in {"native_text", "native", "text"}:
+        return True
+    return str(card.get("ext") or "").lower() in _NATIVE_TEXT_EXTENSIONS
+
+
+def _read_native_body(root: Path | None, card: dict[str, Any], *, limit: int = _NATIVE_BODY_CHARS) -> str:
+    if root is None or not _is_native_text_card(card):
+        return ""
+    rel = str(card.get("path") or "")
+    if not rel:
+        return ""
+    path = root / rel
+    try:
+        if not path.is_file():
+            return ""
+        raw = path.read_bytes()[: limit * 4]
+    except OSError:
+        return ""
+    for enc in ("utf-8", "utf-8-sig", "cp949", "euc-kr", "latin-1"):
+        try:
+            return raw.decode(enc, errors="strict")[:limit]
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="ignore")[:limit]
+
+
 def row_from_card(card: dict[str, Any], chunks: list[dict[str, Any]], *, root: Path | None = None) -> dict[str, Any]:
     path = str(card.get("path") or "")
     doc_text = _read_cached_doc_text(root, str(card.get("text_cache_path") or "")) if root is not None else ""
+    native_body = _read_native_body(root, card)
+    body_text = native_body
     chunk_text = "\n".join(
         " ".join(
             [
@@ -180,6 +225,13 @@ def row_from_card(card: dict[str, Any], chunks: list[dict[str, Any]], *, root: P
     format_hints = [str(x) for x in (card.get("format_hints") or [])]
     evidence_previews = [str(x) for x in (card.get("evidence_previews") or [])]
     source_text = "\n".join([*(str(x) for x in evidence_previews), doc_text]).strip()
+    title_line = ""
+    for line in (native_body or doc_text or "").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        title_line = stripped.lstrip("#").strip()
+        break
     return {
         "path": path,
         "name": card.get("name", ""),
@@ -198,6 +250,8 @@ def row_from_card(card: dict[str, Any], chunks: list[dict[str, Any]], *, root: P
         ),
         "summary": card.get("summary", ""),
         "_source_text": source_text,
+        "_body_text": body_text[:_NATIVE_BODY_CHARS].casefold(),
+        "_native_title": title_line.casefold(),
         "_map_card": card,
         "_map_chunks": chunks,
         "_map_text": chunk_text,
@@ -235,6 +289,7 @@ def terms_for_row(row: dict[str, Any]) -> set[str]:
             str(row.get("_source_text") or "")[:2000],
             str(row.get("_source_text") or "")[2000:24000],
             str(row.get("_map_text") or "")[:3000],
+            str(row.get("_body_text") or "")[:24000],
             " ".join(str(x) for x in (card.get("rare_terms") or [])),
             " ".join(str(x) for x in (card.get("content_terms") or [])),
             " ".join(str(x) for x in (card.get("phrase_signatures") or [])),
