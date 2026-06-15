@@ -317,7 +317,7 @@
     }
   },
   "hermes_agent_benchmark": {
-    "model": "openai/gpt-4o-mini",
+    "model": "google/gemini-2.5-flash",
     "provider": "openrouter",
     "cases_per_profile": 10,
     "max_turns": 8,
@@ -332,27 +332,27 @@
     "aggregate": {
       "raw": {
         "cases": 30,
-        "hit_at_1": 0.2,
-        "hit_at_3": 0.2667,
-        "hit_at_5": 0.3,
+        "hit_at_1": 0.2333,
+        "hit_at_3": 0.3,
+        "hit_at_5": 0.3333,
         "hit_at_10": 0.3333,
         "accuracy": 0.3333,
-        "llm_calls": 134,
-        "prompt_tokens": 286723,
-        "completion_tokens": 8170,
-        "total_tokens": 294893
+        "llm_calls": 106,
+        "prompt_tokens": 766706,
+        "completion_tokens": 79384,
+        "total_tokens": 846090
       },
       "jikji": {
         "cases": 30,
         "hit_at_1": 0.5,
-        "hit_at_3": 0.6333,
+        "hit_at_3": 0.6667,
         "hit_at_5": 0.7,
         "hit_at_10": 0.7,
         "accuracy": 0.7,
         "llm_calls": 30,
-        "prompt_tokens": 71646,
-        "completion_tokens": 2526,
-        "total_tokens": 74172
+        "prompt_tokens": 278680,
+        "completion_tokens": 18569,
+        "total_tokens": 297249
       }
     },
     "profiles": {
@@ -360,56 +360,56 @@
         "jikji": {
           "cases": 10,
           "accuracy": 0.8,
-          "hit_at_1": 0.7,
+          "hit_at_1": 0.6,
           "hit_at_3": 0.8,
           "hit_at_5": 0.8,
           "hit_at_10": 0.8,
-          "avg_seconds": 5.526,
+          "avg_seconds": 7.926,
           "llm_calls": 10,
-          "prompt_tokens": 21088,
-          "completion_tokens": 966,
-          "total_tokens": 22054
+          "prompt_tokens": 89670,
+          "completion_tokens": 4724,
+          "total_tokens": 94394
         },
         "raw": {
           "cases": 10,
-          "accuracy": 0.0,
-          "hit_at_1": 0.0,
-          "hit_at_3": 0.0,
-          "hit_at_5": 0.0,
-          "hit_at_10": 0.0,
-          "avg_seconds": 24.742,
-          "llm_calls": 60,
-          "prompt_tokens": 106434,
-          "completion_tokens": 2635,
-          "total_tokens": 109069
+          "accuracy": 0.1,
+          "hit_at_1": 0.1,
+          "hit_at_3": 0.1,
+          "hit_at_5": 0.1,
+          "hit_at_10": 0.1,
+          "avg_seconds": 61.442,
+          "llm_calls": 50,
+          "prompt_tokens": 403970,
+          "completion_tokens": 31807,
+          "total_tokens": 435777
         }
       },
       "Bei": {
         "jikji": {
           "cases": 10,
           "accuracy": 0.5,
-          "hit_at_1": 0.3,
-          "hit_at_3": 0.4,
+          "hit_at_1": 0.4,
+          "hit_at_3": 0.5,
           "hit_at_5": 0.5,
           "hit_at_10": 0.5,
-          "avg_seconds": 10.557,
+          "avg_seconds": 8.453,
           "llm_calls": 10,
-          "prompt_tokens": 32770,
-          "completion_tokens": 729,
-          "total_tokens": 33499
+          "prompt_tokens": 85685,
+          "completion_tokens": 7520,
+          "total_tokens": 93205
         },
         "raw": {
           "cases": 10,
-          "accuracy": 0.2,
+          "accuracy": 0.3,
           "hit_at_1": 0.1,
-          "hit_at_3": 0.2,
-          "hit_at_5": 0.2,
-          "hit_at_10": 0.2,
-          "avg_seconds": 20.559,
-          "llm_calls": 43,
-          "prompt_tokens": 98970,
-          "completion_tokens": 2802,
-          "total_tokens": 101772
+          "hit_at_3": 0.3,
+          "hit_at_5": 0.3,
+          "hit_at_10": 0.3,
+          "avg_seconds": 33.329,
+          "llm_calls": 27,
+          "prompt_tokens": 152520,
+          "completion_tokens": 17169,
+          "total_tokens": 169689
         }
       },
       "Victoria": {
@@ -420,24 +420,24 @@
           "hit_at_3": 0.7,
           "hit_at_5": 0.8,
           "hit_at_10": 0.8,
-          "avg_seconds": 5.545,
+          "avg_seconds": 11.44,
           "llm_calls": 10,
-          "prompt_tokens": 17788,
-          "completion_tokens": 831,
-          "total_tokens": 18619
+          "prompt_tokens": 103325,
+          "completion_tokens": 6325,
+          "total_tokens": 109650
         },
         "raw": {
           "cases": 10,
-          "accuracy": 0.8,
+          "accuracy": 0.6,
           "hit_at_1": 0.5,
-          "hit_at_3": 0.6,
-          "hit_at_5": 0.7,
-          "hit_at_10": 0.8,
-          "avg_seconds": 18.627,
-          "llm_calls": 31,
-          "prompt_tokens": 81319,
-          "completion_tokens": 2733,
-          "total_tokens": 84052
+          "hit_at_3": 0.5,
+          "hit_at_5": 0.6,
+          "hit_at_10": 0.6,
+          "avg_seconds": 37.403,
+          "llm_calls": 29,
+          "prompt_tokens": 210216,
+          "completion_tokens": 30408,
+          "total_tokens": 240624
         }
       }
     }

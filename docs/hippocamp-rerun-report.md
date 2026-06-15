@@ -54,7 +54,9 @@ Per-profile (top_k=10):
 
 ## 2. Hermes real-agent benchmark (token-diet, 10 cases/profile)
 
-Model: `openai/gpt-4o-mini` via `openrouter`; **10 cases/profile** (30 total);
+Model: `google/gemini-2.5-flash` via `openrouter` — the current low-cost,
+high-capability flash model that replaces the legacy `openai/gpt-4o-mini` agent
+benchmark model; **10 cases/profile** (30 total);
 `raw` max-turns 8; `jikji` = token-diet map-first 1-turn handoff
 (`--candidate-top-k 5`, single 120-char evidence snippet). `raw` = agent must
 browse the full corpus; `jikji` = agent receives the compact Jikji candidate
@@ -65,33 +67,34 @@ output).
 
 | Profile  | mode  | Hit@10 | llm_calls | input (prompt) | output (completion) | total tokens |
 |----------|-------|--------|-----------|----------------|---------------------|--------------|
-| Adam     | raw   | 0.000 | 60  | 106,434 | 2,635 | 109,069 |
-| Adam     | jikji | **0.800** | **10** | **21,088** | **966** | **22,054** |
-| Bei      | raw   | 0.200 | 43  | 98,970  | 2,802 | 101,772 |
-| Bei      | jikji | **0.500** | **10** | **32,770** | **729** | **33,499** |
-| Victoria | raw   | 0.800 | 31  | 81,319  | 2,733 | 84,052  |
-| Victoria | jikji | 0.800 | **10** | **17,788** | **831** | **18,619** |
+| Adam     | raw   | 0.100 | 50  | 403,970 | 31,807 | 435,777 |
+| Adam     | jikji | **0.800** | **10** | **89,670** | **4,724** | **94,394** |
+| Bei      | raw   | 0.300 | 27  | 152,520 | 17,169 | 169,689 |
+| Bei      | jikji | **0.500** | **10** | **85,685** | **7,520** | **93,205** |
+| Victoria | raw   | 0.600 | 29  | 210,216 | 30,408 | 240,624 |
+| Victoria | jikji | **0.800** | **10** | **103,325** | **6,325** | **109,650** |
 
 Aggregate (30 cases/mode):
 
 | mode  | Hit@10 | llm_calls | input (prompt) | output (completion) | total tokens |
 |-------|--------|-----------|----------------|---------------------|--------------|
-| raw   | 0.333 | 134 | 286,723 | 8,170 | 294,893 |
-| jikji | **0.700** | **30** | **71,646** | **2,526** | **74,172** |
+| raw   | 0.333 | 106 | 766,706 | 79,384 | 846,090 |
+| jikji | **0.700** | **30** | **278,680** | **18,569** | **297,249** |
 
 Observations:
 
 - **Token diet works on the full corpus.** With Jikji the agent answers in a
-  single bounded turn, so total tokens fall **294,893 → 74,172 (−74.8%, 4.0×)**
-  and input tokens fall **286,723 → 71,646 (−75.0%)** versus raw browsing of the
+  single bounded turn, so total tokens fall **846,090 → 297,249 (−64.9%, 2.85×)**
+  and input tokens fall **766,706 → 278,680 (−63.7%)** versus raw browsing of the
   full Full-split corpus.
-- **LLM calls drop ~4.5×** (134 → 30, i.e. 1 call/case) — the dominant driver
+- **LLM calls drop ~3.5×** (106 → 30, i.e. 1 call/case) — the dominant driver
   of the token savings.
 - **Accuracy improves** in aggregate (Hit@10 0.333 → 0.700; accuracy
-  0.333 → 0.700). Adam's raw run scores 0/10 because the agent cannot locate
-  evidence by browsing the much larger Full corpus within 8 turns, while Jikji
-  candidates recover it. Victoria's raw is already strong (0.800) and Jikji
-  matches it while using 3× fewer calls and ~4.5× fewer tokens.
+  0.333 → 0.700). Adam's raw run scores 1/10 because the agent struggles to
+  locate evidence by browsing the much larger Full corpus within 8 turns, while
+  Jikji candidates recover it (0.800). Victoria's raw is the strongest raw
+  profile (0.600) and Jikji lifts it to 0.800 while using ~3× fewer calls and
+  ~2.2× fewer tokens.
 - **Harder than Subset.** The Full split is a substantially larger and harder
   corpus (551 deterministic cases vs 49), so absolute scores are lower than the
   Subset re-run while Jikji's relative lift holds across every profile.
@@ -115,7 +118,7 @@ jikji hermes-bench .benchmarks/hippocamp-full/Adam \
   --eval-set .benchmarks/hippocamp-full/Adam_hippocamp_eval_set.jsonl \
   --modes raw,jikji-fast --cases 10 --max-turns 8 --fast-max-turns 1 \
   --candidate-top-k 5 --skills jikji \
-  --provider openrouter --model openai/gpt-4o-mini --json
+  --provider openrouter --model google/gemini-2.5-flash --json
 ```
 
 Machine-readable aggregate: [`hippocamp-rerun-report.json`](./hippocamp-rerun-report.json).
