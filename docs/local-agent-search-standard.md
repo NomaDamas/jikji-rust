@@ -111,6 +111,13 @@ Required indexes:
   regenerated from the JSONL artifacts.
 - `.jikji/duplicate_map.jsonl` — duplicate/hash/family groups for copy-aware
   hit@k evaluation and agent navigation.
+- `.jikji/wiki/index.md` and `.jikji/wiki/sources/*.md` — deterministic local
+  LLM Wiki pages that standardize extracted local knowledge as compact Markdown.
+- `.jikji/knowledge_graph.json` — typed local knowledge graph linking corpus,
+  folders, sources, terms, intents, and duplicate groups.
+- `.jikji/graph_routes.jsonl` — low-token route rows used by compact briefs so
+  agents do not need to read full maps or browse the filesystem.
+- `.jikji/llm_wiki_schema.md` — wiki/graph schema and safety contract.
 
 `keywords` and `summary` fields are local deterministic heuristics only. They
 must never require LLM calls, cloud services, or network access.
@@ -175,23 +182,31 @@ Write policy:
 
 A local agent using Jikji should follow this sequence:
 
-1. Run `jikji brief ROOT "query" --json` for a compact query-specific route
-   sheet. Use its candidate paths first when evidence/reasons match.
-2. Run `jikji search ROOT "query" --json` when only ranked candidates are
+1. Run `jikji brief ROOT "query" --compact --json` first. This is the
+   lowest-token path: it returns only ranked graph-route candidates, source wiki
+   paths, cache hints, and short evidence.
+2. Run `jikji brief ROOT "query" --json` for a fuller query-specific route
+   sheet when compact evidence is insufficient. Use its candidate paths first
+   when evidence/reasons match.
+3. Run `jikji search ROOT "query" --json` when only ranked candidates are
    needed or when refining the query.
-3. Read `.jikji_agent_map.md`.
-4. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md`.
-5. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
-   `.jikji/document_index.jsonl` with `rg`/`jq`.
-6. Search parser-required document bodies in `.jikji/doc_text/`.
-7. Search native text-like files in their original locations, excluding `.jikji`.
-8. Open the original file only through the `path` field after finding a match.
-9. Never move, rename, delete, or reorganize source files as part of search.
+4. Read `.jikji_agent_map.md`.
+5. Read `.jikji/wiki/index.md`, `.jikji/graph_routes.jsonl`, or
+   `.jikji/knowledge_graph.json` to traverse source/term/intent/folder links.
+6. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md` for human-oriented
+   fallback routing.
+7. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
+   `.jikji/document_index.jsonl` with `rg`/`jq` only after compact routes are
+   insufficient.
+8. Search parser-required document bodies in `.jikji/doc_text/`.
+9. Search native text-like files in their original locations, excluding `.jikji`.
+10. Open the original file only through the `path` field after finding a match.
+11. Never move, rename, delete, or reorganize source files as part of search.
 
 Example:
 
 ```bash
-jikji brief . "contract pdf from last spring" --top-k 10 --json
+jikji brief . "contract pdf from last spring" --top-k 10 --compact --json
 rg "contract|계약" .jikji/doc_text .jikji/*.jsonl
 jq -r 'select(.ext==".pdf") | [.path, .text_cache_path] | @tsv' .jikji/document_index.jsonl
 rg "TODO|회의" . --glob '!**/.jikji/**'

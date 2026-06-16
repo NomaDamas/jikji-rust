@@ -27,17 +27,17 @@ Trigger examples:
 ## Absolute rule: Jikji search FIRST, never crawl blind
 
 When Jikji is installed and a root has a `.jikji/` index, you MUST treat
-`jikji search` / `jikji brief` as the **mandatory first action** for any local
+`jikji brief --compact` / `jikji search` as the **mandatory first action** for any local
 file/folder/document discovery request. This is non-negotiable:
 
 - **NEVER** start by running `grep`, `rg`, `ls`, `find`, `fd`, `cat`, `tree`,
   or any manual filesystem crawl to locate a file. Jikji has already built the
   map; re-crawling wastes turns and is strictly slower.
 - Your **first tool call** must be:
-  `jikji brief /explicit/root "natural language clue" --top-k 10 --json`
+  `jikji brief /explicit/root "natural language clue" --top-k 10 --compact --json`
   (or `jikji search …` when you only need ranked candidates).
-- Accept the injected `candidates[].path` list as your working answer. Open at
-  most the top 1–3 candidates with the original file only to verify.
+- Accept the injected `candidates[].p` list as your working answer. Open at
+  most the top 1–3 candidates, or `candidates[].wiki`/`cache`, only to verify.
 - `grep`/`rg`/`ls`/`find` are permitted **only** as a last resort, and **only
   after** Jikji returned an empty or clearly-wrong candidate list.
 - If you catch yourself about to run a raw search command before calling Jikji,
@@ -59,7 +59,7 @@ file/folder/document discovery request. This is non-negotiable:
 Default to `brief` for autonomous work:
 
 ```bash
-jikji brief /explicit/root "natural language file clue" --top-k 10 --json
+jikji brief /explicit/root "natural language file clue" --top-k 10 --compact --json
 ```
 
 Use `search` when you only need ranked candidates:
@@ -70,11 +70,12 @@ jikji search /explicit/root "natural language file clue" --top-k 10 --json
 
 Interpretation:
 
-- `candidates[].path` is the relative path to return or inspect.
-- `evidence` and `matched_terms` explain why the candidate was ranked.
-- `candidate_folders` gives folder context.
-- `commands` contains fallback searches if the candidate list is insufficient.
+- `candidates[].p` is the relative path to return or inspect.
+- `ev`, `terms`, and `intents` explain why the candidate was ranked.
+- `wiki` points to a compact LLM Wiki source page; `cache` points to parser text when available.
 - Preserve paths exactly as returned.
+
+Use non-compact `brief` only when the compact graph route is insufficient.
 
 ## Direct handoff rule
 
@@ -101,10 +102,12 @@ jikji clean /explicit/root --json
 
 ## Fallback route
 
-Only when `brief`/`search` is empty or clearly wrong:
+Only when compact `brief`/`search` is empty or clearly wrong:
 
 ```bash
 cat /explicit/root/.jikji_agent_map.md
+cat /explicit/root/.jikji/wiki/index.md
+rg "keyword" /explicit/root/.jikji/graph_routes.jsonl
 cat /explicit/root/.jikji/agent_routes.md
 rg "keyword" /explicit/root/.jikji/*.jsonl
 rg "keyword" /explicit/root/.jikji/doc_text

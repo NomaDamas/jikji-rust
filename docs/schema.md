@@ -81,6 +81,29 @@ truth; it can be rebuilt from `file_cards.jsonl` and `chunk_map.jsonl`.
 - `filename_keys`: compact filename lookup keys
 - `idf`: deterministic term weights
 
+## LLM Wiki and knowledge graph artifacts
+
+Jikji also compiles a deterministic local LLM Wiki layer during `prepare`:
+
+- `.jikji/wiki/index.md`: Markdown wiki entry point for agents.
+- `.jikji/wiki/sources/*.md`: one compact, grounded Markdown page per source file.
+- `.jikji/knowledge_graph.json`: typed graph with corpus/source/folder/term/intent/duplicate nodes.
+- `.jikji/graph_routes.jsonl`: one low-token candidate route row per source.
+- `.jikji/llm_wiki_schema.md`: local schema/safety contract.
+
+This follows the common raw-source → markdown wiki → graph/context-pack pattern used by recent local LLM Wiki projects, but Jikji's default compiler is fully local and deterministic: no LLM calls, embeddings, cloud APIs, or network access are required.
+
+`graph_routes.jsonl` rows include:
+
+- `path`: original relative path.
+- `source_id`: stable graph node id.
+- `wiki_path`: compact Markdown source page.
+- `folder`, `terms`, `intents`, `ext`, `parse_status`.
+- `text_cache_path`: parser cache when available.
+- `preview`: bounded grounded evidence snippet.
+
+Agents should prefer `jikji brief ROOT "query" --compact --json`, which returns a tiny route sheet backed by these graph routes, before reading larger JSONL maps or source files.
+
 Minimal rich metadata envelope:
 
 - `schema_version`

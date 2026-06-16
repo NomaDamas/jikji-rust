@@ -10,7 +10,11 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .agent_brief import brief_markdown, build_agent_brief_payload
+from .agent_brief import (
+    brief_markdown,
+    build_agent_brief_payload,
+    build_compact_agent_brief_payload,
+)
 from .agent_index import (
     AGENT_DIR_NAME,
     VISIBLE_MAP_NAME,
@@ -204,6 +208,10 @@ def cmd_doctor(args) -> int:
         ".jikji/corpus_profile.json",
         ".jikji/intent_taxonomy.json",
         ".jikji/autorag_manifest.json",
+        ".jikji/knowledge_graph.json",
+        ".jikji/graph_routes.jsonl",
+        ".jikji/llm_wiki_schema.md",
+        ".jikji/wiki/index.md",
         ".jikji/parse_errors.jsonl",
         ".jikji/agent_map.md",
     ]
@@ -579,17 +587,31 @@ def cmd_brief(args) -> int:
     background_refresh_started = False
     if index_status == "stale_using_previous_index" and not args.fresh:
         background_refresh_started = _maybe_start_background_refresh(args, root)
-    payload = build_agent_brief_payload(
-        root,
-        args.query,
-        top_k=args.top_k,
-        index_status=index_status,
-        foreground_prepared=foreground_prepared,
-        background_refresh_started=background_refresh_started,
-        candidates=candidates,
-    )
+    if getattr(args, "compact", False):
+        payload = build_compact_agent_brief_payload(
+            root,
+            args.query,
+            top_k=args.top_k,
+            index_status=index_status,
+            foreground_prepared=foreground_prepared,
+            background_refresh_started=background_refresh_started,
+            candidates=candidates,
+        )
+    else:
+        payload = build_agent_brief_payload(
+            root,
+            args.query,
+            top_k=args.top_k,
+            index_status=index_status,
+            foreground_prepared=foreground_prepared,
+            background_refresh_started=background_refresh_started,
+            candidates=candidates,
+        )
     if args.json:
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        if getattr(args, "compact", False):
+            print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+        else:
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         print(brief_markdown(payload))
     return 0
@@ -1626,6 +1648,7 @@ def main(argv: list[str] | None = None) -> int:
     p_brief.add_argument("--exclude", action="append", default=[])
     p_brief.add_argument("--max-hash-bytes", type=int, default=512 * 1024 * 1024)
     p_brief.add_argument("--parse-timeout", type=float, default=5.0)
+    p_brief.add_argument("--compact", action="store_true", help="emit token-minimal graph-route JSON for agents")
     p_brief.add_argument("--json", action="store_true")
     p_brief.set_defaults(auto_prepare=True, background_refresh=True)
     p_brief.set_defaults(func=cmd_brief)

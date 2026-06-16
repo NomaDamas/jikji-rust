@@ -23,6 +23,7 @@
   <a href="docs/agent-installation.md"><strong>Agent install guide</strong></a> ·
   <a href="skills/jikji/SKILL.md"><strong>Skill file</strong></a> ·
   <a href="docs/local-agent-search-standard.md"><strong>Search standard</strong></a>
+  · <a href="docs/llm-wiki-graph.md"><strong>LLM Wiki graph</strong></a>
 </p>
 
 ---
@@ -42,7 +43,7 @@ guess query → list folders → grep files → open documents → repeat
 Jikji-equipped agents use a map:
 
 ```text
-jikji brief ROOT "query" → ranked paths + evidence → verify only if needed
+jikji brief ROOT "query" --compact --json → ranked graph paths + evidence → verify only if needed
 ```
 
 ## Quick start
@@ -53,7 +54,7 @@ cd jikji
 python3 -m venv .venv
 .venv/bin/pip install -e .
 
-.venv/bin/jikji brief ~/Documents "contract pdf from last spring" --top-k 10 --json
+.venv/bin/jikji brief ~/Documents "contract pdf from last spring" --top-k 10 --compact --json
 ```
 
 Image, audio, and video files are always indexed with lightweight local
@@ -69,7 +70,7 @@ with `pip install "jikji[media]"`; enable transcription with
 한국어 예시:
 
 ```bash
-jikji brief ~/Documents "작년 봄 계약서 PDF" --top-k 10 --json
+jikji brief ~/Documents "작년 봄 계약서 PDF" --top-k 10 --compact --json
 jikji search ~/Documents "파일명, 본문 단서, 문서 설명" --top-k 10 --json
 ```
 
@@ -128,6 +129,10 @@ and parser-coverage improvements.
 .jikji/file_cards.jsonl     per-file cards, tags, parse status, evidence
 .jikji/folder_profile.jsonl folder roles and navigation context
 .jikji/agent_routes.md      safe fallback route for autonomous agents
+.jikji/wiki/index.md       deterministic local LLM Wiki entry point
+.jikji/wiki/sources/*.md   compact grounded Markdown page per source
+.jikji/knowledge_graph.json source/folder/term/intent/duplicate graph
+.jikji/graph_routes.jsonl  low-token route rows for compact agent briefs
 ```
 
 These are generated artifacts. They can be regenerated or removed with `jikji clean`.
@@ -138,7 +143,7 @@ Paste this behavior into Claude Code, Codex, Hermes, OpenCode/OpenClone-style ag
 
 ```text
 Use Jikji for local file discovery when an explicit root is available.
-First call: jikji brief ROOT "query" --top-k 10 --json.
+First call: jikji brief ROOT "query" --top-k 10 --compact --json.
 Prefer returned candidate paths and evidence over broad filesystem crawling.
 Only inspect original files for final verification.
 Never move, rename, delete, or reorganize user files.
@@ -175,7 +180,7 @@ jikji agent-skill-install --agent all --no-prepare --json
 
 After the skill is installed, local file/folder/document discovery requests should
 trigger Jikji automatically. The agent does not need the user to say "use Jikji";
-it should call `jikji brief ROOT "query" --top-k 10 --json` first when a bounded
+it should call `jikji brief ROOT "query" --top-k 10 --compact --json` first when a bounded
 root is available. For agents without a formal skill system, paste the output of
 `jikji skill-export` into their persistent instructions or project memory.
 

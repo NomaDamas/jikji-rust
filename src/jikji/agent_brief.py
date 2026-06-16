@@ -82,6 +82,61 @@ def _shell_join(parts: list[str]) -> str:
     return " ".join(shlex.quote(str(part)) for part in parts)
 
 
+
+def build_compact_agent_brief_payload(
+    root: Path,
+    query: str,
+    *,
+    top_k: int,
+    index_status: str,
+    foreground_prepared: bool,
+    background_refresh_started: bool,
+    candidates: list[dict[str, Any]],
+    evidence_max_chars: int = 160,
+) -> dict[str, Any]:
+    """Return a token-minimal graph route sheet for agent file discovery."""
+    root = Path(root).expanduser().resolve()
+    wanted = {str(item.get("path") or "") for item in candidates}
+    routes: dict[str, dict[str, Any]] = {}
+    for row in _iter_jsonl(root / AGENT_DIR_NAME / "graph_routes.jsonl"):
+        path = str(row.get("path") or "")
+        if path in wanted:
+            routes[path] = row
+        if len(routes) >= len(wanted):
+            break
+    compact_candidates = []
+    for rank, item in enumerate(candidates, 1):
+        path = str(item.get("path") or "")
+        route = routes.get(path, {})
+        preview = route.get("preview") or (item.get("evidence") or [""])[0]
+        compact_candidates.append({
+            "r": rank,
+            "p": path,
+            "s": item.get("score"),
+            "why": (item.get("reasons") or [])[:4],
+            "terms": (route.get("terms") or item.get("matched_terms") or [])[:8],
+            "intents": (route.get("intents") or item.get("matched_intents") or [])[:4],
+            "wiki": route.get("wiki_path", ""),
+            "cache": route.get("text_cache_path", ""),
+            "ev": _truncate_evidence(preview, evidence_max_chars),
+        })
+    return {
+        "schema_version": 1,
+        "mode": "compact_graph_brief",
+        "root": str(root),
+        "q": query,
+        "top_k": top_k,
+        "index": index_status,
+        "prepared": foreground_prepared,
+        "refreshing": background_refresh_started,
+        "policy": "Use candidates[].p first. Read candidates[].wiki/cache only if ambiguous. Open original only for final verification. Do not browse whole filesystem first.",
+        "artifacts": {
+            "graph_routes": str(root / AGENT_DIR_NAME / "graph_routes.jsonl"),
+            "knowledge_graph": str(root / AGENT_DIR_NAME / "knowledge_graph.json"),
+            "wiki_index": str(root / AGENT_DIR_NAME / "wiki" / "index.md"),
+        },
+        "candidates": compact_candidates,
+    }
 def build_agent_brief_payload(
     root: Path,
     query: str,

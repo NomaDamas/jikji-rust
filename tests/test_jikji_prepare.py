@@ -74,6 +74,10 @@ def test_prepare_emits_agent_search_standard_artifacts(tmp_path):
     assert (tmp_path / ".jikji" / "search_index.sqlite").exists()
     assert (tmp_path / ".jikji" / "duplicate_map.jsonl").exists()
     assert (tmp_path / ".jikji" / "autorag_manifest.json").exists()
+    assert (tmp_path / ".jikji" / "knowledge_graph.json").exists()
+    assert (tmp_path / ".jikji" / "graph_routes.jsonl").exists()
+    assert (tmp_path / ".jikji" / "llm_wiki_schema.md").exists()
+    assert (tmp_path / ".jikji" / "wiki" / "index.md").exists()
 
     rows = _jsonl(tmp_path / ".jikji" / "document_index.jsonl")
     assert rows[0]["file_id"].startswith("sha256:")
@@ -88,6 +92,37 @@ def test_prepare_emits_agent_search_standard_artifacts(tmp_path):
     chunk = _jsonl(tmp_path / ".jikji" / "chunk_map.jsonl")[0]
     assert chunk["path"] == "보고서.rtf"
     assert "content_terms" in chunk
+    graph = json.loads((tmp_path / ".jikji" / "knowledge_graph.json").read_text(encoding="utf-8"))
+    assert graph["schema_version"] == 1
+    assert graph["stats"]["sources"] >= 1
+    routes = _jsonl(tmp_path / ".jikji" / "graph_routes.jsonl")
+    assert routes[0]["path"] == "보고서.rtf"
+    assert routes[0]["wiki_path"].startswith(".jikji/wiki/sources/")
+    assert (tmp_path / routes[0]["wiki_path"]).exists()
+
+
+def test_compact_brief_uses_graph_routes_and_is_smaller(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    (tmp_path / "contracts").mkdir()
+    (tmp_path / "contracts" / "ACME_2026_contract.txt").write_text(
+        "ACME renewal contract payment clause and indemnity memo", encoding="utf-8"
+    )
+    (tmp_path / "notes.txt").write_text("roadmap meeting unrelated", encoding="utf-8")
+
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+    assert main(["brief", str(tmp_path), "ACME payment contract", "--top-k", "5", "--json"]) == 0
+    full = capsys.readouterr().out
+    assert main(["brief", str(tmp_path), "ACME payment contract", "--top-k", "5", "--compact", "--json"]) == 0
+    compact = capsys.readouterr().out
+    payload = json.loads(compact)
+
+    assert payload["mode"] == "compact_graph_brief"
+    assert payload["candidates"][0]["p"] == "contracts/ACME_2026_contract.txt"
+    assert payload["candidates"][0]["wiki"].startswith(".jikji/wiki/sources/")
+    assert (tmp_path / payload["candidates"][0]["wiki"]).exists()
+    assert len(compact) < len(full) * 0.7
 
 
 def test_prepare_skips_sensitive_names_by_default(tmp_path):

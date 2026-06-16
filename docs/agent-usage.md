@@ -38,21 +38,22 @@ Agent flow:
    the instant index is missing:
 
 ```bash
-.venv/bin/jikji brief /path/to/folder "natural language file clue" --top-k 10 --json
+.venv/bin/jikji brief /path/to/folder "natural language file clue" --top-k 10 --compact --json
 .venv/bin/jikji search /path/to/folder "natural language file clue" --top-k 10 --json
 ```
 
-Use `brief` by default for autonomous agent work because it includes the ranked
-paths, evidence snippets, relevant folder context, and fallback commands in one
-compact payload. Use `search` for a smaller ranked-candidate-only response.
+Use compact `brief` by default for autonomous agent work because it includes ranked
+paths, tiny graph-route evidence, source wiki paths, and cache hints without
+forcing the agent to read the full map. Use non-compact `brief` only when compact
+evidence is insufficient; use `search` for ranked-candidate-only responses.
 
-2. If the result is empty or clearly insufficient, inspect the route guides and
-   indexes:
+2. If the result is empty or clearly insufficient, inspect the LLM Wiki graph and
+   route guides:
 
 ```bash
-cat /path/to/folder/.jikji_agent_map.md
+cat /path/to/folder/.jikji/wiki/index.md
+rg "keyword" /path/to/folder/.jikji/graph_routes.jsonl
 cat /path/to/folder/.jikji/agent_routes.md
-rg "keyword" /path/to/folder/.jikji/*.jsonl
 ```
 
 3. Search parser-extracted document text only when needed:
