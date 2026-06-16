@@ -37,6 +37,8 @@ from .eval import (
     run_eval,
     search,
 )
+from .graph_query import explain_source, graph_status, query_graph_routes
+from .gui import serve_gui
 from .hardbench import build_hard_benchmark, run_hard_benchmark_suite
 from .hermes_bench import install_hermes_skill, run_hermes_benchmark
 from .hippocamp import fetch_subset, import_eval_set, run_benchmark, run_suite
@@ -614,6 +616,89 @@ def cmd_brief(args) -> int:
             print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         print(brief_markdown(payload))
+    return 0
+
+
+
+def cmd_graph(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    if args.graph_cmd == "query":
+        payload = {
+            "root": str(root),
+            "query": args.query,
+            "candidates": query_graph_routes(root, args.query, top_k=args.top_k),
+        }
+    elif args.graph_cmd == "explain":
+        payload = explain_source(root, args.source_path)
+    else:
+        payload = graph_status(root)
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    elif args.graph_cmd == "query":
+        for idx, item in enumerate(payload.get("candidates") or [], 1):
+            print(f"{idx:02d} {item.get('score'):>6} {item.get('path')}  terms={','.join(item.get('matched_terms') or [])}")
+    else:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_gui(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    if args.background:
+        requested_port = int(args.port)
+        child_port = 0 if requested_port == 8765 else requested_port
+        cmd = [
+            sys.executable,
+            "-m",
+            "jikji.__main__",
+            "gui",
+            str(root),
+            "--host",
+            args.host,
+            "--port",
+            str(child_port),
+            "--no-open",
+        ]
+        if args.no_prepare:
+            cmd.append("--no-prepare")
+        log_path = root / ".jikji" / "gui_server.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log = log_path.open("wb")
+        proc = subprocess.Popen(cmd, cwd=str(Path.cwd()), stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True, close_fds=True)  # noqa: S603
+        log.close()
+        url = f"http://{args.host}:{requested_port}/" if child_port != 0 else ""
+        deadline = time.time() + 3.0
+        while not url and time.time() < deadline:
+            try:
+                text = log_path.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                text = ""
+            for line in text.splitlines():
+                if line.startswith("Jikji GUI: "):
+                    url = line.split("Jikji GUI: ", 1)[1].strip()
+                    break
+            if not url:
+                time.sleep(0.05)
+        if not url:
+            url = f"http://{args.host}:0/"
+        payload = {"url": url, "root": str(root), "pid": proc.pid, "log": str(log_path)}
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False, indent=2))
+        else:
+            print(f"Jikji GUI: {payload['url']}")
+            print(f"Root: {root}")
+            print(f"PID: {proc.pid}")
+        return 0
+    url = serve_gui(
+        root,
+        host=args.host,
+        port=args.port,
+        auto_prepare=not args.no_prepare,
+        open_browser=not args.no_open,
+        quiet=args.json,
+    )
+    if args.json:
+        print(json.dumps({"url": url, "root": str(root)}, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -1722,6 +1807,34 @@ def main(argv: list[str] | None = None) -> int:
     p_hs.add_argument("--force", action="store_true")
     p_hs.add_argument("--json", action="store_true")
     p_hs.set_defaults(func=cmd_hermes_skill_install)
+
+    p_graph = sub.add_parser("graph", help="inspect/query Jikji LLM Wiki knowledge graph artifacts")
+    graph_sub = p_graph.add_subparsers(dest="graph_cmd")
+    g_status = graph_sub.add_parser("status", help="show graph/wiki artifact status")
+    g_status.add_argument("path", nargs="?", default=".")
+    g_status.add_argument("--json", action="store_true")
+    g_status.set_defaults(func=cmd_graph, graph_cmd="status")
+    g_query = graph_sub.add_parser("query", help="query low-token graph routes")
+    g_query.add_argument("path")
+    g_query.add_argument("query")
+    g_query.add_argument("--top-k", type=int, default=10)
+    g_query.add_argument("--json", action="store_true")
+    g_query.set_defaults(func=cmd_graph, graph_cmd="query")
+    g_explain = graph_sub.add_parser("explain", help="explain graph route and neighbors for one source path")
+    g_explain.add_argument("path")
+    g_explain.add_argument("source_path")
+    g_explain.add_argument("--json", action="store_true")
+    g_explain.set_defaults(func=cmd_graph, graph_cmd="explain")
+
+    p_gui = sub.add_parser("gui", help="serve a local web UI for searching, opening, and downloading files")
+    p_gui.add_argument("path", nargs="?", default=".")
+    p_gui.add_argument("--host", default="127.0.0.1", help="bind host; default is loopback only")
+    p_gui.add_argument("--port", type=int, default=8765, help="bind port; use 0 for a random free port")
+    p_gui.add_argument("--no-open", action="store_true", help="do not open the browser automatically")
+    p_gui.add_argument("--no-prepare", action="store_true", help="do not auto-prepare when search index is missing")
+    p_gui.add_argument("--background", action="store_true", help="start GUI in the background and print a clickable local URL")
+    p_gui.add_argument("--json", action="store_true")
+    p_gui.set_defaults(func=cmd_gui)
 
     p_prep_bg = sub.add_parser("post-install-prepare", help=argparse.SUPPRESS)
     p_prep_bg.add_argument("roots", nargs="+")

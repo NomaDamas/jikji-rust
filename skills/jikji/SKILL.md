@@ -24,6 +24,24 @@ Trigger examples:
 - "Locate the spreadsheet about last quarter's budget."
 
 
+## If Jikji is missing, install it from GitHub
+
+When a local file-discovery task needs Jikji but the `jikji` CLI is not available, the agent should install it from GitHub instead of giving up:
+
+```bash
+mkdir -p ~/.local/share/jikji
+if [ ! -d ~/.local/share/jikji/repo/.git ]; then
+  git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo
+fi
+cd ~/.local/share/jikji/repo
+git pull --ff-only
+python3 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/jikji --help
+```
+
+Then use `~/.local/share/jikji/repo/.venv/bin/jikji` for all commands, or add that venv's `bin` directory to the agent session PATH. For Hermes/Codex/CLI agents, this bootstrap is part of the skill protocol whenever the CLI is absent and network access is available.
+
 ## Absolute rule: Jikji search FIRST, never crawl blind
 
 When Jikji is installed and a root has a `.jikji/` index, you MUST treat
@@ -99,6 +117,16 @@ jikji map /explicit/root
 jikji clean /explicit/root --dry-run --json
 jikji clean /explicit/root --json
 ```
+
+## Human GUI handoff
+
+Jikji remains a CLI/agent skill. If the user asks to see or manage the Jikji state visually, start the loopback dashboard in the background and send the URL:
+
+```bash
+jikji gui /explicit/root --background --json
+```
+
+Return the JSON `url` as the clickable local link. The dashboard shows prepare status, LLM Wiki/knowledge graph counts, artifact presence, refresh/root-switch controls, and optional search/open/download actions.
 
 ## Fallback route
 

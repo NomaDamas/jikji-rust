@@ -34,6 +34,20 @@ The compact payload returns:
 
 Only when the compact route is empty or ambiguous should the agent read `.jikji/knowledge_graph.json`, `.jikji/graph_routes.jsonl`, full `brief`, or older map JSONL artifacts.
 
+## Graph exploration commands
+
+Jikji also exposes explicit graph inspection commands for agents or humans who want the LLM Wiki-style traversal layer directly:
+
+```bash
+jikji graph status /path/to/root --json
+jikji graph query /path/to/root "contract payment clause" --top-k 10 --json
+jikji graph explain /path/to/root "contracts/ACME_2026_contract.txt" --json
+```
+
+- `graph status` reports wiki/graph artifact paths and graph stats.
+- `graph query` searches compact graph routes without reading full JSONL maps.
+- `graph explain` returns the selected source route and its graph neighbors.
+
 ## Token/call reduction benchmark
 
 A deterministic 160-file synthetic local corpus was generated in a temporary directory with 10 topic queries and `top-k=10`. The benchmark compared existing full JSON `brief` output against the new minified compact graph brief. Both modes used the same search ranking; the metric is prompt-size proxy before any LLM call.

@@ -57,6 +57,20 @@ python3 -m venv .venv
 .venv/bin/jikji brief ~/Documents "contract pdf from last spring" --top-k 10 --compact --json
 ```
 
+Agent가 `jikji`를 못 찾으면 GitHub에서 직접 bootstrap:
+
+```bash
+mkdir -p ~/.local/share/jikji
+if [ ! -d ~/.local/share/jikji/repo/.git ]; then
+  git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo
+fi
+cd ~/.local/share/jikji/repo
+git pull --ff-only
+python3 -m venv .venv
+.venv/bin/pip install -e .
+~/.local/share/jikji/repo/.venv/bin/jikji --help
+```
+
 Image, audio, and video files are always indexed with lightweight local
 metadata (format, dimensions, EXIF datetime, ffprobe stream/duration). Their
 **content** can also be indexed via optional CPU backends, auto-detected when
@@ -73,6 +87,16 @@ with `pip install "jikji[media]"`; enable transcription with
 jikji brief ~/Documents "작년 봄 계약서 PDF" --top-k 10 --compact --json
 jikji search ~/Documents "파일명, 본문 단서, 문서 설명" --top-k 10 --json
 ```
+
+GUI 관리 대시보드:
+
+```bash
+jikji gui ~/Documents
+# CLI/Hermes agent가 사용자에게 링크만 보내야 할 때
+jikji gui ~/Documents --background --json
+```
+
+GUI는 Jikji의 본체가 아니라 사람용 관리 패널입니다. root의 prepare 상태, 파일/문서 수, LLM Wiki source 수, knowledge graph 노드/엣지, 주요 artifact 존재 여부를 보여주고 `prepare/refresh`와 root 전환을 제공합니다. 보조 검색 결과에서는 원본 파일을 OS 기본 앱으로 열거나 브라우저로 다운로드할 수 있습니다. 기본 바인딩은 `127.0.0.1`이며, 관리 작업은 페이지에 주입된 로컬 token이 있어야 하고 root 밖 경로 열기/다운로드는 차단합니다.
 
 ## Why agents need it
 

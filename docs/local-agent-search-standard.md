@@ -45,6 +45,7 @@ jikji prepare /path/to/folder [--json]
 jikji refresh /path/to/folder [--json]   # alias for prepare
 jikji map /path/to/folder
 jikji doctor /path/to/folder [--json]
+jikji gui /path/to/folder       # local loopback GUI with open/download actions
 jikji eval-generate /path/to/folder [--cases N] [--json]
 jikji eval /path/to/folder [--top-k N] [--json]
 ```

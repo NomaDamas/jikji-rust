@@ -125,6 +125,103 @@ def test_compact_brief_uses_graph_routes_and_is_smaller(tmp_path, capsys):
     assert len(compact) < len(full) * 0.7
 
 
+def test_graph_cli_status_query_and_explain(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    (tmp_path / "contracts").mkdir()
+    (tmp_path / "contracts" / "ACME_2026_contract.txt").write_text(
+        "ACME graph route payment clause", encoding="utf-8"
+    )
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+
+    assert main(["graph", "status", str(tmp_path), "--json"]) == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status["prepared"] is True
+    assert status["stats"]["sources"] >= 1
+
+    assert main(["graph", "query", str(tmp_path), "ACME payment", "--json"]) == 0
+    query = json.loads(capsys.readouterr().out)
+    assert query["candidates"][0]["path"] == "contracts/ACME_2026_contract.txt"
+
+    assert main(["graph", "explain", str(tmp_path), "contracts/ACME_2026_contract.txt", "--json"]) == 0
+    explain = json.loads(capsys.readouterr().out)
+    assert explain["found"] is True
+    assert explain["route"]["wiki_path"].startswith(".jikji/wiki/sources/")
+
+
+def test_gui_resolve_root_path_blocks_escape(tmp_path):
+    import pytest
+
+    from jikji.gui import GuiSecurityError, resolve_root_path
+
+    (tmp_path / "doc.txt").write_text("hello", encoding="utf-8")
+    assert resolve_root_path(tmp_path, "doc.txt") == (tmp_path / "doc.txt").resolve()
+    for bad in ("../doc.txt", "/etc/passwd", "sub/../../doc.txt"):
+        with pytest.raises(GuiSecurityError):
+            resolve_root_path(tmp_path, bad)
+    secret = tmp_path.parent / "outside-secret.txt"
+    secret.write_text("outside", encoding="utf-8")
+    link = tmp_path / "escape_link"
+    link.symlink_to(tmp_path.parent)
+    with pytest.raises(GuiSecurityError):
+        resolve_root_path(tmp_path, "escape_link/outside-secret.txt")
+
+
+def test_gui_search_and_download_handlers(tmp_path):
+    import threading
+    import urllib.parse
+    import urllib.request
+
+    from jikji.gui import JikjiGuiServer
+
+    (tmp_path / "contracts").mkdir()
+    target = tmp_path / "contracts" / "ACME.txt"
+    target.write_text("ACME GUI download contract token", encoding="utf-8")
+
+    server = JikjiGuiServer(("127.0.0.1", 0), tmp_path, auto_prepare=True)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        with urllib.request.urlopen(base + "/api/search?q=" + urllib.parse.quote("ACME contract"), timeout=5) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        assert payload["candidates"][0]["path"] == "contracts/ACME.txt"
+        with urllib.request.urlopen(base + "/download?path=contracts/ACME.txt", timeout=5) as resp:
+            assert resp.read().decode("utf-8") == "ACME GUI download contract token"
+        with urllib.request.urlopen(base + "/api/status", timeout=5) as resp:
+            status = json.loads(resp.read().decode("utf-8"))
+        assert status["prepared"] is True
+        assert status["artifacts"]["knowledge_graph"] is True
+        other = tmp_path / "other-root"
+        other.mkdir()
+        (other / "other.txt").write_text("OTHER root token", encoding="utf-8")
+        token = server.manage_token
+        try:
+            urllib.request.urlopen(base + "/api/refresh", data=b"", timeout=5)
+        except Exception as exc:
+            assert "HTTP Error 403" in str(exc)
+        else:
+            raise AssertionError("management actions require token")
+        with urllib.request.urlopen(base + "/api/root?path=" + urllib.parse.quote(str(other)) + "&token=" + token, data=b"", timeout=5) as resp:
+            switched = json.loads(resp.read().decode("utf-8"))
+        assert switched["root"] == str(other.resolve())
+        assert switched["prepared"] is True
+        with urllib.request.urlopen(base + "/api/refresh?token=" + token, data=b"", timeout=5) as resp:
+            refreshed = json.loads(resp.read().decode("utf-8"))
+        assert refreshed["root"] == str(other.resolve())
+        try:
+            urllib.request.urlopen(base + "/download?path=../ACME.txt", timeout=5)
+        except Exception as exc:
+            assert "HTTP Error 403" in str(exc)
+        else:
+            raise AssertionError("path traversal download should fail")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_prepare_skips_sensitive_names_by_default(tmp_path):
     safe = tmp_path / "notes.txt"
     secret = tmp_path / ".env"

@@ -10,6 +10,21 @@ python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
 
+If `jikji` is not installed, a CLI agent should bootstrap it from GitHub:
+
+```bash
+mkdir -p ~/.local/share/jikji
+if [ ! -d ~/.local/share/jikji/repo/.git ]; then
+  git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo
+fi
+cd ~/.local/share/jikji/repo
+git pull --ff-only
+python3 -m venv .venv
+.venv/bin/pip install -e .
+```
+
+Then call `~/.local/share/jikji/repo/.venv/bin/jikji`.
+
 Attach the skill once:
 
 ```bash
@@ -67,6 +82,15 @@ rg "keyword" /path/to/folder/.jikji/doc_text
 ```bash
 rg "keyword" /path/to/folder --glob '!**/.jikji/**'
 ```
+
+For a human management dashboard:
+
+```bash
+.venv/bin/jikji gui /path/to/folder
+.venv/bin/jikji gui /path/to/folder --background --json
+```
+
+CLI/Hermes agents should use `--background --json` when the user asks for a GUI: return the emitted `url` to the user as the clickable local link. The dashboard shows root prepare status, LLM Wiki/knowledge graph counts, artifact presence, refresh/root-switch controls, and optional search/open/download actions.
 
 Do not move, rename, delete, or reorganize source files while using Jikji for
 search.

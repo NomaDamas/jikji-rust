@@ -29,6 +29,24 @@ Optional developer validation:
 If you want `jikji` globally available, either add the checkout venv to your
 agent's PATH or install it into the Python environment that the agent uses.
 
+### Agent self-bootstrap when the CLI is missing
+
+CLI agents such as Hermes/Codex should not stop just because `jikji` is absent. If network access is available, bootstrap from GitHub and then run the venv-local binary:
+
+```bash
+mkdir -p ~/.local/share/jikji
+if [ ! -d ~/.local/share/jikji/repo/.git ]; then
+  git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo
+fi
+cd ~/.local/share/jikji/repo
+git pull --ff-only
+python3 -m venv .venv
+.venv/bin/pip install -e .
+.venv/bin/jikji --help
+```
+
+Use `~/.local/share/jikji/repo/.venv/bin/jikji` when the command is not on PATH.
+
 ### Optional image OCR dependency
 
 Jikji indexes image files with lightweight local metadata (format, dimensions,
@@ -124,7 +142,7 @@ and can run the `jikji` CLI.
 When a user asks an agent to find a local file or document:
 
 1. Require an explicit root path. Do not silently scan every drive.
-2. Run `jikji brief ROOT "query" --top-k 10 --json` first.
+2. Run `jikji brief ROOT "query" --top-k 10 --compact --json` first.
 3. If only ranked paths are needed, run `jikji search ROOT "query" --top-k 10 --json`.
 4. Prefer candidate paths returned by Jikji when evidence/reasons match.
 5. Open original files only for final verification.
@@ -135,7 +153,7 @@ When a user asks an agent to find a local file or document:
 Minimal command:
 
 ```bash
-jikji brief /explicit/root "natural language file clue" --top-k 10 --json
+jikji brief /explicit/root "natural language file clue" --top-k 10 --compact --json
 ```
 
 Smaller candidate-only command:
@@ -151,6 +169,15 @@ jikji prepare /explicit/root --json
 jikji doctor /explicit/root --json
 jikji map /explicit/root
 ```
+
+Human management dashboard, when the user wants to inspect Jikji status or receive a clickable local link:
+
+```bash
+jikji gui /explicit/root
+jikji gui /explicit/root --background --json
+```
+
+The GUI binds to `127.0.0.1` by default. It shows prepare status, file/document counts, LLM Wiki source count, knowledge graph node/edge counts, artifact presence, refresh/root-switch controls, and optional search results with `열기`, `다운로드`, and `폴더 열기` actions. Management POST actions require a page-local token; file actions reject path traversal and files outside the explicit root.
 
 Cleanup generated artifacts from one root:
 
@@ -175,6 +202,9 @@ one explicit root:
 .jikji/doc_text/                extracted PDF/HWP/HWPX/Office/etc. text cache
 .jikji/search_index.sqlite      Everything-style instant search accelerator
 .jikji/duplicate_map.jsonl      hash/family groups for duplicate-aware search
+.jikji/wiki/index.md          local LLM Wiki entry point
+.jikji/knowledge_graph.json   source/folder/term/intent graph
+.jikji/graph_routes.jsonl     low-token compact route rows
 ```
 
 These artifacts are disposable and may be regenerated. For Git repositories,
