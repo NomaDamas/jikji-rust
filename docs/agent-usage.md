@@ -53,14 +53,12 @@ Agent flow:
    the instant index is missing:
 
 ```bash
+.venv/bin/jikji find /path/to/folder "natural language file clue" --first
 .venv/bin/jikji brief /path/to/folder "natural language file clue" --top-k 10 --compact --json
 .venv/bin/jikji search /path/to/folder "natural language file clue" --top-k 10 --json
 ```
 
-Use compact `brief` by default for autonomous agent work because it includes ranked
-paths, tiny graph-route evidence, source wiki paths, and cache hints without
-forcing the agent to read the full map. Use non-compact `brief` only when compact
-evidence is insufficient; use `search` for ranked-candidate-only responses.
+For one-file lookup, `find --first` is the default because it returns only a path and needs no LLM call. Use compact `brief` when autonomous agent work needs ranked paths, tiny graph-route evidence, source wiki paths, and cache hints. Use non-compact `brief` only when compact evidence is insufficient; use `search` for ranked-candidate-only responses.
 
 2. If the result is empty or clearly insufficient, inspect the LLM Wiki graph and
    route guides:

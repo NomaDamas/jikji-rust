@@ -80,6 +80,10 @@ truth; it can be rebuilt from `file_cards.jsonl` and `chunk_map.jsonl`.
 - `terms`: prebuilt lexical inverted index
 - `filename_keys`: compact filename lookup keys
 - `idf`: deterministic term weights
+- `field_terms`: term-frequency rows by `path`, `name`, `ext`, `body`, `meta`, and `semantic` fields
+- `field_lengths`: per-document field lengths
+- `field_idf`: BM25 IDF for fielded terms
+- `field_avg`: average field lengths for BM25 normalization
 
 ## LLM Wiki and knowledge graph artifacts
 

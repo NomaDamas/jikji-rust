@@ -125,6 +125,20 @@ def test_compact_brief_uses_graph_routes_and_is_smaller(tmp_path, capsys):
     assert len(compact) < len(full) * 0.7
 
 
+def test_find_cli_returns_minimal_paths(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    (tmp_path / "contracts").mkdir()
+    (tmp_path / "contracts" / "ACME.txt").write_text("ACME payment clause", encoding="utf-8")
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+    assert main(["find", str(tmp_path), "ACME payment", "--first"]) == 0
+    assert capsys.readouterr().out.strip() == "contracts/ACME.txt"
+    assert main(["find", str(tmp_path), "ACME payment", "--first", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["paths"] == ["contracts/ACME.txt"]
+
+
 def test_graph_cli_status_query_and_explain(tmp_path, capsys):
     from jikji.__main__ import main
 
@@ -247,7 +261,7 @@ def test_doctor_json_reports_ok(tmp_path, capsys):
     report = json.loads(out)
     assert report["ok"] is True
     assert report["errors"] == []
-    assert report["manifest"]["search_index_schema_version"] == 2
+    assert report["manifest"]["search_index_schema_version"] == 3
     assert report["image_support"]["metadata_indexing"] is True
     assert isinstance(report["image_support"]["ocr_active"], bool)
 
@@ -719,11 +733,16 @@ def test_instant_search_index_includes_cached_document_text(tmp_path):
     con = sqlite3.connect(db)
     try:
         schema = con.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()[0]
-        assert int(schema) == INSTANT_SEARCH_SCHEMA_VERSION == 2
+        assert int(schema) == INSTANT_SEARCH_SCHEMA_VERSION == 3
         source = con.execute("SELECT row_json FROM docs").fetchone()[0]
         assert "고유단서테스트" in source
         terms = {row[0] for row in con.execute("SELECT term FROM terms")}
         assert "고유단서테스트" in terms
+        fields = {row[0] for row in con.execute("SELECT DISTINCT field FROM field_lengths")}
+        assert {"path", "name", "ext", "body", "meta", "semantic"} <= fields
+        body_tf = con.execute("SELECT tf FROM field_terms WHERE field='body' AND term='고유단서테스트'").fetchone()
+        assert body_tf and body_tf[0] >= 1
+        assert con.execute("SELECT value FROM field_idf WHERE term='고유단서테스트'").fetchone()
     finally:
         con.close()
 

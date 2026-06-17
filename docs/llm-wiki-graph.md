@@ -34,6 +34,24 @@ The compact payload returns:
 
 Only when the compact route is empty or ambiguous should the agent read `.jikji/knowledge_graph.json`, `.jikji/graph_routes.jsonl`, full `brief`, or older map JSONL artifacts.
 
+## Deterministic-first retrieval loop
+
+For a single file lookup, the ideal path is zero LLM calls:
+
+```bash
+jikji find /path/to/root "user request text" --first
+```
+
+Jikji now indexes each file as a fielded document:
+
+- path / folder path
+- filename / extension
+- extracted body text (`doc_text` or native text)
+- metadata tags / summaries / format hints
+- deterministic semantic text (`content_terms`, `rare_terms`, `phrase_signatures`, `intent_tags`, evidence previews)
+
+The instant SQLite index stores field term frequencies, field lengths, field IDF, and average field lengths. Search uses field-weighted BM25 first, then Jikji's map/card scoring and duplicate/path heuristics. LLMs should only enter the loop after deterministic `find`/`brief --compact` fails: generate query variants, run Jikji again for each variant, merge top-n, then judge whether a candidate is sufficient.
+
 ## Graph exploration commands
 
 Jikji also exposes explicit graph inspection commands for agents or humans who want the LLM Wiki-style traversal layer directly:

@@ -38,6 +38,7 @@ Jikji must not:
 The stable commands are:
 
 ```bash
+jikji find /path/to/folder "query" [--first] [--json]   # path-only deterministic lookup
 jikji search /path/to/folder "query" [--top-k N] [--json]
 jikji agent-skill-install [--agent NAME|all] [--prepare-root PATH] [--foreground-prepare] [--no-prepare] [--json]
 jikji skill-export [--dest /agent/skills/jikji/SKILL.md] [--json]
@@ -50,7 +51,8 @@ jikji eval-generate /path/to/folder [--cases N] [--json]
 jikji eval /path/to/folder [--top-k N] [--json]
 ```
 
-`search` is the primary local-agent entry point. It may auto-prepare a missing
+`find` is the primary zero-LLM path for one-file lookup: it prints likely paths only.
+`search` is the primary local-agent ranked-candidate entry point. Both may auto-prepare a missing
 instant index for the explicit root, use a stale-but-present index for immediate
 results, and launch a background refresh unless disabled. Manual
 `prepare`/`refresh` are administrative controls, not something users should need
@@ -183,30 +185,32 @@ Write policy:
 
 A local agent using Jikji should follow this sequence:
 
-1. Run `jikji brief ROOT "query" --compact --json` first. This is the
-   lowest-token path: it returns only ranked graph-route candidates, source wiki
-   paths, cache hints, and short evidence.
-2. Run `jikji brief ROOT "query" --json` for a fuller query-specific route
+1. Run `jikji find ROOT "query" --first` first for a single-file lookup. This is
+   the lowest-token path and usually returns only one relative path.
+2. Run `jikji brief ROOT "query" --compact --json` when the agent needs route
+   evidence, source wiki paths, cache hints, and short evidence.
+3. Run `jikji brief ROOT "query" --json` for a fuller query-specific route
    sheet when compact evidence is insufficient. Use its candidate paths first
    when evidence/reasons match.
-3. Run `jikji search ROOT "query" --json` when only ranked candidates are
+4. Run `jikji search ROOT "query" --json` when only ranked candidates are
    needed or when refining the query.
-4. Read `.jikji_agent_map.md`.
-5. Read `.jikji/wiki/index.md`, `.jikji/graph_routes.jsonl`, or
+5. Read `.jikji_agent_map.md`.
+6. Read `.jikji/wiki/index.md`, `.jikji/graph_routes.jsonl`, or
    `.jikji/knowledge_graph.json` to traverse source/term/intent/folder links.
-6. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md` for human-oriented
+7. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md` for human-oriented
    fallback routing.
-7. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
+8. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
    `.jikji/document_index.jsonl` with `rg`/`jq` only after compact routes are
    insufficient.
-8. Search parser-required document bodies in `.jikji/doc_text/`.
-9. Search native text-like files in their original locations, excluding `.jikji`.
-10. Open the original file only through the `path` field after finding a match.
-11. Never move, rename, delete, or reorganize source files as part of search.
+9. Search parser-required document bodies in `.jikji/doc_text/`.
+10. Search native text-like files in their original locations, excluding `.jikji`.
+11. Open the original file only through the `path` field after finding a match.
+12. Never move, rename, delete, or reorganize source files as part of search.
 
 Example:
 
 ```bash
+jikji find . "contract pdf from last spring" --first
 jikji brief . "contract pdf from last spring" --top-k 10 --compact --json
 rg "contract|계약" .jikji/doc_text .jikji/*.jsonl
 jq -r 'select(.ext==".pdf") | [.path, .text_cache_path] | @tsv' .jikji/document_index.jsonl

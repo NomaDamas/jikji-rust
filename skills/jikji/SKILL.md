@@ -45,16 +45,17 @@ Then use `~/.local/share/jikji/repo/.venv/bin/jikji` for all commands, or add th
 ## Absolute rule: Jikji search FIRST, never crawl blind
 
 When Jikji is installed and a root has a `.jikji/` index, you MUST treat
-`jikji brief --compact` / `jikji search` as the **mandatory first action** for any local
+`jikji find` / `jikji brief --compact` / `jikji search` as the **mandatory first action** for any local
 file/folder/document discovery request. This is non-negotiable:
 
 - **NEVER** start by running `grep`, `rg`, `ls`, `find`, `fd`, `cat`, `tree`,
   or any manual filesystem crawl to locate a file. Jikji has already built the
   map; re-crawling wastes turns and is strictly slower.
 - Your **first tool call** must be:
-  `jikji brief /explicit/root "natural language clue" --top-k 10 --compact --json`
+  `jikji find /explicit/root "natural language clue" --first`
   (or `jikji search …` when you only need ranked candidates).
-- Accept the injected `candidates[].p` list as your working answer. Open at
+  Use `jikji brief … --compact --json` only when evidence/wiki/cache hints are needed.
+- For `find`, accept the printed path as the working answer. For JSON `brief`, accept `candidates[].p` as the working answer. Open at
   most the top 1–3 candidates, or `candidates[].wiki`/`cache`, only to verify.
 - `grep`/`rg`/`ls`/`find` are permitted **only** as a last resort, and **only
   after** Jikji returned an empty or clearly-wrong candidate list.
@@ -74,7 +75,12 @@ file/folder/document discovery request. This is non-negotiable:
 
 ## Fast agent protocol
 
-Default to `brief` for autonomous work:
+Default to the smallest deterministic command that answers the task:
+For a single file path, default to `find`:
+
+```bash
+jikji find /explicit/root "natural language file clue" --first
+```
 
 ```bash
 jikji brief /explicit/root "natural language file clue" --top-k 10 --compact --json

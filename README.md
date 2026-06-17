@@ -43,7 +43,7 @@ guess query → list folders → grep files → open documents → repeat
 Jikji-equipped agents use a map:
 
 ```text
-jikji brief ROOT "query" --compact --json → ranked graph paths + evidence → verify only if needed
+jikji find ROOT "query" --first → path only (0 LLM calls)
 ```
 
 ## Quick start
@@ -87,6 +87,14 @@ with `pip install "jikji[media]"`; enable transcription with
 jikji brief ~/Documents "작년 봄 계약서 PDF" --top-k 10 --compact --json
 jikji search ~/Documents "파일명, 본문 단서, 문서 설명" --top-k 10 --json
 ```
+
+에이전트가 파일 하나만 찾으면 가장 먼저 `find`를 씁니다:
+
+```bash
+jikji find ~/Documents "작년 봄 계약서 PDF" --first
+```
+
+`brief --compact`는 evidence/wiki/cache까지 필요한 경우의 다음 단계입니다.
 
 GUI 관리 대시보드:
 

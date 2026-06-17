@@ -142,7 +142,8 @@ and can run the `jikji` CLI.
 When a user asks an agent to find a local file or document:
 
 1. Require an explicit root path. Do not silently scan every drive.
-2. Run `jikji brief ROOT "query" --top-k 10 --compact --json` first.
+2. For a single file path, run `jikji find ROOT "query" --first` first.
+   Use `jikji brief ROOT "query" --top-k 10 --compact --json` when evidence/wiki/cache hints are needed.
 3. If only ranked paths are needed, run `jikji search ROOT "query" --top-k 10 --json`.
 4. Prefer candidate paths returned by Jikji when evidence/reasons match.
 5. Open original files only for final verification.
@@ -150,7 +151,12 @@ When a user asks an agent to find a local file or document:
    generated map/indexes -> `.jikji/doc_text/` -> original text files.
 7. Never move, rename, delete, or reorganize original files.
 
-Minimal command:
+Minimal commands:
+Zero-LLM path-only command:
+
+```bash
+jikji find /explicit/root "natural language file clue" --first
+```
 
 ```bash
 jikji brief /explicit/root "natural language file clue" --top-k 10 --compact --json

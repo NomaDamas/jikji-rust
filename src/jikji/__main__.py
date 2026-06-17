@@ -619,6 +619,37 @@ def cmd_brief(args) -> int:
     return 0
 
 
+def cmd_find(args) -> int:
+    root = Path(args.path).expanduser().resolve()
+    index_status, should_prepare = _search_index_status(root, stale_after_seconds=args.stale_after_seconds)
+    if args.fresh or (should_prepare and args.auto_prepare):
+        build_agent_index(root, _search_config_from_args(args))
+        index_status = "prepared_now" if should_prepare else "refreshed_now"
+    elif should_prepare and not args.auto_prepare:
+        print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
+        return 1
+    ranked = search(root, args.query, top_k=args.top_k)
+    paths = [str(item.get("path") or "") for item in ranked if item.get("path")]
+    if args.first:
+        paths = paths[:1]
+        ranked = ranked[:1]
+    candidates = [
+        {
+            "p": item.get("path"),
+            "s": item.get("score"),
+            "why": (item.get("reasons") or [])[:3],
+            "terms": (item.get("matched_terms") or [])[:6],
+        }
+        for item in ranked
+    ]
+    payload = {"root": str(root), "q": args.query, "index": index_status, "paths": paths, "candidates": candidates}
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+    else:
+        for path in paths:
+            print(path)
+    return 0
+
 
 def cmd_graph(args) -> int:
     root = Path(args.path).expanduser().resolve()
@@ -1697,6 +1728,24 @@ def main(argv: list[str] | None = None) -> int:
     p_analyze.add_argument("--top-k", type=int, default=50)
     p_analyze.add_argument("--json", action="store_true")
     p_analyze.set_defaults(func=cmd_bench_analyze)
+
+    p_find = sub.add_parser("find", help="print likely paths only; zero-LLM file lookup handoff")
+    p_find.add_argument("path")
+    p_find.add_argument("query")
+    p_find.add_argument("--top-k", type=int, default=5)
+    p_find.add_argument("--first", action="store_true", help="print/return only the top path")
+    p_find.add_argument("--fresh", action="store_true", help="run a foreground refresh before finding")
+    p_find.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false")
+    p_find.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60)
+    p_find.add_argument("--max-files", type=int, default=100_000)
+    p_find.add_argument("--include-hidden", action="store_true")
+    p_find.add_argument("--include-sensitive", action="store_true")
+    p_find.add_argument("--exclude", action="append", default=[])
+    p_find.add_argument("--max-hash-bytes", type=int, default=512 * 1024 * 1024)
+    p_find.add_argument("--parse-timeout", type=float, default=5.0)
+    p_find.add_argument("--json", action="store_true")
+    p_find.set_defaults(auto_prepare=True, background_refresh=False)
+    p_find.set_defaults(func=cmd_find)
 
     p_search = sub.add_parser("search", help="rank likely files from Jikji indexes for a natural-language query")
     p_search.add_argument("path")

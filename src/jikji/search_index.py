@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 INSTANT_SEARCH_INDEX = "search_index.sqlite"
-INSTANT_SEARCH_SCHEMA_VERSION = 2
+INSTANT_SEARCH_SCHEMA_VERSION = 3
 _DOC_TEXT_INDEX_CHARS = 64_000
 
 _TOKEN_RE = re.compile(r"[0-9A-Za-z가-힣ぁ-ゟ゠-ヿ一-鿿][0-9A-Za-z가-힣ぁ-ゟ゠-ヿ一-鿿_.+-]*")
@@ -305,6 +305,62 @@ def terms_for_row(row: dict[str, Any]) -> set[str]:
         out.update(_cjk_ngrams(str(key), limit=64))
     return {term for term in out if term}
 
+_FIELD_WEIGHTS = {
+    "path": 5.0,
+    "name": 6.0,
+    "ext": 2.0,
+    "body": 1.0,
+    "meta": 2.2,
+    "semantic": 3.0,
+}
+
+
+def _token_counts(text: str, *, limit: int = 4096) -> Counter[str]:
+    counts: Counter[str] = Counter()
+    for token in _tokens(text, limit=limit):
+        for variant in _term_variants(token):
+            counts[variant] += 1
+        for gram in _cjk_ngrams(token, limit=128):
+            counts[gram] += 1
+    return counts
+
+
+def fielded_terms_for_row(row: dict[str, Any]) -> dict[str, Counter[str]]:
+    card = row.get("_map_card") or {}
+    fields = {
+        "path": " ".join([
+            str(row.get("path") or ""),
+            " ".join(str(x) for x in (row.get("filename_lookup_keys") or [])),
+            " ".join(str(x) for x in (card.get("path_terms") or [])),
+            " ".join(str(x) for x in (card.get("folder_terms") or [])),
+        ]),
+        "name": " ".join([
+            str(row.get("name") or ""),
+            Path(str(row.get("name") or "")).stem,
+            " ".join(str(x) for x in (card.get("name_terms") or [])),
+        ]),
+        "ext": str(row.get("ext") or "").lstrip("."),
+        "body": " ".join([
+            str(row.get("_source_text") or "")[:24_000],
+            str(row.get("_body_text") or "")[:24_000],
+            str(row.get("_map_text") or "")[:12_000],
+        ]),
+        "meta": " ".join([
+            str(row.get("summary") or ""),
+            " ".join(str(x) for x in (row.get("semantic_hints") or [])),
+            " ".join(str(x) for x in (row.get("keywords") or [])),
+            " ".join(str(x) for x in (card.get("format_hints") or [])),
+        ]),
+        "semantic": " ".join([
+            str(row.get("_map_content_text") or ""),
+            str(row.get("_map_rare_text") or ""),
+            str(row.get("_map_phrase_text") or ""),
+            str(row.get("_map_intent_text") or ""),
+            str(row.get("_map_evidence_text") or ""),
+        ]),
+    }
+    return {field: _token_counts(text) for field, text in fields.items()}
+
 
 def build_instant_search_index(
     index_dir: Path,
@@ -329,6 +385,10 @@ def build_instant_search_index(
     rows: list[dict[str, Any]] = []
     term_rows: list[tuple[str, int]] = []
     filename_rows: list[tuple[str, int]] = []
+    field_term_rows: list[tuple[str, str, int, int]] = []
+    field_len_rows: list[tuple[int, str, int]] = []
+    field_df: Counter[str] = Counter()
+    field_len_totals: Counter[str] = Counter()
     df: Counter[str] = Counter()
     for doc_id, card in enumerate(file_cards, 1):
         row = row_from_card(card, chunks_by_path.get(str(card.get("path") or ""), []), root=index_dir.parent)
@@ -337,6 +397,16 @@ def build_instant_search_index(
         df.update(terms)
         term_rows.extend((term, doc_id) for term in terms)
         filename_rows.extend((str(key).casefold(), doc_id) for key in (row.get("filename_lookup_keys") or []))
+        fielded = fielded_terms_for_row(row)
+        field_seen: set[str] = set()
+        for field, counts in fielded.items():
+            field_len = sum(counts.values())
+            field_len_rows.append((doc_id, field, field_len))
+            field_len_totals[field] += field_len
+            for term, tf in counts.items():
+                field_term_rows.append((term, field, doc_id, int(tf)))
+                field_seen.add(term)
+        field_df.update(field_seen)
 
     total = max(1, len(rows))
     con = sqlite3.connect(str(tmp))
@@ -352,6 +422,10 @@ def build_instant_search_index(
         con.execute("CREATE TABLE terms(term TEXT NOT NULL, doc_id INTEGER NOT NULL)")
         con.execute("CREATE TABLE filename_keys(key TEXT NOT NULL, doc_id INTEGER NOT NULL)")
         con.execute("CREATE TABLE idf(term TEXT PRIMARY KEY, value REAL NOT NULL)")
+        con.execute("CREATE TABLE field_terms(term TEXT NOT NULL, field TEXT NOT NULL, doc_id INTEGER NOT NULL, tf INTEGER NOT NULL)")
+        con.execute("CREATE TABLE field_lengths(doc_id INTEGER NOT NULL, field TEXT NOT NULL, length INTEGER NOT NULL)")
+        con.execute("CREATE TABLE field_idf(term TEXT PRIMARY KEY, value REAL NOT NULL)")
+        con.execute("CREATE TABLE field_avg(field TEXT PRIMARY KEY, value REAL NOT NULL)")
         con.executemany(
             "INSERT INTO docs(id,path,name,ext,duplicate_group_id,row_json) VALUES(?,?,?,?,?,?)",
             [
@@ -368,9 +442,19 @@ def build_instant_search_index(
         )
         con.executemany("INSERT INTO terms(term,doc_id) VALUES(?,?)", term_rows)
         con.executemany("INSERT INTO filename_keys(key,doc_id) VALUES(?,?)", filename_rows)
+        con.executemany("INSERT INTO field_terms(term,field,doc_id,tf) VALUES(?,?,?,?)", field_term_rows)
+        con.executemany("INSERT INTO field_lengths(doc_id,field,length) VALUES(?,?,?)", field_len_rows)
         con.executemany(
             "INSERT INTO idf(term,value) VALUES(?,?)",
             [(term, math.log((1 + total) / (1 + freq)) + 1.0) for term, freq in df.items()],
+        )
+        con.executemany(
+            "INSERT INTO field_idf(term,value) VALUES(?,?)",
+            [(term, math.log((total - freq + 0.5) / (freq + 0.5) + 1.0)) for term, freq in field_df.items()],
+        )
+        con.executemany(
+            "INSERT INTO field_avg(field,value) VALUES(?,?)",
+            [(field, total_len / total) for field, total_len in sorted(field_len_totals.items())],
         )
         con.executemany(
             "INSERT INTO meta(key,value) VALUES(?,?)",
@@ -382,6 +466,8 @@ def build_instant_search_index(
         )
         con.execute("CREATE INDEX idx_terms_term ON terms(term)")
         con.execute("CREATE INDEX idx_filename_keys_key ON filename_keys(key)")
+        con.execute("CREATE INDEX idx_field_terms_term ON field_terms(term)")
+        con.execute("CREATE INDEX idx_field_terms_doc ON field_terms(doc_id)")
         con.commit()
     finally:
         con.close()

@@ -23,7 +23,12 @@ from .agent_index import (
     _filename_lookup_keys,
     _tokens_from_text,
 )
-from .search_index import INSTANT_SEARCH_SCHEMA_VERSION, _read_native_body, instant_index_path
+from .search_index import (
+    _FIELD_WEIGHTS,
+    INSTANT_SEARCH_SCHEMA_VERSION,
+    _read_native_body,
+    instant_index_path,
+)
 
 EVAL_DIR = ".jikji/eval"
 EVAL_SET_NAME = "eval_set.jsonl"
@@ -1159,6 +1164,7 @@ def _score_map(query: str, row: dict, *, idf: dict[str, float] | None = None) ->
     """Score a candidate using only Jikji map-card/chunk features."""
     card = row.get("_map_card") or {}
     chunks = row.get("_map_chunks") or []
+    fielded_bm25_score = float(row.get("_fielded_bm25_score") or 0.0)
     if not card:
         return 0.0, [], [], []
 
@@ -1486,6 +1492,9 @@ def _score_map(query: str, row: dict, *, idf: dict[str, float] | None = None) ->
         score *= 0.18
         reasons.append("note-decoy-discount")
 
+    if fielded_bm25_score > 0:
+        score += fielded_bm25_score * 18.0
+        reasons.append("fielded-bm25")
     return score, reasons, matched_terms[:12], matched_intents[:8]
 
 
@@ -1874,14 +1883,52 @@ def _instant_search_index(root: Path, query: str, *, top_k: int = 10) -> SearchI
             ranked_ids: list[int] = []
             if needles:
                 placeholders = ",".join("?" for _ in needles)
-                ranked_ids = [
-                    int(row["doc_id"])
+                field_idf = {
+                    str(row["term"]): float(row["value"])
+                    for row in con.execute(f"SELECT term,value FROM field_idf WHERE term IN ({placeholders})", tuple(sorted(needles)))
+                }
+                field_avg = {
+                    str(row["field"]): max(1.0, float(row["value"]))
+                    for row in con.execute("SELECT field,value FROM field_avg")
+                }
+                field_lengths = {
+                    (int(row["doc_id"]), str(row["field"])): max(0, int(row["length"]))
                     for row in con.execute(
-                        f"SELECT doc_id, COUNT(*) AS c FROM terms WHERE term IN ({placeholders}) "
-                        "GROUP BY doc_id ORDER BY c DESC, doc_id LIMIT ?",
+                        f"SELECT doc_id,field,length FROM field_lengths WHERE doc_id IN ("
+                        f"SELECT DISTINCT doc_id FROM field_terms WHERE term IN ({placeholders}) LIMIT ?)" ,
                         (*sorted(needles), cap),
                     )
-                ]
+                }
+                bm25_scores: Counter[int] = Counter()
+                k1 = 1.2
+                b = 0.75
+                for row in con.execute(
+                    f"SELECT term,field,doc_id,tf FROM field_terms WHERE term IN ({placeholders}) LIMIT ?",
+                    (*sorted(needles), cap * 32),
+                ):
+                    term = str(row["term"])
+                    field = str(row["field"])
+                    doc_id = int(row["doc_id"])
+                    tf = max(0, int(row["tf"]))
+                    if tf <= 0:
+                        continue
+                    idf_value = field_idf.get(term, 0.0)
+                    avg_len = field_avg.get(field, 1.0)
+                    doc_len = max(1, field_lengths.get((doc_id, field), 1))
+                    denom = tf + k1 * (1.0 - b + b * (doc_len / avg_len))
+                    bm25 = idf_value * (tf * (k1 + 1.0) / denom)
+                    bm25_scores[doc_id] += bm25 * _FIELD_WEIGHTS.get(field, 1.0)
+                if bm25_scores:
+                    ranked_ids = [doc_id for doc_id, _ in bm25_scores.most_common(cap)]
+                else:
+                    ranked_ids = [
+                        int(row["doc_id"])
+                        for row in con.execute(
+                            f"SELECT doc_id, COUNT(*) AS c FROM terms WHERE term IN ({placeholders}) "
+                            "GROUP BY doc_id ORDER BY c DESC, doc_id LIMIT ?",
+                            (*sorted(needles), cap),
+                        )
+                    ]
             ids: list[int] = []
             seen: set[int] = set()
             for doc_id in direct_ids + ranked_ids:
@@ -1895,7 +1942,14 @@ def _instant_search_index(root: Path, query: str, *, top_k: int = 10) -> SearchI
                 int(row["id"]): json.loads(str(row["row_json"]))
                 for row in con.execute(f"SELECT id,row_json FROM docs WHERE id IN ({placeholders})", ids)
             }
-            rows = [rows_by_id[doc_id] for doc_id in ids if doc_id in rows_by_id]
+            rows = []
+            for doc_id in ids:
+                if doc_id not in rows_by_id:
+                    continue
+                row = rows_by_id[doc_id]
+                if 'bm25_scores' in locals() and doc_id in bm25_scores:
+                    row["_fielded_bm25_score"] = float(bm25_scores[doc_id])
+                rows.append(row)
             if not rows:
                 return None
             idf: dict[str, float] = {}
