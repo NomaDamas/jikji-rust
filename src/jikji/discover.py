@@ -20,6 +20,26 @@ _EVIDENCE_HINTS = {
     "supporting", "evidence", "records", "versions", "minutes", "items",
     "responsibilities", "tasks", "plans", "before", "after", "history",
 }
+_GENERIC_PATH_ANCHORS = {
+    "CEO",
+    "CFO",
+    "COO",
+    "CTO",
+    "DOC",
+    "DOCX",
+    "INC",
+    "LLC",
+    "NDA",
+    "PDF",
+    "PPT",
+    "PPTX",
+    "RFP",
+    "TXT",
+    "XLS",
+    "XLSX",
+}
+
+
 
 _TOPIC_REWRITES: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
     (("sport", "sports", "interest"), ("tennis club lessons booking", "sports club application lessons")),
@@ -68,8 +88,29 @@ def query_variants(query: str) -> list[str]:
     return out[:6]
 
 
+def _path_anchors(query: str) -> list[str]:
+    anchors: list[str] = []
+    for word in str(query or "").split():
+        token = word.strip(".,:;!?()[]{}\"'")
+        if len(token) < 3 or not (token.isupper() or any(ch.isdigit() for ch in token)):
+            continue
+        if token.upper() in _GENERIC_PATH_ANCHORS:
+            continue
+        anchors.append(token.casefold())
+    seen: set[str] = set()
+    out: list[str] = []
+    for anchor in anchors:
+        if anchor not in seen:
+            seen.add(anchor)
+            out.append(anchor)
+    return out
+
+
+
+
 def _merge_candidates(root: Path, variants: list[str], *, top_k: int, per_query_k: int) -> list[dict[str, Any]]:
     merged: OrderedDict[str, dict[str, Any]] = OrderedDict()
+    path_anchors = _path_anchors(variants[0] if variants else "")
     for variant in variants:
         for rank, item in enumerate(search(root, variant, top_k=per_query_k), 1):
             path = str(item.get("path") or "")
@@ -77,6 +118,9 @@ def _merge_candidates(root: Path, variants: list[str], *, top_k: int, per_query_
                 continue
             score = float(item.get("score") or 0.0)
             weighted = score / max(1.0, rank ** 0.35)
+            path_key = path.casefold()
+            if path_anchors and any(anchor in path_key for anchor in path_anchors):
+                weighted = weighted * 8.0 + 50_000.0
             existing = merged.get(path)
             if existing is None:
                 clone = dict(item)

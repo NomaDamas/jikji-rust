@@ -196,6 +196,27 @@ def test_discover_cli_classifies_and_returns_candidates(tmp_path, capsys):
     assert payload["query_variants"]
 
 
+def test_discover_promotes_explicit_path_anchor(tmp_path):
+    from jikji.discover import discover
+
+    (tmp_path / "contracts").mkdir()
+    (tmp_path / "contracts" / "Generic-NDA.pdf").write_text(
+        "non disclosure agreement confidential information", encoding="utf-8"
+    )
+    (tmp_path / "contracts" / "IGC-Non-Disclosure-Agreement-LSE-Sample.pdf").write_text(
+        "London School of Economics confidentiality agreement signed talks public disclosure",
+        encoding="utf-8",
+    )
+    build_agent_index(tmp_path, Config())
+
+    payload = discover(
+        tmp_path,
+        "Can we publicly say we are in talks with LSE after signing a confidentiality agreement?",
+        top_k=5,
+    )
+    assert payload["paths"][0] == "contracts/IGC-Non-Disclosure-Agreement-LSE-Sample.pdf"
+
+
 def test_graph_cli_status_query_and_explain(tmp_path, capsys):
     from jikji.__main__ import main
 
