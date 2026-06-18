@@ -67,6 +67,8 @@ def _config_from_args(args) -> Config:
     cfg.agent_doc_text_max_chars = args.doc_text_max_chars
     cfg.agent_doc_text_chunk_chars = args.doc_text_chunk_chars
     cfg.max_hash_bytes = args.max_hash_bytes
+    cfg.enable_media_index = bool(getattr(args, "enable_media_index", False))
+    cfg.media_index_max_mb = float(getattr(args, "media_index_max_mb", 25.0) or 25.0)
     if args.exclude:
         cfg.ignore_patterns.extend(args.exclude)
     return cfg
@@ -1727,6 +1729,8 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--parse-timeout", type=float, default=5.0)
         p.add_argument("--doc-text-max-chars", type=int, default=2_000_000)
         p.add_argument("--doc-text-chunk-chars", type=int, default=1_000_000)
+        p.add_argument("--enable-media-index", action="store_true", help="opt in to bounded local OCR/ASR for image/audio/video; may use CPU/RAM")
+        p.add_argument("--media-index-max-mb", type=float, default=25.0, help="skip media OCR/ASR for files larger than this size")
         p.add_argument("--json", action="store_true")
 
     p_prepare = sub.add_parser("prepare", help="create/update .jikji without moving files")

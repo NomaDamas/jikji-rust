@@ -42,3 +42,5 @@ class Config:
     parse_timeout_s: float = 5.0
     agent_doc_text_max_chars: int = 2_000_000
     agent_doc_text_chunk_chars: int = 1_000_000
+    enable_media_index: bool = False
+    media_index_max_mb: float = 25.0

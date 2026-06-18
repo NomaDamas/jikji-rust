@@ -23,6 +23,7 @@ from typing import Any
 
 from .agent_index import build_agent_index
 from .config import Config
+from .discover import discover
 from .eval import search
 from .search_index import instant_index_path
 
@@ -112,6 +113,12 @@ def root_status(root: Path) -> dict[str, Any]:
         "manifest": manifest,
         "graph_stats": graph_stats,
         "artifacts": artifacts,
+        "default_agent_command": "jikji discover ROOT \"query\" --top-k 20 --json",
+        "capabilities": {
+            "discover": "query_type + confidence + adaptive candidate cascade",
+            "search": "ranked candidates",
+            "graph": "LLM Wiki knowledge graph status",
+        },
         "paths": {name: str(path) for name, path in required.items()},
     }
 
@@ -162,6 +169,7 @@ small { color:var(--mut); }
     <input id="rootInput" placeholder="관리할 폴더 경로 예: /home/me/Documents" />
     <button class="primary" id="switchBtn">root 추가/전환</button>
     <button id="refreshBtn">prepare/refresh</button>
+    <label class="meta"><input type="checkbox" id="mediaOpt" style="min-width:auto; width:auto" /> 멀티모달 OCR/ASR opt-in</label>
   </div>
   <div id="statusLine"></div>
   <div id="metrics" class="grid"></div>
@@ -169,11 +177,11 @@ small { color:var(--mut); }
 </section>
 
 <section class="panel">
-  <h2>보조 검색</h2>
-  <div class="sub">에이전트가 쓸 후보가 맞는지 사람이 확인할 때만 사용합니다. 결과는 원본 열기/다운로드를 제공합니다.</div>
+  <h2>Discover 검증</h2>
+  <div class="sub">현재 agent 기본 진입점은 <code>jikji discover ROOT "query" --top-k 20 --json</code>입니다. query type, confidence, recommended action, 후보 evidence를 사람이 확인합니다.</div>
   <form class="row" id="form">
     <input id="q" autocomplete="off" placeholder="예: 작년 봄 ACME 계약서 PDF / invoice payment clause / 회의록" />
-    <button class="primary" type="submit">검색</button>
+    <button class="primary" type="submit">discover</button>
   </form>
 </section>
 <div id="results"></div>
@@ -187,6 +195,7 @@ const statusLine = document.getElementById('statusLine');
 const metrics = document.getElementById('metrics');
 const artifacts = document.getElementById('artifacts');
 const results = document.getElementById('results');
+const mediaOpt = document.getElementById('mediaOpt');
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function enc(s){ return encodeURIComponent(String(s ?? '')); }
 async function api(path, opts={}){
@@ -201,32 +210,44 @@ async function api(path, opts={}){
 function metric(k,v){ return `<div class="metric"><div class="v">${esc(v ?? '—')}</div><div class="k">${esc(k)}</div></div>`; }
 function renderStatus(s){
   rootInput.value = s.root || '';
-  const m = s.manifest || {}; const g = s.graph_stats || {};
-  statusLine.innerHTML = `${s.prepared ? '<span class="ok">prepared</span>' : '<span class="err">not prepared</span>'} · <small>${esc(s.root)}</small>`;
+  const m = s.manifest || {}; const g = s.graph_stats || {}; const media = m.media_index || {};
+  statusLine.innerHTML = `${s.prepared ? '<span class="ok">prepared</span>' : '<span class="err">not prepared</span>'} · <small>${esc(s.root)}</small> · <code>${esc(s.default_agent_command || '')}</code>`;
   metrics.innerHTML = [
     metric('files', m.files), metric('folders', m.folders), metric('documents', m.documents), metric('parse errors', m.parse_errors),
-    metric('wiki sources', m.llm_wiki_sources), metric('graph nodes', g.nodes || m.knowledge_graph_nodes), metric('graph edges', g.edges || m.knowledge_graph_edges), metric('search index bytes', m.search_index_bytes)
+    metric('wiki sources', m.llm_wiki_sources), metric('graph nodes', g.nodes || m.knowledge_graph_nodes), metric('graph edges', g.edges || m.knowledge_graph_edges), metric('media index', media.status || '—'), metric('media files', media.media_files), metric('search index bytes', m.search_index_bytes)
   ].join('');
   artifacts.innerHTML = '<h3>Artifacts</h3>' + Object.entries(s.artifacts || {}).map(([k,v]) => `<div class="path">${v ? '✓' : '✗'} ${esc(k)} <small>${esc((s.paths||{})[k]||'')}</small></div>`).join('');
 }
 async function loadStatus(){ try { renderStatus(await api('/api/status')); } catch(e){ statusLine.innerHTML='<span class="err">'+esc(e.message)+'</span>'; } }
 async function switchRoot(){ statusLine.textContent='root 전환/prepare 중…'; renderStatus(await api('/api/root?path=' + enc(rootInput.value), {method:'POST'})); }
-async function refreshRoot(){ statusLine.textContent='prepare/refresh 중…'; renderStatus(await api('/api/refresh', {method:'POST'})); }
+async function refreshRoot(){
+  if(mediaOpt.checked && !confirm('이미지/음성/영상 OCR·ASR은 CPU/RAM을 사용할 수 있습니다. 큰 미디어는 건너뛰고 bounded mode로 진행합니다. 계속할까요?')) return;
+  statusLine.textContent='prepare/refresh 중…';
+  const suffix = mediaOpt.checked ? '?enable_media=1' : '';
+  renderStatus(await api('/api/refresh' + suffix, {method:'POST'}));
+}
 async function openPath(path){ await api('/open?path=' + enc(path), {method:'POST'}); statusLine.textContent = '열기 요청: ' + path; }
-function render(items){
-  if(!items.length){ results.innerHTML = '<div class="empty">검색 결과가 없습니다.</div>'; return; }
-  results.innerHTML = items.map((it, idx) => {
-    const ev = (it.evidence || []).slice(0,2).map(x => `<div class="evidence">${esc(x)}</div>`).join('');
-    const why = (it.reasons || []).join(', ');
-    return `<section class="card"><div class="top"><div><div class="path">${idx+1}. ${esc(it.path)}</div><div class="meta"><span class="score">score ${esc(it.score)}</span> · ${esc(why)} · ${esc((it.matched_terms||[]).slice(0,8).join(', '))}</div><div class="meta">${esc(it.name || '')}</div>${ev}</div><div class="actions"><button type="button" onclick="openPath(decodeURIComponent('${enc(it.path)}')).catch(e => statusLine.innerHTML='<span class=err>'+esc(e.message)+'</span>')">열기</button><a class="btn" href="/download?path=${enc(it.path)}">다운로드</a><button type="button" onclick="api('/reveal?path=${enc(it.path)}',{method:'POST'}).catch(e => statusLine.innerHTML='<span class=err>'+esc(e.message)+'</span>')">폴더 열기</button></div></div></section>`;
+function renderDiscover(data){
+  const items = data.candidates || [];
+  if(!items.length){ results.innerHTML = '<div class="empty">discover 결과가 없습니다.</div>'; return; }
+  const factors = data.confidence_factors || {};
+  const header = `<section class="card"><div class="top"><div><div class="path">Discover: ${esc(data.query_type)} · ${esc(data.confidence)} · score ${esc(data.confidence_score)}</div><div class="meta">action=${esc(data.recommended_action)} · variants=${esc((data.query_variants||[]).join(' / '))}</div><div class="meta">factors: ${Object.entries(factors).map(([k,v]) => esc(k)+'='+esc(v)).join(' · ')}</div></div></div></section>`;
+  const cards = items.map((it, idx) => {
+    const path = it.p || it.path || '';
+    const ev = it.ev ? `<div class="evidence">${esc(it.ev)}</div>` : (it.evidence || []).slice(0,2).map(x => `<div class="evidence">${esc(x)}</div>`).join('');
+    const why = (it.why || it.reasons || []).join(', ');
+    const terms = (it.terms || it.matched_terms || []).slice(0,8).join(', ');
+    const score = it.s ?? it.score ?? '';
+    return `<section class="card"><div class="top"><div><div class="path">${idx+1}. ${esc(path)}</div><div class="meta"><span class="score">score ${esc(score)}</span> · rank ${esc(it.rank ?? '')} · ${esc(why)} · ${esc(terms)}</div><div class="meta">queries: ${esc((it.queries||[]).join(' / '))}</div>${ev}</div><div class="actions"><button type="button" onclick="openPath(decodeURIComponent('${enc(path)}')).catch(e => statusLine.innerHTML='<span class=err>'+esc(e.message)+'</span>')">열기</button><a class="btn" href="/download?path=${enc(path)}">다운로드</a><button type="button" onclick="api('/reveal?path=${enc(path)}',{method:'POST'}).catch(e => statusLine.innerHTML='<span class=err>'+esc(e.message)+'</span>')">폴더 열기</button></div></div></section>`;
   }).join('');
+  results.innerHTML = header + cards;
 }
 async function doSearch(){
   const query = q.value.trim(); if(!query){ q.focus(); return; }
-  statusLine.textContent = '검색 중…'; results.innerHTML = '';
-  const data = await api('/api/search?q=' + enc(query) + '&top_k=20');
-  statusLine.innerHTML = `${esc(data.candidates.length)}개 후보 · <small>${esc(data.root)}</small>`;
-  render(data.candidates);
+  statusLine.textContent = 'discover 중…'; results.innerHTML = '';
+  const data = await api('/api/discover?q=' + enc(query) + '&top_k=20');
+  statusLine.innerHTML = `${esc((data.candidates||[]).length)}개 후보 · ${esc(data.query_type)} · ${esc(data.confidence)} · action ${esc(data.recommended_action)} · <small>${esc(data.root)}</small>`;
+  renderDiscover(data);
 }
 document.getElementById('switchBtn').addEventListener('click', () => switchRoot().catch(e => statusLine.innerHTML='<span class="err">'+esc(e.message)+'</span>'));
 document.getElementById('refreshBtn').addEventListener('click', () => refreshRoot().catch(e => statusLine.innerHTML='<span class="err">'+esc(e.message)+'</span>'));
@@ -252,9 +273,9 @@ class JikjiGuiServer(ThreadingHTTPServer):
         with self._root_lock:
             return self._root
 
-    def prepare_current_root(self) -> None:
+    def prepare_current_root(self, *, enable_media_index: bool = False) -> None:
         root = self.root
-        build_agent_index(root, Config(max_files=100_000))
+        build_agent_index(root, Config(max_files=100_000, enable_media_index=enable_media_index))
 
     def switch_root(self, path_value: str, *, prepare: bool = True) -> None:
         new_root = resolve_gui_root(path_value)
@@ -298,6 +319,8 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, root_status(self.server.root))
             elif parsed.path == "/api/search":
                 self._handle_search()
+            elif parsed.path == "/api/discover":
+                self._handle_discover()
             elif parsed.path == "/download":
                 self._handle_download()
             else:
@@ -322,7 +345,8 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
             elif parsed.path == "/reveal":
                 self._handle_reveal()
             elif parsed.path == "/api/refresh":
-                self.server.prepare_current_root()
+                enable_media = self._query_value("enable_media") in {"1", "true", "yes", "on"}
+                self.server.prepare_current_root(enable_media_index=enable_media)
                 self._send_json(HTTPStatus.OK, root_status(self.server.root))
             elif parsed.path == "/api/root":
                 self.server.switch_root(self._query_value("path"), prepare=True)
@@ -348,6 +372,16 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
             return
         ranked = search(self.server.root, query, top_k=top_k)
         self._send_json(HTTPStatus.OK, {"root": str(self.server.root), "query": query, "candidates": ranked})
+
+    def _handle_discover(self) -> None:
+        query = self._query_value("q").strip()
+        top_k_raw = self._query_value("top_k") or "20"
+        top_k = max(1, min(100, int(top_k_raw) if top_k_raw.isdigit() else 20))
+        if not query:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "missing q"})
+            return
+        payload = discover(self.server.root, query, top_k=top_k)
+        self._send_json(HTTPStatus.OK, payload)
 
     def _handle_download(self) -> None:
         path = resolve_root_path(self.server.root, self._path_param())

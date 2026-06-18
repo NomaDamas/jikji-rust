@@ -9,12 +9,13 @@ back to lightweight metadata.  Preferred CPU backends (auto-detected, optional):
 * Audio/video speech: `faster-whisper
   <https://github.com/SYSTRAN/faster-whisper>`_ (CTranslate2, CPU INT8) when
   importable, else the ``whisper`` CLI.  Transcription stays opt-in via
-  ``JIKJI_ENABLE_TRANSCRIPTION`` because it is expensive.
-* Video frames: optional on-screen-text OCR via ffmpeg keyframes + RapidOCR,
-  gated by ``JIKJI_ENABLE_VIDEO_OCR``.
+  ``JIKJI_ENABLE_MEDIA_INDEX`` or ``JIKJI_ENABLE_TRANSCRIPTION`` because it is
+  expensive.
+* Image OCR and video frames are also opt-in via ``JIKJI_ENABLE_MEDIA_INDEX``
+  (or ``JIKJI_ENABLE_IMAGE_OCR`` / ``JIKJI_ENABLE_VIDEO_OCR`` respectively).
 
 Images always expose lightweight visual metadata (format/dimensions and
-selected datetime EXIF when available) regardless of OCR availability.
+selected datetime EXIF when available) regardless of OCR opt-in.
 """
 from __future__ import annotations
 
@@ -42,6 +43,22 @@ def _env_flag(name: str, default: bool = False) -> bool:
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _media_index_enabled() -> bool:
+    return _env_flag("JIKJI_ENABLE_MEDIA_INDEX", default=False)
+
+
+def _image_ocr_enabled() -> bool:
+    return _media_index_enabled() or _env_flag("JIKJI_ENABLE_IMAGE_OCR", default=False)
+
+
+def _transcription_enabled() -> bool:
+    return _media_index_enabled() or _env_flag("JIKJI_ENABLE_TRANSCRIPTION", default=False)
+
+
+def _video_ocr_enabled() -> bool:
+    return _media_index_enabled() or _env_flag("JIKJI_ENABLE_VIDEO_OCR", default=False)
 
 
 def _env_float(name: str, default: float) -> float:
@@ -329,7 +346,7 @@ def _ocr_image(path: Path, max_chars: int) -> str:
 
 def parse_image(path: Path, max_chars: int) -> str:
     parts = _image_metadata(path)
-    ocr = _ocr_image(path, max_chars)
+    ocr = _ocr_image(path, max_chars) if _image_ocr_enabled() else ""
     if ocr:
         parts.append("# OCR text\n" + ocr)
     return "\n".join(parts)[:max_chars]
@@ -498,7 +515,7 @@ def _transcribe_media(path: Path, max_chars: int) -> str:
 
 
 def _transcribe_audio(path: Path, max_chars: int) -> str:
-    if not _env_flag("JIKJI_ENABLE_TRANSCRIPTION", default=False):
+    if not _transcription_enabled():
         return ""
     max_mb = _env_float("JIKJI_TRANSCRIBE_MAX_MB", 25.0)
     try:
@@ -555,7 +572,7 @@ def _extract_audio_track(path: Path, tmp: str) -> Path | None:
 
 
 def _transcribe_video(path: Path, max_chars: int) -> str:
-    if not _env_flag("JIKJI_ENABLE_TRANSCRIPTION", default=False):
+    if not _transcription_enabled():
         return ""
     with tempfile.TemporaryDirectory(prefix="jikji-video-audio-") as tmp:
         audio = _extract_audio_track(path, tmp)
@@ -565,7 +582,7 @@ def _transcribe_video(path: Path, max_chars: int) -> str:
 
 
 def _video_keyframe_ocr(path: Path, max_chars: int) -> str:
-    if not _env_flag("JIKJI_ENABLE_VIDEO_OCR", default=False):
+    if not _video_ocr_enabled():
         return ""
     if not _rapidocr_available() and shutil.which("tesseract") is None:
         return ""

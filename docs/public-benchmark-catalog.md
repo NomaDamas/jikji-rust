@@ -41,9 +41,9 @@ optional backends enabled:
 python .benchmarks/media_bench/build_corpus.py
 
 # Index with media extraction enabled (optional CPU backends)
-JIKJI_ENABLE_TRANSCRIPTION=1 JIKJI_ENABLE_VIDEO_OCR=1 \
-  JIKJI_WHISPER_MODEL=base.en JIKJI_VIDEO_OCR_FRAMES=3 \
-  jikji prepare .benchmarks/media_bench/corpus --parse-timeout 600
+jikji prepare .benchmarks/media_bench/corpus \
+  --enable-media-index --media-index-max-mb 25 \
+  --parse-timeout 600
 
 # Real-agent raw-vs-Jikji benchmark
 jikji hermes-bench .benchmarks/media_bench/corpus \

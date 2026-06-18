@@ -33,8 +33,7 @@ runtime; default installs stay metadata-only. Install them with:
 pip install "jikji[media]"   # rapidocr-onnxruntime + faster-whisper
 ```
 
-Transcription is opt-in (`JIKJI_ENABLE_TRANSCRIPTION=1`) and video keyframe OCR
-is opt-in (`JIKJI_ENABLE_VIDEO_OCR=1`) because they are expensive.
+Media content indexing is opt-in because OCR/ASR can use CPU/RAM. Prefer the CLI flag `--enable-media-index` (or set `JIKJI_ENABLE_MEDIA_INDEX=1`); Jikji still records lightweight media metadata without opt-in.
 
 ## Reproduce
 
@@ -44,10 +43,9 @@ python .benchmarks/media_bench/build_corpus.py
 
 # 2. Index with media extraction enabled. Raise --parse-timeout because the
 #    first model load is slow.
-JIKJI_ENABLE_TRANSCRIPTION=1 JIKJI_ENABLE_VIDEO_OCR=1 \
-  JIKJI_WHISPER_MODEL=base.en JIKJI_VIDEO_OCR_FRAMES=3 \
-  JIKJI_VIDEO_OCR_INTERVAL_SECONDS=1 \
-  jikji prepare .benchmarks/media_bench/corpus --parse-timeout 600
+jikji prepare .benchmarks/media_bench/corpus \
+  --enable-media-index --media-index-max-mb 25 \
+  --parse-timeout 600
 
 # 3. Real-agent raw-vs-Jikji benchmark
 jikji hermes-bench .benchmarks/media_bench/corpus \

@@ -989,8 +989,19 @@ def build_agent_index(
         raise NotADirectoryError(root)
     index_dir = root / AGENT_DIR_NAME
     index_dir.mkdir(parents=True, exist_ok=True)
-    with _index_lock(index_dir):
-        return _build_agent_index_unlocked(root, config, progress=progress, cancel_check=cancel_check)
+    previous_media_env = {key: os.environ.get(key) for key in ("JIKJI_ENABLE_MEDIA_INDEX", "JIKJI_TRANSCRIBE_MAX_MB")}
+    if bool(getattr(config, "enable_media_index", False)):
+        os.environ["JIKJI_ENABLE_MEDIA_INDEX"] = "1"
+        os.environ["JIKJI_TRANSCRIBE_MAX_MB"] = str(float(getattr(config, "media_index_max_mb", 25.0) or 25.0))
+    try:
+        with _index_lock(index_dir):
+            return _build_agent_index_unlocked(root, config, progress=progress, cancel_check=cancel_check)
+    finally:
+        for key, value in previous_media_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
 
 
 def _build_agent_index_unlocked(
@@ -1253,6 +1264,9 @@ def _build_agent_index_unlocked(
     search_terms = _build_search_terms(folder_rows, file_rows_sorted, doc_rows_sorted)
     _remove_path_quietly(index_dir / "search_terms.json")
     _remove_path_quietly(index_dir / "search_terms.jsonl")
+    media_exts = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp", ".bmp", ".gif", ".mp3", ".wav", ".m4a", ".flac", ".ogg", ".aac", ".opus", ".wma", ".mp4", ".mov", ".mkv", ".avi", ".webm", ".m4v", ".wmv", ".flv", ".mpg", ".mpeg"}
+    media_file_count = sum(1 for p in files if p.suffix.lower() in media_exts)
+    media_index_enabled = bool(getattr(config, "enable_media_index", False))
     manifest = {
         "schema_version": 1,
         "search_index_schema_version": INSTANT_SEARCH_SCHEMA_VERSION,
@@ -1278,6 +1292,13 @@ def _build_agent_index_unlocked(
         "retired_cleanup_paths": RETIRED_GENERATED_PATHS,
         "parser_required_extensions": sorted(DOCUMENT_CACHE_EXTENSIONS),
         "native_text_extensions": sorted(TEXT_LIKE_EXTENSIONS),
+        "media_index": {
+            "enabled": media_index_enabled,
+            "status": "enabled_bounded" if media_index_enabled else ("metadata_only_opt_in_available" if media_file_count else "no_media_files"),
+            "media_files": media_file_count,
+            "max_mb": float(getattr(config, "media_index_max_mb", 25.0) or 25.0),
+            "note": "image/audio/video OCR-ASR is opt-in; document/text files are indexed by default within parser size limits",
+        },
         "source_tree_signature": source_tree_signature,
         **llm_wiki_artifacts,
     }

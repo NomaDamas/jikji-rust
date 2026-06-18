@@ -83,15 +83,24 @@ python3 -m venv .venv
 ~/.local/share/jikji/repo/.venv/bin/jikji --help
 ```
 
-Image, audio, and video files are always indexed with lightweight local
-metadata (format, dimensions, EXIF datetime, ffprobe stream/duration). Their
-**content** can also be indexed via optional CPU backends, auto-detected when
-installed: image and video-frame OCR via RapidOCR (or `tesseract`), and audio /
-video speech transcription via faster-whisper (or the `whisper` CLI). Install
-with `pip install "jikji[media]"`; enable transcription with
-`JIKJI_ENABLE_TRANSCRIPTION=1` and video keyframe OCR with
-`JIKJI_ENABLE_VIDEO_OCR=1`. Confirm OCR with `jikji doctor ROOT --json`
-(`image_support.ocr_active`).
+Document/text formats such as PDF, HWP/HWPX, Office, text, subtitles, HTML,
+JSON/YAML, and archives are indexed by default during `prepare` within size and
+timeout safety limits (`JIKJI_MAX_PARSE_MB`, `--parse-timeout`,
+`--max-hash-bytes`).
+
+Image, audio, and video files are always indexed with lightweight local metadata
+(format, dimensions, EXIF datetime, ffprobe stream/duration). Their **content**
+OCR/ASR is opt-in because it can use CPU/RAM. Install optional backends with
+`pip install "jikji[media]"`, then run:
+
+```bash
+jikji prepare ROOT --enable-media-index --media-index-max-mb 25 --parse-timeout 600
+```
+
+This enables image/video-frame OCR via RapidOCR or Tesseract and audio/video
+speech transcription via faster-whisper or the `whisper` CLI, bounded by the media
+size cap. Without opt-in, media remains metadata-only and the GUI/manifest reports
+`media_index.status = metadata_only_opt_in_available`.
 
 한국어 예시:
 

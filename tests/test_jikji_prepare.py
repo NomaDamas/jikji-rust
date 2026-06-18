@@ -101,6 +101,21 @@ def test_prepare_emits_agent_search_standard_artifacts(tmp_path):
     assert (tmp_path / routes[0]["wiki_path"]).exists()
 
 
+def test_prepare_records_media_opt_in_policy(tmp_path):
+    (tmp_path / "photo.jpg").write_bytes(b"not really an image")
+    build_agent_index(tmp_path, Config())
+    manifest = json.loads((tmp_path / ".jikji" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["media_index"]["enabled"] is False
+    assert manifest["media_index"]["status"] == "metadata_only_opt_in_available"
+    assert manifest["media_index"]["media_files"] == 1
+
+    build_agent_index(tmp_path, Config(enable_media_index=True, media_index_max_mb=1))
+    manifest = json.loads((tmp_path / ".jikji" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["media_index"]["enabled"] is True
+    assert manifest["media_index"]["status"] == "enabled_bounded"
+    assert manifest["media_index"]["max_mb"] == 1.0
+
+
 def test_compact_brief_uses_graph_routes_and_is_smaller(tmp_path, capsys):
     from jikji.__main__ import main
 
@@ -243,6 +258,9 @@ def test_gui_search_and_download_handlers(tmp_path):
         with urllib.request.urlopen(base + "/api/search?q=" + urllib.parse.quote("ACME contract"), timeout=5) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
         assert payload["candidates"][0]["path"] == "contracts/ACME.txt"
+        with urllib.request.urlopen(base + "/api/discover?q=" + urllib.parse.quote("ACME contract"), timeout=5) as resp:
+            discover_payload = json.loads(resp.read().decode("utf-8"))
+        assert discover_payload["candidates"][0]["p"] == "contracts/ACME.txt"
         with urllib.request.urlopen(base + "/download?path=contracts/ACME.txt", timeout=5) as resp:
             assert resp.read().decode("utf-8") == "ACME GUI download contract token"
         with urllib.request.urlopen(base + "/api/status", timeout=5) as resp:
@@ -1222,6 +1240,7 @@ def test_image_ocr_uses_absolute_path_for_dash_prefixed_names(tmp_path, monkeypa
     fake.chmod(0o755)
     monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ.get('PATH', '')}")
     monkeypatch.setenv("JIKJI_FAKE_TESS_CALLS", str(calls))
+    monkeypatch.setenv("JIKJI_ENABLE_IMAGE_OCR", "1")
     image = tmp_path / "-scan.png"
     image.write_bytes(b"not a real image; fake tesseract ignores it")
 

@@ -72,6 +72,8 @@ ratios.
 Important prepare/refresh options:
 
 - `--max-files N` — refuse unexpectedly huge scans.
+- Document/text formats (`pdf`, `hwp`, `hwpx`, Office, `txt`, subtitles, structured text, archives) are parser candidates by default within size/timeout limits.
+- Image/audio/video content OCR-ASR is opt-in via `--enable-media-index`; without it, media files remain metadata-only. Use `--media-index-max-mb N` to bound CPU/RAM exposure.
 - `--include-hidden` — include hidden dotfiles except safety-denied names.
 - `--include-sensitive` — explicitly include safety-denied names such as `.env`,
   private keys, and certificate material.
