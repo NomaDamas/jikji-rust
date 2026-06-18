@@ -53,6 +53,10 @@ jikji brief ROOT "query" --compact     # evidence/wiki/cache hints for agent rea
 The goal is not “zero LLM at all costs.” The goal is higher retrieval accuracy
 than raw Hermes/Codex-style grep/find exploration while using far fewer LLM calls
 and tokens. `find` is just the cheapest first step when one obvious file is enough.
+`discover` returns `query_type`, `confidence_score`, `confidence_factors`,
+`recommended_action`, query variants, merged candidates, and short evidence so
+agents know when to return top-1, return an evidence set, rewrite the query, or
+fall back to targeted original-file verification.
 
 ## Quick start
 

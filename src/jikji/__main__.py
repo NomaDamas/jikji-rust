@@ -43,6 +43,7 @@ from .graph_query import explain_source, graph_status, query_graph_routes
 from .gui import serve_gui
 from .hardbench import build_hard_benchmark, run_hard_benchmark_suite
 from .hermes_bench import install_hermes_skill, run_hermes_benchmark
+from .hermes_compare import compare_benchmark_reports
 from .hippocamp import fetch_subset, import_eval_set, run_benchmark, run_suite
 from .holdout_eval import generate_holdout_eval_set
 from .improvement_loop import run_improvement_loop
@@ -881,6 +882,27 @@ def cmd_bench_iterate(args) -> int:
         print(f"- iterations={result.iterations}")
         print(f"- best={result.best_metrics}")
     return 0
+
+
+def cmd_hermes_compare(args) -> int:
+    payload = compare_benchmark_reports(
+        Path(args.raw_report),
+        Path(args.jikji_report),
+        raw_mode=args.raw_mode,
+        jikji_mode=args.jikji_mode,
+        max_token_ratio=args.max_token_ratio,
+        max_call_ratio=args.max_call_ratio,
+        max_seconds_ratio=args.max_seconds_ratio,
+    )
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        status = "PASS" if payload["ok"] else "FAIL"
+        print(f"Hermes benchmark compare: {status}")
+        for key, ok in payload["checks"].items():
+            print(f"- {key}: {'ok' if ok else 'FAIL'}")
+        print(f"ratios={payload['ratios']}")
+    return 0 if payload["ok"] else 1
 
 
 def cmd_hermes_bench(args) -> int:
@@ -1914,6 +1936,17 @@ def main(argv: list[str] | None = None) -> int:
     p_hb.add_argument("--allow-leak", action="store_true", help="allow eval/annotation files inside root for diagnostics only")
     p_hb.add_argument("--json", action="store_true")
     p_hb.set_defaults(func=cmd_hermes_bench)
+
+    p_hc = sub.add_parser("hermes-compare", help="gate raw-vs-Jikji Hermes benchmark reports")
+    p_hc.add_argument("raw_report")
+    p_hc.add_argument("jikji_report")
+    p_hc.add_argument("--raw-mode", default="raw")
+    p_hc.add_argument("--jikji-mode", default="jikji-discover")
+    p_hc.add_argument("--max-token-ratio", type=float, default=0.75)
+    p_hc.add_argument("--max-call-ratio", type=float, default=0.75)
+    p_hc.add_argument("--max-seconds-ratio", type=float, default=1.0)
+    p_hc.add_argument("--json", action="store_true")
+    p_hc.set_defaults(func=cmd_hermes_compare)
 
     p_hs = sub.add_parser("hermes-skill-install", help="install the Jikji skill into ~/.hermes/skills")
     p_hs.add_argument("--dest", default="")

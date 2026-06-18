@@ -97,17 +97,78 @@ def _merge_candidates(root: Path, variants: list[str], *, top_k: int, per_query_
     return ranked[:top_k]
 
 
-def _confidence(query_type: str, candidates: list[dict[str, Any]]) -> str:
+def _clamp01(value: float) -> float:
+    return max(0.0, min(1.0, value))
+
+
+def _family(path: str) -> str:
+    p = Path(path)
+    return str(p.parent) if str(p.parent) != "." else "."
+
+
+def _confidence_factors(query_type: str, candidates: list[dict[str, Any]], variants: list[str]) -> dict[str, float]:
     if not candidates:
-        return "low"
+        return {
+            "score_margin": 0.0,
+            "variant_agreement": 0.0,
+            "family_coherence": 0.0,
+            "evidence_coverage": 0.0,
+            "duplicate_or_anchor_signal": 0.0,
+        }
     top = float(candidates[0].get("discover_score") or candidates[0].get("score") or 0.0)
     second = float(candidates[1].get("discover_score") or candidates[1].get("score") or 0.0) if len(candidates) > 1 else 0.0
-    reasons = set(str(r) for r in (candidates[0].get("reasons") or []))
-    if query_type == "single_file" and (top > second * 1.5 or {"duplicate-anchor", "filename-anchor", "fielded-bm25"} & reasons):
+    margin = _clamp01((top - second) / max(top, 1.0)) if top > 0 else 0.0
+    query_hits = max(len(candidates[0].get("queries") or []), max((len(c.get("queries") or []) for c in candidates[:5]), default=0))
+    variant_agreement = _clamp01(query_hits / max(1, min(len(variants), 4)))
+    top_family = _family(str(candidates[0].get("path") or ""))
+    family_matches = sum(1 for c in candidates[:10] if _family(str(c.get("path") or "")) == top_family)
+    family_coherence = _clamp01(family_matches / max(1, min(len(candidates), 10)))
+    evidence_hits = sum(1 for c in candidates[:10] if c.get("evidence"))
+    evidence_coverage = _clamp01(evidence_hits / max(1, min(len(candidates), 10)))
+    anchor_reasons = {"duplicate-anchor", "filename-anchor", "fielded-bm25", "duplicate-expansion", "body-coverage"}
+    anchor_hits = sum(1 for c in candidates[:5] if anchor_reasons & set(str(r) for r in (c.get("reasons") or [])))
+    duplicate_or_anchor_signal = _clamp01(anchor_hits / max(1, min(len(candidates), 5)))
+    if query_type == "evidence_set":
+        family_coherence = max(family_coherence, _clamp01(len(candidates) / 8.0) * 0.7)
+    return {
+        "score_margin": round(margin, 4),
+        "variant_agreement": round(variant_agreement, 4),
+        "family_coherence": round(family_coherence, 4),
+        "evidence_coverage": round(evidence_coverage, 4),
+        "duplicate_or_anchor_signal": round(duplicate_or_anchor_signal, 4),
+    }
+
+
+def _confidence_score(query_type: str, factors: dict[str, float]) -> float:
+    if query_type == "single_file":
+        score = (
+            factors["score_margin"] * 0.30
+            + factors["variant_agreement"] * 0.20
+            + factors["evidence_coverage"] * 0.15
+            + factors["duplicate_or_anchor_signal"] * 0.35
+        )
+    elif query_type == "evidence_set":
+        score = (
+            factors["variant_agreement"] * 0.25
+            + factors["family_coherence"] * 0.30
+            + factors["evidence_coverage"] * 0.20
+            + factors["duplicate_or_anchor_signal"] * 0.25
+        )
+    else:
+        score = sum(factors.values()) / max(1, len(factors))
+    return round(_clamp01(score), 4)
+
+
+def _confidence(query_type: str, candidates: list[dict[str, Any]], factors: dict[str, float], score: float) -> str:
+    if not candidates:
+        return "low"
+    if score >= 0.78:
         return "high"
-    if query_type == "evidence_set" and len(candidates) >= 2:
+    if score >= 0.55:
         return "medium_high"
-    if len(candidates) >= 3:
+    if score >= 0.35:
+        return "medium"
+    if query_type == "evidence_set" and len(candidates) >= 2:
         return "medium"
     return "low"
 
@@ -128,7 +189,9 @@ def discover(root: Path, query: str, *, top_k: int = 20, per_query_k: int | None
     variants = query_variants(query)
     per_query_k = per_query_k or max(top_k, 20)
     candidates = _merge_candidates(root, variants, top_k=top_k, per_query_k=per_query_k)
-    confidence = _confidence(query_type, candidates)
+    confidence_factors = _confidence_factors(query_type, candidates, variants)
+    confidence_score = _confidence_score(query_type, confidence_factors)
+    confidence = _confidence(query_type, candidates, confidence_factors, confidence_score)
     paths = [str(item.get("path") or "") for item in candidates if item.get("path")]
     compact_candidates = [
         {
@@ -148,6 +211,8 @@ def discover(root: Path, query: str, *, top_k: int = 20, per_query_k: int | None
         "query": query,
         "query_type": query_type,
         "confidence": confidence,
+        "confidence_score": confidence_score,
+        "confidence_factors": confidence_factors,
         "recommended_action": _recommended_action(query_type, confidence),
         "paths": paths,
         "query_variants": variants,

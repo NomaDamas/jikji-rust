@@ -175,6 +175,8 @@ def test_discover_cli_classifies_and_returns_candidates(tmp_path, capsys):
     assert payload["mode"] == "discover"
     assert payload["query_type"] == "evidence_set"
     assert payload["recommended_action"] == "return_top5_to_top10_evidence_set"
+    assert payload["confidence_score"] > 0
+    assert payload["confidence_factors"]["family_coherence"] >= 0
     assert "sports/tennis_lessons.txt" in payload["paths"]
     assert payload["query_variants"]
 

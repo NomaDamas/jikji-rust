@@ -42,6 +42,7 @@ jikji discover /path/to/folder "query" [--top-k N] [--json] # adaptive accuracy-
 jikji find /path/to/folder "query" [--first] [--json]   # path-only deterministic lookup
 jikji search /path/to/folder "query" [--top-k N] [--json]
 jikji agent-skill-install [--agent NAME|all] [--prepare-root PATH] [--foreground-prepare] [--no-prepare] [--json]
+jikji hermes-compare RAW_REPORT JIKJI_REPORT [--json]       # benchmark regression gate
 jikji skill-export [--dest /agent/skills/jikji/SKILL.md] [--json]
 jikji prepare /path/to/folder [--json]
 jikji refresh /path/to/folder [--json]   # alias for prepare
@@ -64,6 +65,9 @@ This is an accuracy-first protocol. Jikji is not trying to force zero LLM calls;
 it gives local agents a better first retrieval tool than raw `grep`/`find`, then
 lets the LLM judge sufficiency, rewrite queries, merge candidates, and verify
 original files when needed.
+Benchmark gates should compare raw Hermes reports against `jikji-discover` and
+fail when Jikji lowers Hit@1/Hit@10 or misses the configured call/token/time
+ratios.
 
 Important prepare/refresh options:
 
