@@ -59,6 +59,11 @@ use a changed/stale-but-present index for immediate results and launch a
 background refresh unless disabled. Manual `prepare`/`refresh` are administrative
 controls, not something users should need to run before every lookup.
 
+This is an accuracy-first protocol. Jikji is not trying to force zero LLM calls;
+it gives local agents a better first retrieval tool than raw `grep`/`find`, then
+lets the LLM judge sufficiency, rewrite queries, merge candidates, and verify
+original files when needed.
+
 Important prepare/refresh options:
 
 - `--max-files N` — refuse unexpectedly huge scans.

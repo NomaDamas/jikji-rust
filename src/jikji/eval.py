@@ -66,6 +66,14 @@ _EXTENSION_STOPWORDS = {
     "log", "ini", "cfg", "conf", "db", "sqlite",
 }
 _STOPWORDS |= _EXTENSION_STOPWORDS
+_ANCHOR_STOPWORDS = _STOPWORDS | {
+    "agreement", "client", "company", "confidential", "confidentiality", "copying",
+    "enquired", "information", "member", "mutual", "permitted", "received",
+    "staff", "vendor", "whether", "under", "similar", "develop", "destroying",
+    "returning", "remember", "ideas", "work",
+}
+
+
 
 # Small, generic local-search expansions. These are not benchmark labels; they
 # encode common human descriptions that local agents frequently use when they do
@@ -1135,6 +1143,25 @@ def _compact_query_terms(query: str) -> list[str]:
     return out[:16]
 
 
+def _is_strong_filename_anchor(raw: str) -> bool:
+    compact = _compact_lookup_text(raw)
+    if len(compact) < 3 or compact in _ANCHOR_STOPWORDS:
+        return False
+    if re.search(r"[가-힣ぁ-ゟ゠-ヿ一-鿿]", compact):
+        return len(compact) >= 4
+    if any(ch.isdigit() for ch in compact):
+        return True
+    alpha = "".join(ch for ch in raw if ch.isalpha())
+    if alpha.isupper() and 2 <= len(alpha) <= 8:
+        return True
+    if len(alpha) >= 5 and raw[:1].isupper():
+        return True
+    if re.search(r"[a-z][A-Z]", raw):
+        return True
+    return False
+
+
+
 def _query_filename_anchors(query: str) -> list[str]:
     """Extract likely remembered filename/title anchors from a query."""
     anchors: list[str] = []
@@ -1154,8 +1181,8 @@ def _query_filename_anchors(query: str) -> list[str]:
     # Fallback for unquoted filename/duplicate requests: short, meaningful
     # alnum/Hangul identifiers can still be a decisive lexical anchor.
     if _is_filename_query(query) or _is_duplicate_query(query):
-        for token in _query_tokens(query, limit=16, expand=False):
-            if token not in _STOPWORDS and len(_compact_lookup_text(token)) >= 3:
+        for token in _tokens_from_text(query, limit=24):
+            if _is_strong_filename_anchor(token):
                 add(token)
     return anchors
 
@@ -1720,16 +1747,29 @@ def _expand_duplicate_ranked(index: SearchIndex, ranked: list[dict], query: str,
         path_keys = row.get("_filename_lookup_keys") or (
             set(_filename_lookup_keys(name)) | set(_filename_lookup_keys(path))
         )
+        token_keys = {
+            _compact_lookup_text(token)
+            for token in _tokens_from_text(f"{path} {name}", limit=64)
+            if _compact_lookup_text(token)
+        }
         best = 0.0
+        exact_hits = 0
         for anchor in anchors:
-            if anchor in name_keys:
+            if anchor in token_keys:
+                exact_hits += 1
+                best = max(best, 21000.0 + len(anchor))
+            elif anchor in name_keys:
+                exact_hits += 1
                 best = max(best, 20000.0 + len(anchor))
-            elif any(anchor in key or key in anchor for key in name_keys if len(key) >= 3):
-                best = max(best, 18000.0 + len(anchor))
             elif anchor in path_keys:
+                exact_hits += 1
                 best = max(best, 14000.0 + len(anchor))
-            elif any(anchor in key or key in anchor for key in path_keys if len(key) >= 3):
+            elif len(anchor) >= 4 and any(anchor in key or key in anchor for key in name_keys if len(key) >= 4):
+                best = max(best, 18000.0 + len(anchor))
+            elif len(anchor) >= 4 and any(anchor in key or key in anchor for key in path_keys if len(key) >= 4):
                 best = max(best, 12000.0 + len(anchor))
+        if exact_hits >= 2:
+            best += exact_hits * 750.0
         return best
 
     def append_expanded_seed(seed: dict) -> None:

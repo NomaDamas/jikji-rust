@@ -47,6 +47,10 @@ Then use `~/.local/share/jikji/repo/.venv/bin/jikji` for all commands, or add th
 When Jikji is installed and a root has a `.jikji/` index, you MUST treat
 `jikji find` / `jikji brief --compact` / `jikji search` as the **mandatory first action** for any local
 file/folder/document discovery request. This is non-negotiable:
+The goal is not to avoid LLM calls blindly; the goal is to beat raw grep/find
+exploration on accuracy while reducing calls/tokens. Use Jikji first, then use
+LLM judgment, query rewrites, and targeted original-file verification when the
+first deterministic result is not sufficient.
 
 - **NEVER** start by running `grep`, `rg`, `ls`, `find`, `fd`, `cat`, `tree`,
   or any manual filesystem crawl to locate a file. Jikji has already built the

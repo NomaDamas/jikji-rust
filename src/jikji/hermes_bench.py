@@ -49,11 +49,12 @@ def _clean_prompt_text(value: Any) -> str:
     return str(value).replace("\x00", " ").replace("\r", " ")
 
 
-# Prompt token-diet budget. Injecting Jikji candidates into the agent prompt is
-# only worth it when the handoff stays compact: a few high-signal candidates
-# plus a single, hard-truncated evidence snippet each. Wider/longer injection
-# inflated prompt tokens far beyond the per-turn savings.
-DEFAULT_CANDIDATE_TOP_K = 5
+# Accuracy-first Jikji-assisted runs should expose enough candidates to beat raw
+# Hermes, then rely on the agent for targeted verification/query rewrite. The
+# stricter low-token `jikji-fast` ablation can still pass a smaller explicit
+# --candidate-top-k when measuring minimum-cost handoff behavior.
+DEFAULT_CANDIDATE_TOP_K = 20
+DEFAULT_AGENT_TOP_K = 20
 EVIDENCE_SNIPPET_CHARS = 120
 EVIDENCE_MAX_ITEMS = 1
 
@@ -203,6 +204,8 @@ def _mode_family(mode: str) -> str:
         return "jikji-fast"
     if normalized in {"jikji", "jikji-brief", "brief", "map", "jikji-map"}:
         return "jikji-brief"
+    if normalized in {"jikji-agent", "agent", "assisted", "jikji-assisted", "agentic"}:
+        return "jikji-agent"
     if normalized in {"jikji-tool", "tool", "tool-first"}:
         return "jikji-tool"
     if normalized in {"jikji-passive", "passive"}:
@@ -219,6 +222,7 @@ def _prompt(root: Path, mode: str, case: dict, *, candidate_top_k: int = 0, retr
         "Return up to 10 relevant paths ranked best-first; return the best path first.",
         "Respond with JSON only: {\"paths\":[\"relative/path\"],\"reason\":\"short\"}",
         "Use relative paths exactly as they appear under ROOT.",
+        "For broad, profiling, preference, habit, or summary questions, return several supporting paths (normally 5-10), not just one file.",
     ]
     if mode_family == "raw":
         base.append(f"RAW MODE: Do not read or use .jikji or {VISIBLE_MAP_NAME}. Search only original user files/folders.")
@@ -233,6 +237,19 @@ def _prompt(root: Path, mode: str, case: dict, *, candidate_top_k: int = 0, retr
             "If candidates are present, return at most 10 listed candidate paths.",
         ]
         base.extend(_fast_candidate_lines(root, str(case.get("query") or ""), top_k=candidate_top_k))
+    elif mode_family == "jikji-agent":
+        effective_top_k = max(candidate_top_k, DEFAULT_AGENT_TOP_K)
+        base.extend([
+            "JIKJI AGENT MODE: You have a better replacement for raw grep/find exploration.",
+            "Start by running `jikji find . <QUESTION> --first`. If that single path is not clearly sufficient, run `jikji search . <QUESTION> --top-k 20 --json` and/or `jikji brief . <QUESTION> --top-k 20 --compact --json`.",
+            "If the first Jikji query is weak, rewrite the question into 2-4 concrete keyword queries and run Jikji again for each; merge and rerank the candidate paths.",
+            "You may inspect original files only for final verification or when Jikji results are genuinely insufficient. Do not manually crawl before trying Jikji, and do not read .jikji internals unless all Jikji CLI commands fail.",
+            "Raw Hermes is allowed to use grep/find; this mode should beat raw by using Jikji first, then targeted verification/fallback only when needed.",
+            "For broad, profiling, preference, habit, or summary questions, prefer returning the best 5-10 plausible Jikji-ranked supporting paths instead of collapsing to one file.",
+            f"For reference, here is a precomputed `jikji search . <QUESTION> --top-k {effective_top_k} --json` candidate sheet; you may still run additional Jikji commands if needed.",
+            "When Jikji candidates include multiple files from a coherent theme/folder, preserve that evidence set; Hit@10 matters for broad local-file discovery.",
+        ])
+        base.extend(_candidate_lines(root, str(case.get("query") or ""), top_k=effective_top_k))
     elif mode_family == "jikji-tool":
         base.extend([
             "JIKJI TOOL-FIRST MODE: Treat Jikji as a fast local search tool, not as a pile of files to manually read.",
@@ -534,6 +551,7 @@ def run_hermes_benchmark(
         "provider": provider,
         "mode_protocols": {
             "raw": "Hermes searches original files/folders and must ignore Jikji artifacts.",
+            "jikji-agent": "Jikji-assisted Hermes starts with `jikji find/search/brief`, rewrites queries when needed, and may fall back to original-file verification/search when Jikji is insufficient.",
             "jikji-fast": "Map-first Jikji handoff; Hermes receives only ranked paths/evidence and is told not to browse.",
             "jikji": "Alias for jikji-brief: query-specific Jikji route brief and candidates are provided to avoid raw browsing.",
             "jikji-brief": "Agent-map brief handoff; Hermes receives candidate paths, evidence, and fallback route order.",

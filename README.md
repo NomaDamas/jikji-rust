@@ -40,11 +40,18 @@ Raw agents wander:
 guess query → list folders → grep files → open documents → repeat
 ```
 
-Jikji-equipped agents use a map:
+Jikji-equipped agents replace blind crawl with deterministic local retrieval plus
+LLM judgment/rewrite when needed:
 
 ```text
-jikji find ROOT "query" --first → path only (0 LLM calls)
+jikji find ROOT "query" --first        # smallest single-file path handoff
+jikji search ROOT "query" --top-k 20   # ranked candidates replacing grep/find crawl
+jikji brief ROOT "query" --compact     # evidence/wiki/cache hints for agent reasoning
 ```
+
+The goal is not “zero LLM at all costs.” The goal is higher retrieval accuracy
+than raw Hermes/Codex-style grep/find exploration while using far fewer LLM calls
+and tokens. `find` is just the cheapest first step when one obvious file is enough.
 
 ## Quick start
 
@@ -88,7 +95,7 @@ jikji brief ~/Documents "작년 봄 계약서 PDF" --top-k 10 --compact --json
 jikji search ~/Documents "파일명, 본문 단서, 문서 설명" --top-k 10 --json
 ```
 
-에이전트가 파일 하나만 찾으면 가장 먼저 `find`를 씁니다:
+에이전트가 파일 하나만 찾으면 가장 먼저 `find`를 쓰되, 결과가 애매하면 LLM이 query rewrite와 `search`/`brief` 반복으로 보강합니다:
 
 ```bash
 jikji find ~/Documents "작년 봄 계약서 PDF" --first
