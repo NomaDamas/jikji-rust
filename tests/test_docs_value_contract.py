@@ -53,7 +53,11 @@ def test_index_is_a_real_landing_page_not_only_redirect():
     assert "GitHub에서 바로 보기" in html
     assert "https://github.com/NomaDamas/jikji" in html
     assert "GitHub Pages 정적 호스팅" in html
-    assert "./agent-installation.md#one-line-agent-install" in html
+    assert "href=\"#agent-install\"" in html
+    assert "에이전트 설치 명령어" in html
+    assert "git clone https://github.com/nomadamas/jikji.git" in html
+    assert "agent-skill-install --agent all --json" in html
+    assert "href=\"./agent-installation.md\"" not in html
     assert "비교 실험 결과" in html
     assert "가장 큰 fullset 증거" not in html
     assert "Fullset value proof" not in html

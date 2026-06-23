@@ -44,6 +44,8 @@
     section { padding: 34px 0; }
     h2 { margin: 0 0 10px; font-size: 28px; line-height: 1.2; letter-spacing: 0; }
     .sub { margin: 0 0 18px; color: var(--muted); max-width: 860px; }
+    .installbox { margin-top: 18px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: #05080c; overflow-x: auto; }
+    .installbox pre { margin: 0; color: #d8e7f1; font: 13px/1.65 "SFMono-Regular", Consolas, monospace; white-space: pre; }
     .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
     .metric { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
     .metric span { display: block; color: var(--muted); font-size: 13px; }
@@ -79,9 +81,8 @@
     <header>
       <div class="brand"><span class="mark">직</span><span>Jikji find</span></div>
       <nav>
-        <a href="./jikji-benchmarks.html">Detailed benchmarks</a>
-        <a href="./jikji-value.html">Value page</a>
-        <a href="./agent-installation.md">Install</a>
+        <a href="./jikji-benchmarks.html">벤치마크</a>
+        <a href="#agent-install">설치 명령어</a>
         <a href="https://github.com/NomaDamas/jikji">GitHub</a>
       </nav>
     </header>
@@ -94,12 +95,18 @@
           <p class="lead">Jikji find는 로컬 파일 탐색마다 에이전트의 LLM 호출, 토큰, 시간을 10-30배 줄이는 스킬이다. 원본 파일은 그대로 두고, 메타데이터·파일 지도·파서 캐시·지식그래프 route를 한 번에 후보 slate로 합친다.</p>
           <div class="actions">
             <a class="button primary github" href="https://github.com/NomaDamas/jikji">GitHub에서 바로 보기</a>
-            <a class="button" href="./agent-installation.md#one-line-agent-install">CLI 에이전트 설치 한 줄</a>
+            <a class="button" href="#agent-install">CLI 에이전트 설치 한 줄</a>
             <a class="button" href="./jikji-benchmarks.html#usage-ledger">호출/토큰/시간 장부 보기</a>
             <a class="button" href="./jikji-benchmarks.html#examples">벤치마크 예시 보기</a>
           </div>
           <p class="hostline">공개 배포는 GitHub Pages 정적 호스팅 기준이다. 로컬 터널이 아니라 CDN 캐시로 누구나 동시에 접속해 볼 수 있다.</p>
         </div>
+      </section>
+
+      <section id="agent-install">
+        <h2>에이전트 설치 명령어</h2>
+        <p class="sub">CLI 에이전트에게 아래 한 줄을 그대로 실행하라고 지시하면 된다. GitHub에서 최신 Jikji를 받고, editable install 후 Jikji skill을 로컬 에이전트들에 연결한다.</p>
+        <div class="installbox"><pre>mkdir -p ~/.local/share/jikji && { [ -d ~/.local/share/jikji/repo/.git ] || git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo; } && git -C ~/.local/share/jikji/repo pull --ff-only && python3 -m venv ~/.local/share/jikji/repo/.venv && ~/.local/share/jikji/repo/.venv/bin/pip install -e ~/.local/share/jikji/repo && ~/.local/share/jikji/repo/.venv/bin/jikji agent-skill-install --agent all --json</pre></div>
       </section>
 
       <section>
