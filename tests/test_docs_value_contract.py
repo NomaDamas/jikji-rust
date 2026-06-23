@@ -54,6 +54,9 @@ def test_index_is_a_real_landing_page_not_only_redirect():
     assert "https://github.com/NomaDamas/jikji" in html
     assert "GitHub Pages 정적 호스팅" in html
     assert "./agent-installation.md#one-line-agent-install" in html
+    assert "비교 실험 결과" in html
+    assert "가장 큰 fullset 증거" not in html
+    assert "Fullset value proof" not in html
     assert "호출/토큰/시간 장부 보기" in html
     assert "./jikji-benchmarks.html#usage-ledger" in html
 
