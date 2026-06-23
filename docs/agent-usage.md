@@ -1,122 +1,54 @@
-# Using Jikji from a Local Agent
+# Agent Usage
 
-For a full cross-agent installation and skill attachment guide, see
-[`docs/agent-installation.md`](agent-installation.md).
+Jikji is the local-file discovery skill. Use it when a task asks for a file,
+folder, filename, metadata, parsed document text, or the source file that answers
+a question under an explicit root.
 
-Install from a checkout:
-
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -e .
-```
-
-If `jikji` is not installed, a CLI agent should bootstrap it from GitHub:
+## First Command
 
 ```bash
-mkdir -p ~/.local/share/jikji
-if [ ! -d ~/.local/share/jikji/repo/.git ]; then
-  git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo
-fi
-cd ~/.local/share/jikji/repo
-git pull --ff-only
-python3 -m venv .venv
-.venv/bin/pip install -e .
+jikji find /path/to/folder "natural language file clue" --json
 ```
 
-Then call `~/.local/share/jikji/repo/.venv/bin/jikji`.
+This is the public agent interface. It combines Jikji metadata, file maps, parser
+caches, graph routes, and local search routes into one candidate slate so the
+agent can verify top evidence instead of crawling blindly.
 
-Attach the skill once:
+## JSON Contract
+
+- `answer_paths[]`: primary ordered answer paths.
+- `paths[]`: public path list for simple return.
+- `candidates[]`: merged top-k slate.
+- `evidence_pack[]`: compact evidence and next-read hints.
+- `handoff_action=direct_use`: accept the payload; no broad filesystem crawl.
+- `handoff_action=jikji_retry`: run exactly one sharper `jikji find` retry.
+- `handoff_action=raw_fallback_after_retry`: raw search is allowed only after the
+  retry failed, stayed empty, or stayed clearly wrong.
+- `agent_should_not_rerank=true`: preserve Jikji order.
+
+## Do Not Crawl First
+
+Do not start file discovery with `ls`, `find`, `rg`, `grep`, `tree`, or broad
+manual opening. Those are fallback actions only after the Jikji handoff contract
+allows them.
+
+## Admin Commands
 
 ```bash
-jikji agent-skill-install --agent all --json
-jikji skill-export --dest /path/to/unknown-agent/skills/jikji/SKILL.md --json
+jikji prepare /path/to/folder --json
+jikji refresh /path/to/folder --json
+jikji doctor /path/to/folder --json
+jikji map /path/to/folder
 ```
 
-After that, a local agent should select the Jikji skill automatically whenever a
-user asks it to find local files, folders, filenames, metadata, or document
-contents under a bounded root. For agents without a skill directory, paste
-`jikji skill-export` output into their persistent instructions.
+## Benchmark Positioning
 
-The install command also starts a low-impact background prepare for common
-Documents/Downloads/Desktop/cloud roots that exist on the computer. Use
-`--foreground-prepare` to wait for it, `--prepare-root PATH` to add a root, or
-`--no-prepare` to skip post-install indexing.
+Public comparisons should be labeled as:
 
-Image files contribute lightweight local metadata (format, dimensions, selected
-EXIF datetime when available). Text inside images/scanned PDFs is indexed only
-when `tesseract` is installed on the agent's PATH; check
-`jikji doctor ROOT --json` and inspect `image_support.ocr_active`.
-
-Agent flow:
-
-1. Start with the tool-first command. It auto-prepares an explicit root when
-   the instant index is missing:
-
-```bash
-.venv/bin/jikji find /path/to/folder "natural language file clue" --first
-.venv/bin/jikji brief /path/to/folder "natural language file clue" --top-k 10 --compact --json
-.venv/bin/jikji search /path/to/folder "natural language file clue" --top-k 10 --json
+```text
+raw local agent vs the same agent with Jikji find
 ```
 
-For one-file lookup, `find --first` is the default because it returns only a path and needs no LLM call. Use compact `brief` when autonomous agent work needs ranked paths, tiny graph-route evidence, source wiki paths, and cache hints. Use non-compact `brief` only when compact evidence is insufficient; use `search` for ranked-candidate-only responses.
-
-2. If the result is empty or clearly insufficient, inspect the LLM Wiki graph and
-   route guides:
-
-```bash
-cat /path/to/folder/.jikji/wiki/index.md
-rg "keyword" /path/to/folder/.jikji/graph_routes.jsonl
-cat /path/to/folder/.jikji/agent_routes.md
-```
-
-3. Search parser-extracted document text only when needed:
-
-```bash
-rg "keyword" /path/to/folder/.jikji/doc_text
-```
-
-4. Search native text files in the original tree as a final fallback:
-
-```bash
-rg "keyword" /path/to/folder --glob '!**/.jikji/**'
-```
-
-For a human management dashboard:
-
-```bash
-.venv/bin/jikji gui /path/to/folder
-.venv/bin/jikji gui /path/to/folder --background --json
-```
-
-CLI/Hermes agents should use `--background --json` when the user asks for a GUI: return the emitted `url` to the user as the clickable local link. The dashboard shows root prepare status, LLM Wiki/knowledge graph counts, artifact presence, refresh/root-switch controls, and optional search/open/download actions.
-
-Do not move, rename, delete, or reorganize source files while using Jikji for
-search.
-
-Recommended `.gitignore` for indexed roots that are also Git repositories:
-
-```gitignore
-.jikji/
-.jikji_agent_map.md
-```
-
-
-## Evaluate search quality
-
-After preparing a root, generate and run a local search eval set:
-
-```bash
-jikji eval-generate /path/to/folder --cases 80 --json
-jikji eval /path/to/folder --json
-```
-
-Use `.jikji/eval/eval_report.json` to compare hit@k and MRR before/after map or
-indexing changes.
-
-
-## Direct handoff mode
-
-For the clearest agent-speed benefit, treat Jikji as a tool handoff: call
-`jikji brief` or `jikji search`, accept plausible ranked candidates, and avoid a
-new broad filesystem crawl. The Hermes benchmark mode `jikji-direct` measures
-this behavior against `raw` agent search.
+Jikji find is the file-search skill that cuts repeated LLM calls, tokens, and
+wall-clock time by 10-30x in the main raw-Hermes comparison, while preserving or
+improving retrieval accuracy.

@@ -8,6 +8,7 @@ root are rejected unless the caller explicitly opts out.
 """
 from __future__ import annotations
 
+# SIZE_OK: legacy benchmark runner with many mode protocols; answer-pack execution was split out to avoid expanding it further.
 import hashlib
 import json
 import os
@@ -26,6 +27,7 @@ from .agent_index import AGENT_DIR_NAME, VISIBLE_MAP_NAME, VISIBLE_MAP_NAMES, _a
 from .agent_skill_install import install_agent_skill
 from .discover import discover
 from .eval import _path_fingerprints, _rank_for_expected, _read_jsonl, search
+from .hermes_answer_pack import run_answer_pack_attempt
 
 
 @dataclass
@@ -189,10 +191,30 @@ def _discover_lines(root: Path, query: str, *, top_k: int) -> list[str]:
     return [
         "JIKJI DISCOVER CASCADE:",
         f"`jikji discover . {json.dumps(query, ensure_ascii=False)} --top-k {top_k} --json` is the intended first tool call for this task.",
-        "Use this adaptive payload as the primary retrieval plan. It includes query_type, confidence, recommended_action, query variants, merged candidates, and evidence.",
-        json.dumps(payload, ensure_ascii=False, indent=2),
-        "Policy: follow recommended_action. If confidence is high, return/verify those paths. If confidence is low, run additional Jikji query variants before any raw grep/find fallback.",
+        "Use this adaptive payload as the primary retrieval decision. It includes answer_paths, supporting_paths, evidence_pack, query_type, confidence, handoff_action, handoff_policy, next_commands, query variants, merged candidates, and bounded evidence.",
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        "Policy: prefer answer_paths over candidates. If agent_should_not_rerank is true, preserve answer_paths order and do not perform extra discovery. direct_use means return/verify listed paths without broad filesystem crawling. jikji_retry means run exactly one next_commands/tightened Jikji retry before raw grep/find fallback. raw_fallback_after_retry permits raw fallback only after that retry failed, stayed empty, or stayed clearly wrong. Prefer evidence_pack[].next_read/candidates[].next_read for bounded verification.",
     ]
+
+
+def _one_shot_lines(root: Path, query: str, *, top_k: int) -> list[str]:
+    payload = discover(root, query, top_k=top_k)
+    minimal = {
+        "answer_paths": payload.get("answer_paths") or [],
+        "supporting_paths": payload.get("supporting_paths") or [],
+        "handoff_action": payload.get("handoff_action"),
+        "agent_should_not_rerank": payload.get("agent_should_not_rerank"),
+        "requires_llm_rerank": payload.get("requires_llm_rerank"),
+        "allowed_llm_calls": payload.get("allowed_llm_calls"),
+        "query_type": payload.get("query_type"),
+        "confidence": payload.get("confidence"),
+    }
+    return [
+        "JIKJI ONE-SHOT ANSWER PACK:",
+        json.dumps(minimal, ensure_ascii=False, separators=(",", ":")),
+        "Return JSON only. If requires_llm_rerank is false, return paths equal to answer_paths. If true, choose the best path(s) only from answer_paths/supporting_paths; do not call tools or search.",
+    ]
+
 
 
 def _mode_family(mode: str) -> str:
@@ -205,6 +227,8 @@ def _mode_family(mode: str) -> str:
         "jikji-skill-direct",
     }:
         return "jikji-direct"
+    if normalized in {"jikji-answer-pack", "answer-pack", "discover-direct"}:
+        return "jikji-answer-pack"
     if normalized in {
         "jikji-fast",
         "fast",
@@ -214,6 +238,8 @@ def _mode_family(mode: str) -> str:
         "pass-through",
     }:
         return "jikji-fast"
+    if normalized in {"jikji-one-shot", "one-shot", "oneshot", "discover-one-shot"}:
+        return "jikji-one-shot"
     if normalized in {"jikji", "jikji-brief", "brief", "map", "jikji-map"}:
         return "jikji-brief"
     if normalized in {"jikji-discover", "discover", "discover-agent", "adaptive-discover"}:
@@ -257,19 +283,26 @@ def _prompt(root: Path, mode: str, case: dict, *, candidate_top_k: int = 0, retr
             "JIKJI DISCOVER MODE: use the adaptive Jikji discover cascade as the first-class replacement for raw grep/find exploration.",
             "Start from the provided discover payload. It already classified the query, generated deterministic query variants, merged candidate sets, and chose a recommended action.",
             "For single_file/high-confidence payloads, return the top path after light verification if needed. For evidence_set/profile payloads, return the best 5-10 supporting paths.",
-            "Only run extra `jikji discover/search/brief` commands when the payload is low confidence or visibly irrelevant. Use raw grep/find only as a last fallback after Jikji variants fail.",
+            "Follow handoff_action exactly: direct_use means no extra discovery or broad crawl; jikji_retry means exactly one sharper Jikji retry from next_commands or a tightened discover/search query; raw_fallback_after_retry permits raw grep/find only after that retry failed, stayed empty, or stayed clearly wrong.",
         ])
         base.extend(_discover_lines(root, str(case.get("query") or ""), top_k=effective_top_k))
+    elif mode_family == "jikji-one-shot":
+        effective_top_k = max(candidate_top_k, DEFAULT_AGENT_TOP_K)
+        base.extend([
+            "JIKJI ONE-SHOT MODE: pass through the provided answer_paths without new search or re-ranking.",
+            "Return JSON only with paths equal to answer_paths unless answer_paths is empty.",
+        ])
+        base.extend(_one_shot_lines(root, str(case.get("query") or ""), top_k=effective_top_k))
     elif mode_family == "jikji-agent":
         effective_top_k = max(candidate_top_k, DEFAULT_AGENT_TOP_K)
         base.extend([
             "JIKJI AGENT MODE: You have a better replacement for raw grep/find exploration.",
-            "Start by running `jikji find . <QUESTION> --first`. If that single path is not clearly sufficient, run `jikji search . <QUESTION> --top-k 20 --json` and/or `jikji brief . <QUESTION> --top-k 20 --compact --json`.",
-            "If the first Jikji query is weak, rewrite the question into 2-4 concrete keyword queries and run Jikji again for each; merge and rerank the candidate paths.",
-            "You may inspect original files only for final verification or when Jikji results are genuinely insufficient. Do not manually crawl before trying Jikji, and do not read .jikji internals unless all Jikji CLI commands fail.",
-            "Raw Hermes is allowed to use grep/find; this mode should beat raw by using Jikji first, then targeted verification/fallback only when needed.",
+            "Start by running `jikji discover . <QUESTION> --top-k 20 --json`; use `jikji find . <QUESTION> --first` only for definite one-file lookup shortcuts.",
+            "Follow handoff_action exactly: direct_use means no broad crawl and top-candidate verification only; jikji_retry means exactly one sharper Jikji retry; raw_fallback_after_retry means raw grep/find only after that retry failed, stayed empty, or stayed clearly wrong.",
+            "You may inspect original files only for final verification or when Jikji results are genuinely insufficient after the allowed retry. Do not manually crawl before trying Jikji, and do not read .jikji internals unless all Jikji CLI commands fail.",
+            "Raw Hermes is allowed to use grep/find; this mode should beat raw by using Jikji first, then targeted verification/fallback only when the handoff contract permits it.",
             "For broad, profiling, preference, habit, or summary questions, prefer returning the best 5-10 plausible Jikji-ranked supporting paths instead of collapsing to one file.",
-            f"For reference, here is a precomputed `jikji search . <QUESTION> --top-k {effective_top_k} --json` candidate sheet; you may still run additional Jikji commands if needed.",
+            f"For reference, here is a precomputed `jikji search . <QUESTION> --top-k {effective_top_k} --json` candidate sheet; run one additional Jikji command only when the handoff contract calls for a retry.",
             "When Jikji candidates include multiple files from a coherent theme/folder, preserve that evidence set; Hit@10 matters for broad local-file discovery.",
         ])
         base.extend(_candidate_lines(root, str(case.get("query") or ""), top_k=effective_top_k))
@@ -488,6 +521,24 @@ def _metrics(details: list[dict[str, Any]], seconds: float) -> dict[str, Any]:
     total_usage = dict(_EMPTY_USAGE)
     for detail in details:
         _accumulate_usage(total_usage, detail.get("usage") or {})
+    llm_call_counts = sorted(int(detail.get("llm_calls") or 0) for detail in details)
+    usage_statuses = [str(detail.get("usage_status") or "unknown") for detail in details]
+    if any(status == "answer_pack_failed" for status in usage_statuses):
+        usage_status = "answer_pack_failed"
+    elif usage_statuses and all(status == "not_applicable_zero_chat" for status in usage_statuses):
+        usage_status = "not_applicable_zero_chat"
+    elif all(status == "ok" for status in usage_statuses):
+        usage_status = "ok"
+    elif any(status.startswith("missing") for status in usage_statuses):
+        usage_status = "missing_usage"
+    else:
+        usage_status = "unknown"
+
+    def percentile(values: list[int], pct: float) -> int:
+        if not values:
+            return 0
+        index = min(len(values) - 1, max(0, int(round((len(values) - 1) * pct))))
+        return values[index]
     return {
         "cases": total,
         "accuracy": round(hits / total, 4) if total else 0.0,
@@ -503,7 +554,16 @@ def _metrics(details: list[dict[str, Any]], seconds: float) -> dict[str, Any]:
         "completion_tokens": total_usage["completion_tokens"],
         "reasoning_tokens": total_usage["reasoning_tokens"],
         "total_tokens": total_usage["total_tokens"],
+        "usage_status": usage_status,
+        "usage_status_counts": {
+            status: usage_statuses.count(status)
+            for status in sorted(set(usage_statuses))
+        },
         "avg_llm_calls": round(total_usage["llm_calls"] / total, 3) if total else 0.0,
+        "median_llm_calls": percentile(llm_call_counts, 0.50),
+        "p90_llm_calls": percentile(llm_call_counts, 0.90),
+        "p95_llm_calls": percentile(llm_call_counts, 0.95),
+        "max_llm_calls": max(llm_call_counts, default=0),
         "avg_prompt_tokens": round(total_usage["prompt_tokens"] / total, 1) if total else 0.0,
         "avg_completion_tokens": round(total_usage["completion_tokens"] / total, 1) if total else 0.0,
         "avg_total_tokens": round(total_usage["total_tokens"] / total, 1) if total else 0.0,
@@ -574,15 +634,20 @@ def run_hermes_benchmark(
         "provider": provider,
         "mode_protocols": {
             "raw": "Hermes searches original files/folders and must ignore Jikji artifacts.",
-            "jikji-agent": "Jikji-assisted Hermes starts with `jikji find/search/brief`, rewrites queries when needed, and may fall back to original-file verification/search when Jikji is insufficient.",
-            "jikji-discover": "Adaptive discover cascade; Jikji classifies query type/confidence, merges deterministic query variants, and guides Hermes verification/fallback.",
+            "jikji-agent": "Jikji-assisted Hermes starts with discover; direct_use forbids broad crawl, jikji_retry permits exactly one sharper Jikji retry, and raw fallback is allowed only after that retry failed/stayed empty/stayed wrong.",
+            "jikji-discover": "Adaptive discover cascade with handoff_action; Jikji classifies query type/confidence, merges candidates, and enforces direct_use/jikji_retry/raw_fallback_after_retry verification rules.",
+            "jikji-one-shot": "One-turn answer-pack pass-through; Hermes receives answer_paths/supporting_paths and must not call tools or search.",
             "jikji-fast": "Map-first Jikji handoff; Hermes receives only ranked paths/evidence and is told not to browse.",
             "jikji": "Alias for jikji-brief: query-specific Jikji route brief and candidates are provided to avoid raw browsing.",
-            "jikji-brief": "Agent-map brief handoff; Hermes receives candidate paths, evidence, and fallback route order.",
+            "jikji-brief": "Agent-map brief handoff; Hermes receives candidate paths, evidence, next_read hints, and bounded handoff_action fallback rules.",
             "jikji-tool": "Tool-first Jikji handoff; candidate list replaces exploratory filesystem work.",
             "jikji-direct": (
                 "Skill-direct Jikji handoff; the agent invokes Jikji search and accepts "
                 "the ranked map candidates without an exploratory Hermes chat turn."
+            ),
+            "jikji-answer-pack": (
+                "Jikji find handoff; the benchmark invokes `jikji find` "
+                "and accepts direct_use answer_paths without any Hermes chat turn."
             ),
             "jikji-passive": "Legacy/passive map-reading mode; Hermes may inspect Jikji artifacts.",
         },
@@ -600,7 +665,8 @@ def run_hermes_benchmark(
             # the agent shell and cannot mutate the benchmark corpus. Avoid a
             # full per-case filesystem inventory here because that would hide
             # the actual "Everything-style prebuilt map" latency benefit.
-            before = {} if mode_family == "jikji-direct" else _inventory(root)
+            direct_no_chat = mode_family in {"jikji-direct", "jikji-answer-pack"}
+            before = {} if direct_no_chat else _inventory(root)
             timeout = False
             returncode = 0
             attempts: list[dict[str, Any]] = []
@@ -610,6 +676,7 @@ def run_hermes_benchmark(
             max_attempts = max(1, 1 + int(retries or 0))
             attempt_max_turns = 0
             candidates: list[dict[str, Any]] = []
+            discover_payload: dict[str, Any] = {}
             case_usage = dict(_EMPTY_USAGE)
             session_ids: list[str] = []
             if mode_family == "jikji-direct":
@@ -644,6 +711,27 @@ def run_hermes_benchmark(
                     "stdout_tail": attempt_stdout[-800:],
                     "tool": "jikji search",
                 })
+            elif mode_family == "jikji-answer-pack":
+                attempt = run_answer_pack_attempt(
+                    root,
+                    str(case.get("query") or ""),
+                    top_k=candidate_top_k,
+                )
+                discover_payload = attempt.payload
+                predicted = attempt.predicted
+                candidates = attempt.candidates
+                stdout = attempt.stdout
+                stderr = attempt.stderr
+                returncode = attempt.returncode
+                attempts.append({
+                    "attempt": 1,
+                    "returncode": attempt.returncode,
+                    "timeout": False,
+                    "seconds": attempt.seconds,
+                    "predicted_paths": predicted,
+                    "stdout_tail": attempt.stdout[-800:],
+                    "tool": "jikji find",
+                })
             else:
                 for attempt in range(max_attempts):
                     prompt = _prompt(
@@ -653,7 +741,7 @@ def run_hermes_benchmark(
                         candidate_top_k=candidate_top_k if mode_family.startswith("jikji") else 0,
                         retry=attempt > 0,
                     )
-                    attempt_max_turns = fast_max_turns if mode_family == "jikji-fast" else max_turns
+                    attempt_max_turns = 1 if mode_family == "jikji-one-shot" else (fast_max_turns if mode_family == "jikji-fast" else max_turns)
                     cmd = [hermes_bin, "chat", "-Q", "--max-turns", str(attempt_max_turns)]
                     if model:
                         cmd.extend(["-m", model])
@@ -706,8 +794,8 @@ def run_hermes_benchmark(
                     })
                     if predicted or attempt_returncode == -1:
                         break
-            after = {} if mode_family == "jikji-direct" else _inventory(root)
-            mutated_paths = [] if mode_family == "jikji-direct" else _inventory_delta(before, after)
+            after = {} if direct_no_chat else _inventory(root)
+            mutated_paths = [] if direct_no_chat else _inventory_delta(before, after)
             elapsed = time.perf_counter() - case_started
             raw_output = "\n\n".join(
                 [
@@ -720,6 +808,16 @@ def run_hermes_benchmark(
                 raw_output += "\nSTDERR:\n" + stderr
             evidence_path = evidence_dir / f"{mode}_{idx:04d}_{_safe_case_id(case.get('id'))}.txt"
             _atomic_write_text(evidence_path, raw_output)
+            if mode_family == "jikji-answer-pack" and returncode != 0:
+                usage_status = "answer_pack_failed"
+            elif direct_no_chat:
+                usage_status = "not_applicable_zero_chat"
+            elif not session_ids:
+                usage_status = "missing_session_ids"
+            elif int(case_usage.get("total_tokens") or 0) <= 0:
+                usage_status = "missing_usage"
+            else:
+                usage_status = "ok"
             expected = {str(p) for p in (case.get("expected_paths") or [])}
             ranked_predicted = [{"path": p} for p in predicted]
             rank = _rank_for_expected(ranked_predicted, expected, fingerprints, mode="exact")
@@ -748,15 +846,19 @@ def run_hermes_benchmark(
                 "mode_family": mode_family,
                 "candidate_top_k": candidate_top_k if mode_family.startswith("jikji") else 0,
                 "max_turns": attempt_max_turns,
-                "agent_chat_turns": 0 if mode_family == "jikji-direct" else attempt_max_turns,
+                "agent_chat_turns": 0 if direct_no_chat else attempt_max_turns,
                 "seconds": round(elapsed, 3),
                 "output_path": str(evidence_path),
                 "stdout_tail": (stdout or raw_output)[-1200:],
                 "session_ids": session_ids,
+                "usage_status": usage_status,
                 "usage": case_usage,
                 "llm_calls": case_usage["llm_calls"],
                 "prompt_tokens": case_usage["prompt_tokens"],
                 "completion_tokens": case_usage["completion_tokens"],
+                "handoff_action": discover_payload.get("handoff_action"),
+                "answer_pack_version": discover_payload.get("answer_pack_version"),
+                "raw_fallback_allowed": discover_payload.get("raw_fallback_allowed"),
             })
         seconds = time.perf_counter() - started
         report["modes"][mode] = {"metrics": _metrics(details, seconds), "details": details}

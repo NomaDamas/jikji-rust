@@ -1458,11 +1458,10 @@ def _agent_map_markdown(root, manifest, folders, docs, terms) -> str:
         "- 문서 chunk 탐색 지도: `.jikji/chunk_map.jsonl`",
         "- 중복/사본 그룹: `.jikji/duplicate_map.jsonl`",
         "- AutoRAG 연동 계약: `.jikji/autorag_manifest.json`",
-        "- CLI 검색 예: `rg \"검색어\" .jikji/doc_text .jikji/*.jsonl`",
+        "- 권장 CLI 검색: `jikji find <root> \"질문\" --json`",
         "- LLM Wiki 인덱스: `.jikji/wiki/index.md`",
         "- 지식그래프: `.jikji/knowledge_graph.json`",
         "- 저토큰 그래프 라우트: `.jikji/graph_routes.jsonl`",
-        "- 권장 CLI 검색: `jikji brief <root> \"질문\" --compact --json`",
         "",
         "## 요약",
         f"- 루트: `{root}`",
@@ -1473,9 +1472,9 @@ def _agent_map_markdown(root, manifest, folders, docs, terms) -> str:
         f"- 파서/메타 경고: {manifest.get('parse_errors', 0)}개",
         "",
         "## 에이전트 검색 규칙",
-        "- 첫 호출은 `jikji brief <root> \"자연어 단서\" --compact --json`로 후보 경로만 작게 받기",
-        "- 지도 JSONL 전체를 읽기 전에 `.jikji/graph_routes.jsonl` 기반 compact 후보를 우선 사용",
-        "- 후보가 맞으면 원본 탐색/grep 없이 `candidates[].p`를 바로 사용",
+        "- 첫 호출은 `jikji find <root> \"자연어 단서\" --json`로 후보 경로와 evidence를 받기",
+        "- 지도 JSONL 전체를 읽기 전에 `answer_paths[]`, `candidates[]`, `evidence_pack[]`를 우선 사용",
+        "- 후보가 맞으면 원본 탐색/grep 없이 `answer_paths[]` 또는 `candidates[].p`를 바로 사용",
         "- PDF/Office/HWP/RTF 등 파서 필요 문서 본문: `.jikji/doc_text/`에서 `rg`",
         "- 자연어 단서 후보 추리: `.jikji/file_cards.jsonl`과 `.jikji/chunk_map.jsonl` 우선 확인",
         "- 중복/백업 사본 판단: `.jikji/duplicate_map.jsonl` 확인",
@@ -1515,8 +1514,8 @@ def _visible_agent_map(agent_map: Path) -> str:
 def _agent_routes_markdown(manifest) -> str:
     return (
         "# Jikji Agent Routes\n\n"
-        "1. 먼저 `jikji brief <root> \"질문\" --compact --json`을 호출해 작은 후보 목록을 받는다.\n"
-        "2. 후보가 그럴듯하면 `candidates[].p` 경로를 그대로 사용하고, 필요할 때만 `wiki`/`cache`를 읽는다.\n"
+        "1. 먼저 `jikji find <root> \"질문\" --json`을 호출해 후보 목록과 evidence를 받는다.\n"
+        "2. 후보가 그럴듯하면 `answer_paths[]` 또는 `candidates[].p` 경로를 그대로 사용하고, 필요할 때만 `wiki`/`cache`를 읽는다.\n"
         "3. 후보가 애매하면 `.jikji/graph_routes.jsonl`과 `.jikji/knowledge_graph.json`에서 term/intent/folder 이웃을 따라간다.\n"
         "4. 자연어/내용 단서 후보는 `.jikji/file_cards.jsonl`와 `.jikji/chunk_map.jsonl`에서 보조 확인한다.\n"
         "5. 폴더 후보는 `.jikji/folder_index.jsonl` 또는 `.jikji/folder_profile.jsonl`에서 찾는다.\n"
@@ -1538,13 +1537,12 @@ def _agent_skill_context_markdown(manifest) -> str:
         "이 인덱스는 비파괴적으로 생성되었으며 원본 폴더/파일명은 변경하지 않았습니다.\n\n"
         "## 절대 원칙 (MANDATORY)\n"
         "이 폴더에는 Jikji 인덱스와 LLM Wiki/지식그래프가 이미 준비되어 있습니다. 로컬 파일/폴더/문서를 "
-        "찾을 때는 **무조건 `jikji brief <root> \"질문\" --compact --json`을 가장 먼저 호출**해서 "
+        "찾을 때는 **무조건 `jikji find <root> \"질문\" --json`을 가장 먼저 호출**해서 "
         "작은 후보군을 주입받습니다.\n"
         "- 금지: 후보를 받기 전에 `grep`/`rg`/`ls`/`find`/`fd`/`cat`으로 파일시스템이나 `.jikji` 전체를 "
         "헤매는 행위. 이것은 Jikji가 이미 끝낸 작업을 다시 하는 낭비입니다.\n"
-        "- 첫 행동은 항상 `jikji brief <root> \"자연어 단서\" --compact --json` 입니다. 일반 `brief`/`search`보다 "
-        "토큰이 작은 그래프 라우트만 받습니다.\n"
-        "- Jikji가 돌려준 `candidates[].p`를 그대로 정답 경로로 사용하고, 필요하면 `candidates[].wiki` 또는 "
+        "- 첫 행동은 항상 `jikji find <root> \"자연어 단서\" --json` 입니다.\n"
+        "- Jikji가 돌려준 `answer_paths[]` 또는 `candidates[].p`를 그대로 정답 경로로 사용하고, 필요하면 `candidates[].wiki` 또는 "
         "상위 후보 원본만 열어 검증합니다.\n"
         "- `grep`/`rg`/`ls`/`find`는 Jikji 후보가 **비어 있거나 명백히 틀렸을 때만** "
         "최후의 수단으로 사용합니다.\n\n"

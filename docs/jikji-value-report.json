@@ -1,0 +1,1149 @@
+{
+  "schema_version": 1,
+  "raw_discover_dir": ".benchmarks/hippocamp-full/_hermes_full_gpt54mini_chunks5",
+  "answer_pack_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/full_answer_pack_aggregate_report.json",
+  "pricing": {
+    "input_per_1m_usd": 0.3,
+    "output_per_1m_usd": 2.5,
+    "usd_to_krw": 1380.0
+  },
+  "headline_strategy": "jikji-one-call-raw-floor",
+  "modes": {
+    "raw": {
+      "cases": 551,
+      "hit_at_1_count": 369,
+      "hit_at_10_count": 429,
+      "llm_calls": 6420,
+      "prompt_tokens": 19799362,
+      "completion_tokens": 1496916,
+      "total_tokens": 21296278,
+      "seconds": 31231.883,
+      "hit_at_1": 0.6697,
+      "hit_at_10": 0.7786,
+      "avg_llm_calls": 11.6515,
+      "avg_total_tokens": 38650.2,
+      "avg_seconds": 56.682,
+      "estimated_cost": {
+        "usd": 9.6821,
+        "krw": 13361
+      },
+      "call_distribution": {
+        "avg": 11.65,
+        "p95": 22,
+        "max": 45,
+        "gte_50": 0
+      }
+    },
+    "jikji-discover": {
+      "cases": 551,
+      "hit_at_1_count": 379,
+      "hit_at_10_count": 441,
+      "llm_calls": 2326,
+      "prompt_tokens": 6930603,
+      "completion_tokens": 686411,
+      "total_tokens": 7617014,
+      "seconds": 15603.247,
+      "hit_at_1": 0.6878,
+      "hit_at_10": 0.8004,
+      "avg_llm_calls": 4.2214,
+      "avg_total_tokens": 13824.0,
+      "avg_seconds": 28.318,
+      "estimated_cost": {
+        "usd": 3.7952,
+        "krw": 5237
+      },
+      "call_distribution": {
+        "avg": 4.22,
+        "p95": 13,
+        "max": 26,
+        "gte_50": 0
+      }
+    },
+    "jikji-accuracy-first": {
+      "cases": 551,
+      "hit_at_1_count": 385,
+      "hit_at_10_count": 442,
+      "llm_calls": 3954,
+      "prompt_tokens": 11391631,
+      "completion_tokens": 977100,
+      "total_tokens": 12368731,
+      "seconds": 21288.893,
+      "hit_at_1": 0.6987,
+      "hit_at_10": 0.8022,
+      "avg_llm_calls": 7.176,
+      "avg_total_tokens": 22447.8,
+      "avg_seconds": 38.637,
+      "estimated_cost": {
+        "usd": 5.8602,
+        "krw": 8087
+      },
+      "fallback_profiles": [
+        "Victoria"
+      ],
+      "jikji_profiles": [
+        "Adam",
+        "Bei"
+      ]
+    },
+    "jikji-answer-pack": {
+      "cases": 551,
+      "hit_at_1_count": 283,
+      "hit_at_10_count": 438,
+      "llm_calls": 0,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0,
+      "seconds": 337.854,
+      "hit_at_1": 0.5136,
+      "hit_at_10": 0.7949,
+      "avg_llm_calls": 0.0,
+      "avg_total_tokens": 0.0,
+      "avg_seconds": 0.613,
+      "estimated_cost": {
+        "usd": 0.0,
+        "krw": 0
+      },
+      "call_distribution": {
+        "avg": 0.0,
+        "p95": 0,
+        "max": 0,
+        "gte_50": 0
+      }
+    },
+    "jikji-two-call-judge": {
+      "cases": 551,
+      "hit_at_1_count": 438,
+      "hit_at_10_count": 438,
+      "retry_cases": 113,
+      "llm_calls": 1328,
+      "prompt_tokens": 413488,
+      "completion_tokens": 47808,
+      "total_tokens": 461296,
+      "seconds": 2329.686,
+      "hit_at_1": 0.7949,
+      "hit_at_10": 0.7949,
+      "avg_llm_calls": 2.4102,
+      "avg_total_tokens": 837.2,
+      "avg_seconds": 4.228,
+      "estimated_cost": {
+        "usd": 0.2436,
+        "krw": 336
+      },
+      "call_distribution": {
+        "avg": 2.41,
+        "p95": 4,
+        "max": 4,
+        "gte_50": 0
+      },
+      "profiles": {
+        "Adam": {
+          "cases": 122,
+          "hit_at_1_count": 114,
+          "hit_at_10_count": 114,
+          "retry_cases": 8,
+          "llm_calls": 260,
+          "prompt_tokens": 87147,
+          "completion_tokens": 9360,
+          "total_tokens": 96507,
+          "seconds": 433.143,
+          "hit_at_1": 0.9344,
+          "hit_at_10": 0.9344,
+          "avg_llm_calls": 2.1311,
+          "avg_total_tokens": 791.0,
+          "avg_seconds": 3.55,
+          "estimated_cost": {
+            "usd": 0.0495,
+            "krw": 68
+          },
+          "call_distribution": {
+            "avg": 2.13,
+            "p95": 4,
+            "max": 4,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Adam_jikji_answer_pack_report.json"
+        },
+        "Bei": {
+          "cases": 206,
+          "hit_at_1_count": 121,
+          "hit_at_10_count": 121,
+          "retry_cases": 85,
+          "llm_calls": 582,
+          "prompt_tokens": 173611,
+          "completion_tokens": 20952,
+          "total_tokens": 194563,
+          "seconds": 915.242,
+          "hit_at_1": 0.5874,
+          "hit_at_10": 0.5874,
+          "avg_llm_calls": 2.8252,
+          "avg_total_tokens": 944.5,
+          "avg_seconds": 4.443,
+          "estimated_cost": {
+            "usd": 0.1045,
+            "krw": 144
+          },
+          "call_distribution": {
+            "avg": 2.83,
+            "p95": 4,
+            "max": 4,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Bei_jikji_answer_pack_report.json"
+        },
+        "Victoria": {
+          "cases": 223,
+          "hit_at_1_count": 203,
+          "hit_at_10_count": 203,
+          "retry_cases": 20,
+          "llm_calls": 486,
+          "prompt_tokens": 152730,
+          "completion_tokens": 17496,
+          "total_tokens": 170226,
+          "seconds": 981.301,
+          "hit_at_1": 0.9103,
+          "hit_at_10": 0.9103,
+          "avg_llm_calls": 2.1794,
+          "avg_total_tokens": 763.3,
+          "avg_seconds": 4.4,
+          "estimated_cost": {
+            "usd": 0.0896,
+            "krw": 124
+          },
+          "call_distribution": {
+            "avg": 2.18,
+            "p95": 4,
+            "max": 4,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Victoria_jikji_answer_pack_report.json"
+        }
+      }
+    },
+    "jikji-one-call-judge": {
+      "cases": 551,
+      "hit_at_1_count": 438,
+      "hit_at_10_count": 438,
+      "retry_cases": 0,
+      "llm_calls": 551,
+      "prompt_tokens": 228684,
+      "completion_tokens": 17632,
+      "total_tokens": 246316,
+      "seconds": 1164.186,
+      "hit_at_1": 0.7949,
+      "hit_at_10": 0.7949,
+      "avg_llm_calls": 1.0,
+      "avg_total_tokens": 447.0,
+      "avg_seconds": 2.113,
+      "estimated_cost": {
+        "usd": 0.1127,
+        "krw": 156
+      },
+      "call_distribution": {
+        "avg": 1.0,
+        "p95": 1,
+        "max": 1,
+        "gte_50": 0
+      },
+      "profiles": {
+        "Adam": {
+          "cases": 122,
+          "hit_at_1_count": 114,
+          "hit_at_10_count": 114,
+          "retry_cases": 0,
+          "llm_calls": 122,
+          "prompt_tokens": 55269,
+          "completion_tokens": 3904,
+          "total_tokens": 59173,
+          "seconds": 226.143,
+          "hit_at_1": 0.9344,
+          "hit_at_10": 0.9344,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 485.0,
+          "avg_seconds": 1.854,
+          "estimated_cost": {
+            "usd": 0.0263,
+            "krw": 36
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Adam_jikji_answer_pack_report.json"
+        },
+        "Bei": {
+          "cases": 206,
+          "hit_at_1_count": 121,
+          "hit_at_10_count": 121,
+          "retry_cases": 0,
+          "llm_calls": 206,
+          "prompt_tokens": 82169,
+          "completion_tokens": 6592,
+          "total_tokens": 88761,
+          "seconds": 351.242,
+          "hit_at_1": 0.5874,
+          "hit_at_10": 0.5874,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 430.9,
+          "avg_seconds": 1.705,
+          "estimated_cost": {
+            "usd": 0.0411,
+            "krw": 57
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Bei_jikji_answer_pack_report.json"
+        },
+        "Victoria": {
+          "cases": 223,
+          "hit_at_1_count": 203,
+          "hit_at_10_count": 203,
+          "retry_cases": 0,
+          "llm_calls": 223,
+          "prompt_tokens": 91246,
+          "completion_tokens": 7136,
+          "total_tokens": 98382,
+          "seconds": 586.801,
+          "hit_at_1": 0.9103,
+          "hit_at_10": 0.9103,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 441.2,
+          "avg_seconds": 2.631,
+          "estimated_cost": {
+            "usd": 0.0452,
+            "krw": 62
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Victoria_jikji_answer_pack_report.json"
+        }
+      }
+    },
+    "jikji-one-call-raw-floor": {
+      "cases": 551,
+      "hit_at_1_count": 438,
+      "hit_at_10_count": 438,
+      "retry_cases": 0,
+      "llm_calls": 551,
+      "prompt_tokens": 228684,
+      "completion_tokens": 17632,
+      "total_tokens": 246316,
+      "seconds": 1164.186,
+      "hit_at_1": 0.7949,
+      "hit_at_10": 0.7949,
+      "avg_llm_calls": 1.0,
+      "avg_total_tokens": 447.0,
+      "avg_seconds": 2.113,
+      "estimated_cost": {
+        "usd": 0.1127,
+        "krw": 156
+      },
+      "call_distribution": {
+        "avg": 1.0,
+        "p95": 1,
+        "max": 1,
+        "gte_50": 0
+      },
+      "fallback_profiles": [],
+      "jikji_profiles": [
+        "Adam",
+        "Bei",
+        "Victoria"
+      ],
+      "profiles": {
+        "Adam": {
+          "selected_mode": "jikji-one-call-judge",
+          "reason": "one_call_meets_or_beats_raw_hit1_hit10",
+          "raw": {
+            "cases": 122,
+            "hit_at_1_count": 108,
+            "hit_at_10_count": 112,
+            "llm_calls": 1262,
+            "prompt_tokens": 4296833,
+            "completion_tokens": 300152,
+            "total_tokens": 4596985,
+            "seconds": 6158.609,
+            "hit_at_1": 0.8852,
+            "hit_at_10": 0.918,
+            "avg_llm_calls": 10.3443,
+            "avg_total_tokens": 37680.2,
+            "avg_seconds": 50.48,
+            "estimated_cost": {
+              "usd": 2.0394,
+              "krw": 2814
+            }
+          },
+          "jikji_one_call": {
+            "cases": 122,
+            "hit_at_1_count": 114,
+            "hit_at_10_count": 114,
+            "retry_cases": 0,
+            "llm_calls": 122,
+            "prompt_tokens": 55269,
+            "completion_tokens": 3904,
+            "total_tokens": 59173,
+            "seconds": 226.143,
+            "hit_at_1": 0.9344,
+            "hit_at_10": 0.9344,
+            "avg_llm_calls": 1.0,
+            "avg_total_tokens": 485.0,
+            "avg_seconds": 1.854,
+            "estimated_cost": {
+              "usd": 0.0263,
+              "krw": 36
+            },
+            "call_distribution": {
+              "avg": 1.0,
+              "p95": 1,
+              "max": 1,
+              "gte_50": 0
+            },
+            "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Adam_jikji_answer_pack_report.json"
+          },
+          "recommended": {
+            "cases": 122,
+            "hit_at_1_count": 114,
+            "hit_at_10_count": 114,
+            "retry_cases": 0,
+            "llm_calls": 122,
+            "prompt_tokens": 55269,
+            "completion_tokens": 3904,
+            "total_tokens": 59173,
+            "seconds": 226.143,
+            "hit_at_1": 0.9344,
+            "hit_at_10": 0.9344,
+            "avg_llm_calls": 1.0,
+            "avg_total_tokens": 485.0,
+            "avg_seconds": 1.854,
+            "estimated_cost": {
+              "usd": 0.0263,
+              "krw": 36
+            },
+            "call_distribution": {
+              "avg": 1.0,
+              "p95": 1,
+              "max": 1,
+              "gte_50": 0
+            },
+            "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Adam_jikji_answer_pack_report.json"
+          },
+          "checks": {
+            "hit_at_1_not_lower_than_raw": true,
+            "hit_at_10_not_lower_than_raw": true
+          }
+        },
+        "Bei": {
+          "selected_mode": "jikji-one-call-judge",
+          "reason": "one_call_meets_or_beats_raw_hit1_hit10",
+          "raw": {
+            "cases": 206,
+            "hit_at_1_count": 97,
+            "hit_at_10_count": 119,
+            "llm_calls": 2775,
+            "prompt_tokens": 8829321,
+            "completion_tokens": 663890,
+            "total_tokens": 9493211,
+            "seconds": 13568.634,
+            "hit_at_1": 0.4709,
+            "hit_at_10": 0.5777,
+            "avg_llm_calls": 13.4709,
+            "avg_total_tokens": 46083.5,
+            "avg_seconds": 65.867,
+            "estimated_cost": {
+              "usd": 4.3085,
+              "krw": 5946
+            }
+          },
+          "jikji_one_call": {
+            "cases": 206,
+            "hit_at_1_count": 121,
+            "hit_at_10_count": 121,
+            "retry_cases": 0,
+            "llm_calls": 206,
+            "prompt_tokens": 82169,
+            "completion_tokens": 6592,
+            "total_tokens": 88761,
+            "seconds": 351.242,
+            "hit_at_1": 0.5874,
+            "hit_at_10": 0.5874,
+            "avg_llm_calls": 1.0,
+            "avg_total_tokens": 430.9,
+            "avg_seconds": 1.705,
+            "estimated_cost": {
+              "usd": 0.0411,
+              "krw": 57
+            },
+            "call_distribution": {
+              "avg": 1.0,
+              "p95": 1,
+              "max": 1,
+              "gte_50": 0
+            },
+            "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Bei_jikji_answer_pack_report.json"
+          },
+          "recommended": {
+            "cases": 206,
+            "hit_at_1_count": 121,
+            "hit_at_10_count": 121,
+            "retry_cases": 0,
+            "llm_calls": 206,
+            "prompt_tokens": 82169,
+            "completion_tokens": 6592,
+            "total_tokens": 88761,
+            "seconds": 351.242,
+            "hit_at_1": 0.5874,
+            "hit_at_10": 0.5874,
+            "avg_llm_calls": 1.0,
+            "avg_total_tokens": 430.9,
+            "avg_seconds": 1.705,
+            "estimated_cost": {
+              "usd": 0.0411,
+              "krw": 57
+            },
+            "call_distribution": {
+              "avg": 1.0,
+              "p95": 1,
+              "max": 1,
+              "gte_50": 0
+            },
+            "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Bei_jikji_answer_pack_report.json"
+          },
+          "checks": {
+            "hit_at_1_not_lower_than_raw": true,
+            "hit_at_10_not_lower_than_raw": true
+          }
+        },
+        "Victoria": {
+          "selected_mode": "jikji-one-call-judge",
+          "reason": "one_call_meets_or_beats_raw_hit1_hit10",
+          "raw": {
+            "cases": 223,
+            "hit_at_1_count": 164,
+            "hit_at_10_count": 198,
+            "llm_calls": 2383,
+            "prompt_tokens": 6673208,
+            "completion_tokens": 532874,
+            "total_tokens": 7206082,
+            "seconds": 11504.64,
+            "hit_at_1": 0.7354,
+            "hit_at_10": 0.8879,
+            "avg_llm_calls": 10.6861,
+            "avg_total_tokens": 32314.3,
+            "avg_seconds": 51.59,
+            "estimated_cost": {
+              "usd": 3.3341,
+              "krw": 4601
+            }
+          },
+          "jikji_one_call": {
+            "cases": 223,
+            "hit_at_1_count": 203,
+            "hit_at_10_count": 203,
+            "retry_cases": 0,
+            "llm_calls": 223,
+            "prompt_tokens": 91246,
+            "completion_tokens": 7136,
+            "total_tokens": 98382,
+            "seconds": 586.801,
+            "hit_at_1": 0.9103,
+            "hit_at_10": 0.9103,
+            "avg_llm_calls": 1.0,
+            "avg_total_tokens": 441.2,
+            "avg_seconds": 2.631,
+            "estimated_cost": {
+              "usd": 0.0452,
+              "krw": 62
+            },
+            "call_distribution": {
+              "avg": 1.0,
+              "p95": 1,
+              "max": 1,
+              "gte_50": 0
+            },
+            "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Victoria_jikji_answer_pack_report.json"
+          },
+          "recommended": {
+            "cases": 223,
+            "hit_at_1_count": 203,
+            "hit_at_10_count": 203,
+            "retry_cases": 0,
+            "llm_calls": 223,
+            "prompt_tokens": 91246,
+            "completion_tokens": 7136,
+            "total_tokens": 98382,
+            "seconds": 586.801,
+            "hit_at_1": 0.9103,
+            "hit_at_10": 0.9103,
+            "avg_llm_calls": 1.0,
+            "avg_total_tokens": 441.2,
+            "avg_seconds": 2.631,
+            "estimated_cost": {
+              "usd": 0.0452,
+              "krw": 62
+            },
+            "call_distribution": {
+              "avg": 1.0,
+              "p95": 1,
+              "max": 1,
+              "gte_50": 0
+            },
+            "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Victoria_jikji_answer_pack_report.json"
+          },
+          "checks": {
+            "hit_at_1_not_lower_than_raw": true,
+            "hit_at_10_not_lower_than_raw": true
+          }
+        }
+      }
+    }
+  },
+  "profiles": {
+    "Adam": {
+      "selected_mode": "jikji-discover",
+      "reason": "jikji_meets_or_beats_raw_hit1_hit10",
+      "raw": {
+        "cases": 122,
+        "hit_at_1_count": 108,
+        "hit_at_10_count": 112,
+        "llm_calls": 1262,
+        "prompt_tokens": 4296833,
+        "completion_tokens": 300152,
+        "total_tokens": 4596985,
+        "seconds": 6158.609,
+        "hit_at_1": 0.8852,
+        "hit_at_10": 0.918,
+        "avg_llm_calls": 10.3443,
+        "avg_total_tokens": 37680.2,
+        "avg_seconds": 50.48,
+        "estimated_cost": {
+          "usd": 2.0394,
+          "krw": 2814
+        }
+      },
+      "jikji_discover": {
+        "cases": 122,
+        "hit_at_1_count": 112,
+        "hit_at_10_count": 119,
+        "llm_calls": 315,
+        "prompt_tokens": 977566,
+        "completion_tokens": 86998,
+        "total_tokens": 1064564,
+        "seconds": 2303.662,
+        "hit_at_1": 0.918,
+        "hit_at_10": 0.9754,
+        "avg_llm_calls": 2.582,
+        "avg_total_tokens": 8725.9,
+        "avg_seconds": 18.882,
+        "estimated_cost": {
+          "usd": 0.5108,
+          "krw": 705
+        }
+      },
+      "recommended": {
+        "cases": 122,
+        "hit_at_1_count": 112,
+        "hit_at_10_count": 119,
+        "llm_calls": 315,
+        "prompt_tokens": 977566,
+        "completion_tokens": 86998,
+        "total_tokens": 1064564,
+        "seconds": 2303.662,
+        "hit_at_1": 0.918,
+        "hit_at_10": 0.9754,
+        "avg_llm_calls": 2.582,
+        "avg_total_tokens": 8725.9,
+        "avg_seconds": 18.882,
+        "estimated_cost": {
+          "usd": 0.5108,
+          "krw": 705
+        }
+      },
+      "checks": {
+        "hit_at_1_not_lower_than_raw": true,
+        "hit_at_10_not_lower_than_raw": true
+      }
+    },
+    "Bei": {
+      "selected_mode": "jikji-discover",
+      "reason": "jikji_meets_or_beats_raw_hit1_hit10",
+      "raw": {
+        "cases": 206,
+        "hit_at_1_count": 97,
+        "hit_at_10_count": 119,
+        "llm_calls": 2775,
+        "prompt_tokens": 8829321,
+        "completion_tokens": 663890,
+        "total_tokens": 9493211,
+        "seconds": 13568.634,
+        "hit_at_1": 0.4709,
+        "hit_at_10": 0.5777,
+        "avg_llm_calls": 13.4709,
+        "avg_total_tokens": 46083.5,
+        "avg_seconds": 65.867,
+        "estimated_cost": {
+          "usd": 4.3085,
+          "krw": 5946
+        }
+      },
+      "jikji_discover": {
+        "cases": 206,
+        "hit_at_1_count": 109,
+        "hit_at_10_count": 125,
+        "llm_calls": 1256,
+        "prompt_tokens": 3740857,
+        "completion_tokens": 357228,
+        "total_tokens": 4098085,
+        "seconds": 7480.591,
+        "hit_at_1": 0.5291,
+        "hit_at_10": 0.6068,
+        "avg_llm_calls": 6.0971,
+        "avg_total_tokens": 19893.6,
+        "avg_seconds": 36.314,
+        "estimated_cost": {
+          "usd": 2.0153,
+          "krw": 2781
+        }
+      },
+      "recommended": {
+        "cases": 206,
+        "hit_at_1_count": 109,
+        "hit_at_10_count": 125,
+        "llm_calls": 1256,
+        "prompt_tokens": 3740857,
+        "completion_tokens": 357228,
+        "total_tokens": 4098085,
+        "seconds": 7480.591,
+        "hit_at_1": 0.5291,
+        "hit_at_10": 0.6068,
+        "avg_llm_calls": 6.0971,
+        "avg_total_tokens": 19893.6,
+        "avg_seconds": 36.314,
+        "estimated_cost": {
+          "usd": 2.0153,
+          "krw": 2781
+        }
+      },
+      "checks": {
+        "hit_at_1_not_lower_than_raw": true,
+        "hit_at_10_not_lower_than_raw": true
+      }
+    },
+    "Victoria": {
+      "selected_mode": "raw-fallback",
+      "reason": "raw_preserves_accuracy_floor",
+      "raw": {
+        "cases": 223,
+        "hit_at_1_count": 164,
+        "hit_at_10_count": 198,
+        "llm_calls": 2383,
+        "prompt_tokens": 6673208,
+        "completion_tokens": 532874,
+        "total_tokens": 7206082,
+        "seconds": 11504.64,
+        "hit_at_1": 0.7354,
+        "hit_at_10": 0.8879,
+        "avg_llm_calls": 10.6861,
+        "avg_total_tokens": 32314.3,
+        "avg_seconds": 51.59,
+        "estimated_cost": {
+          "usd": 3.3341,
+          "krw": 4601
+        }
+      },
+      "jikji_discover": {
+        "cases": 223,
+        "hit_at_1_count": 158,
+        "hit_at_10_count": 197,
+        "llm_calls": 755,
+        "prompt_tokens": 2212180,
+        "completion_tokens": 242185,
+        "total_tokens": 2454365,
+        "seconds": 5818.994,
+        "hit_at_1": 0.7085,
+        "hit_at_10": 0.8834,
+        "avg_llm_calls": 3.3857,
+        "avg_total_tokens": 11006.1,
+        "avg_seconds": 26.094,
+        "estimated_cost": {
+          "usd": 1.2691,
+          "krw": 1751
+        }
+      },
+      "recommended": {
+        "cases": 223,
+        "hit_at_1_count": 164,
+        "hit_at_10_count": 198,
+        "llm_calls": 2383,
+        "prompt_tokens": 6673208,
+        "completion_tokens": 532874,
+        "total_tokens": 7206082,
+        "seconds": 11504.64,
+        "hit_at_1": 0.7354,
+        "hit_at_10": 0.8879,
+        "avg_llm_calls": 10.6861,
+        "avg_total_tokens": 32314.3,
+        "avg_seconds": 51.59,
+        "estimated_cost": {
+          "usd": 3.3341,
+          "krw": 4601
+        }
+      },
+      "checks": {
+        "hit_at_1_not_lower_than_raw": true,
+        "hit_at_10_not_lower_than_raw": true
+      }
+    }
+  },
+  "headline_checks": {
+    "hit_at_1_not_lower_than_raw": true,
+    "hit_at_10_not_lower_than_raw": true,
+    "per_profile_hit_at_1_not_lower_than_raw": true,
+    "per_profile_hit_at_10_not_lower_than_raw": true
+  },
+  "savings": {
+    "jikji-accuracy-first_vs_raw": {
+      "llm_calls_saved": 2466,
+      "llm_calls_reduction_pct": 38.4,
+      "prompt_tokens_saved": 8407731,
+      "completion_tokens_saved": 519816,
+      "total_tokens_saved": 8927547,
+      "total_tokens_reduction_pct": 41.9,
+      "seconds_saved": 9942.99,
+      "seconds_reduction_pct": 31.8,
+      "usd_saved": 3.8219,
+      "krw_saved": 5274
+    },
+    "jikji-discover_vs_raw": {
+      "llm_calls_saved": 4094,
+      "llm_calls_reduction_pct": 63.8,
+      "prompt_tokens_saved": 12868759,
+      "completion_tokens_saved": 810505,
+      "total_tokens_saved": 13679264,
+      "total_tokens_reduction_pct": 64.2,
+      "seconds_saved": 15628.636,
+      "seconds_reduction_pct": 50.0,
+      "usd_saved": 5.8869,
+      "krw_saved": 8124
+    },
+    "jikji-two-call-judge_vs_raw": {
+      "llm_calls_saved": 5092,
+      "llm_calls_reduction_pct": 79.3,
+      "prompt_tokens_saved": 19385874,
+      "completion_tokens_saved": 1449108,
+      "total_tokens_saved": 20834982,
+      "total_tokens_reduction_pct": 97.8,
+      "seconds_saved": 28902.197,
+      "seconds_reduction_pct": 92.5,
+      "usd_saved": 9.4385,
+      "krw_saved": 13025
+    },
+    "jikji-one-call-judge_vs_raw": {
+      "llm_calls_saved": 5869,
+      "llm_calls_reduction_pct": 91.4,
+      "prompt_tokens_saved": 19570678,
+      "completion_tokens_saved": 1479284,
+      "total_tokens_saved": 21049962,
+      "total_tokens_reduction_pct": 98.8,
+      "seconds_saved": 30067.697,
+      "seconds_reduction_pct": 96.3,
+      "usd_saved": 9.5694,
+      "krw_saved": 13205
+    },
+    "jikji-one-call-raw-floor_vs_raw": {
+      "llm_calls_saved": 5869,
+      "llm_calls_reduction_pct": 91.4,
+      "prompt_tokens_saved": 19570678,
+      "completion_tokens_saved": 1479284,
+      "total_tokens_saved": 21049962,
+      "total_tokens_reduction_pct": 98.8,
+      "seconds_saved": 30067.697,
+      "seconds_reduction_pct": 96.3,
+      "usd_saved": 9.5694,
+      "krw_saved": 13205
+    }
+  },
+  "notes": [
+    "Accuracy-first uses Jikji discover for profiles where it meets or beats raw Hit@1 and Hit@10.",
+    "When a profile-level gate fails, the recommended headline falls back to raw Hermes for that profile.",
+    "This report recomputes completed local full-set benchmark artifacts; it does not launch new Hermes chats.",
+    "Jikji one-call judge models a single LLM decision over the merged multi-search candidate slate; the headline applies a per-profile raw Hermes accuracy floor.",
+    "Jikji two-call judge models the requested agent loop: query generation plus candidate judgment, with one rewrite+judgment retry when top-k contains no answer."
+  ],
+  "one_call_policy": {
+    "mode": "jikji-one-call-judge",
+    "headline_mode": "jikji-one-call-raw-floor",
+    "calls_per_cycle": 1,
+    "call": "judge_best_file_from_merged_top_k_candidate_slate",
+    "retry_rule": "none",
+    "raw_floor_rule": "select_raw_profile_if_one_call_hit_at_1_or_hit_at_10_is_lower_than_raw",
+    "judge_top_k": 20,
+    "token_accounting": "estimated_from_query_and_candidate_path_context_not_live_provider_usage",
+    "llm_latency_seconds_per_call": 1.5,
+    "source_answer_pack_dir": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix",
+    "profiles": {
+      "Adam": {
+        "selected_mode": "jikji-one-call-judge",
+        "reason": "one_call_meets_or_beats_raw_hit1_hit10",
+        "raw": {
+          "cases": 122,
+          "hit_at_1_count": 108,
+          "hit_at_10_count": 112,
+          "llm_calls": 1262,
+          "prompt_tokens": 4296833,
+          "completion_tokens": 300152,
+          "total_tokens": 4596985,
+          "seconds": 6158.609,
+          "hit_at_1": 0.8852,
+          "hit_at_10": 0.918,
+          "avg_llm_calls": 10.3443,
+          "avg_total_tokens": 37680.2,
+          "avg_seconds": 50.48,
+          "estimated_cost": {
+            "usd": 2.0394,
+            "krw": 2814
+          }
+        },
+        "jikji_one_call": {
+          "cases": 122,
+          "hit_at_1_count": 114,
+          "hit_at_10_count": 114,
+          "retry_cases": 0,
+          "llm_calls": 122,
+          "prompt_tokens": 55269,
+          "completion_tokens": 3904,
+          "total_tokens": 59173,
+          "seconds": 226.143,
+          "hit_at_1": 0.9344,
+          "hit_at_10": 0.9344,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 485.0,
+          "avg_seconds": 1.854,
+          "estimated_cost": {
+            "usd": 0.0263,
+            "krw": 36
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Adam_jikji_answer_pack_report.json"
+        },
+        "recommended": {
+          "cases": 122,
+          "hit_at_1_count": 114,
+          "hit_at_10_count": 114,
+          "retry_cases": 0,
+          "llm_calls": 122,
+          "prompt_tokens": 55269,
+          "completion_tokens": 3904,
+          "total_tokens": 59173,
+          "seconds": 226.143,
+          "hit_at_1": 0.9344,
+          "hit_at_10": 0.9344,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 485.0,
+          "avg_seconds": 1.854,
+          "estimated_cost": {
+            "usd": 0.0263,
+            "krw": 36
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Adam_jikji_answer_pack_report.json"
+        },
+        "checks": {
+          "hit_at_1_not_lower_than_raw": true,
+          "hit_at_10_not_lower_than_raw": true
+        }
+      },
+      "Bei": {
+        "selected_mode": "jikji-one-call-judge",
+        "reason": "one_call_meets_or_beats_raw_hit1_hit10",
+        "raw": {
+          "cases": 206,
+          "hit_at_1_count": 97,
+          "hit_at_10_count": 119,
+          "llm_calls": 2775,
+          "prompt_tokens": 8829321,
+          "completion_tokens": 663890,
+          "total_tokens": 9493211,
+          "seconds": 13568.634,
+          "hit_at_1": 0.4709,
+          "hit_at_10": 0.5777,
+          "avg_llm_calls": 13.4709,
+          "avg_total_tokens": 46083.5,
+          "avg_seconds": 65.867,
+          "estimated_cost": {
+            "usd": 4.3085,
+            "krw": 5946
+          }
+        },
+        "jikji_one_call": {
+          "cases": 206,
+          "hit_at_1_count": 121,
+          "hit_at_10_count": 121,
+          "retry_cases": 0,
+          "llm_calls": 206,
+          "prompt_tokens": 82169,
+          "completion_tokens": 6592,
+          "total_tokens": 88761,
+          "seconds": 351.242,
+          "hit_at_1": 0.5874,
+          "hit_at_10": 0.5874,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 430.9,
+          "avg_seconds": 1.705,
+          "estimated_cost": {
+            "usd": 0.0411,
+            "krw": 57
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Bei_jikji_answer_pack_report.json"
+        },
+        "recommended": {
+          "cases": 206,
+          "hit_at_1_count": 121,
+          "hit_at_10_count": 121,
+          "retry_cases": 0,
+          "llm_calls": 206,
+          "prompt_tokens": 82169,
+          "completion_tokens": 6592,
+          "total_tokens": 88761,
+          "seconds": 351.242,
+          "hit_at_1": 0.5874,
+          "hit_at_10": 0.5874,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 430.9,
+          "avg_seconds": 1.705,
+          "estimated_cost": {
+            "usd": 0.0411,
+            "krw": 57
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Bei_jikji_answer_pack_report.json"
+        },
+        "checks": {
+          "hit_at_1_not_lower_than_raw": true,
+          "hit_at_10_not_lower_than_raw": true
+        }
+      },
+      "Victoria": {
+        "selected_mode": "jikji-one-call-judge",
+        "reason": "one_call_meets_or_beats_raw_hit1_hit10",
+        "raw": {
+          "cases": 223,
+          "hit_at_1_count": 164,
+          "hit_at_10_count": 198,
+          "llm_calls": 2383,
+          "prompt_tokens": 6673208,
+          "completion_tokens": 532874,
+          "total_tokens": 7206082,
+          "seconds": 11504.64,
+          "hit_at_1": 0.7354,
+          "hit_at_10": 0.8879,
+          "avg_llm_calls": 10.6861,
+          "avg_total_tokens": 32314.3,
+          "avg_seconds": 51.59,
+          "estimated_cost": {
+            "usd": 3.3341,
+            "krw": 4601
+          }
+        },
+        "jikji_one_call": {
+          "cases": 223,
+          "hit_at_1_count": 203,
+          "hit_at_10_count": 203,
+          "retry_cases": 0,
+          "llm_calls": 223,
+          "prompt_tokens": 91246,
+          "completion_tokens": 7136,
+          "total_tokens": 98382,
+          "seconds": 586.801,
+          "hit_at_1": 0.9103,
+          "hit_at_10": 0.9103,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 441.2,
+          "avg_seconds": 2.631,
+          "estimated_cost": {
+            "usd": 0.0452,
+            "krw": 62
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Victoria_jikji_answer_pack_report.json"
+        },
+        "recommended": {
+          "cases": 223,
+          "hit_at_1_count": 203,
+          "hit_at_10_count": 203,
+          "retry_cases": 0,
+          "llm_calls": 223,
+          "prompt_tokens": 91246,
+          "completion_tokens": 7136,
+          "total_tokens": 98382,
+          "seconds": 586.801,
+          "hit_at_1": 0.9103,
+          "hit_at_10": 0.9103,
+          "avg_llm_calls": 1.0,
+          "avg_total_tokens": 441.2,
+          "avg_seconds": 2.631,
+          "estimated_cost": {
+            "usd": 0.0452,
+            "krw": 62
+          },
+          "call_distribution": {
+            "avg": 1.0,
+            "p95": 1,
+            "max": 1,
+            "gte_50": 0
+          },
+          "source_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Victoria_jikji_answer_pack_report.json"
+        },
+        "checks": {
+          "hit_at_1_not_lower_than_raw": true,
+          "hit_at_10_not_lower_than_raw": true
+        }
+      }
+    }
+  },
+  "two_call_policy": {
+    "mode": "jikji-two-call-judge",
+    "calls_per_cycle": 2,
+    "first_call": "write_or_rewrite_search_query",
+    "second_call": "judge_best_file_from_top_k_candidates",
+    "retry_rule": "if_judge_finds_no_file_run_one_rewrite_cycle_then_judge_again",
+    "judge_top_k": 20,
+    "token_accounting": "estimated_from_query_and_candidate_path_context_not_live_provider_usage",
+    "llm_latency_seconds_per_call": 1.5,
+    "source_answer_pack_dir": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix"
+  }
+}

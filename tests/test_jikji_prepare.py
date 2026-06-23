@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+# SIZE_OK: legacy integration regression suite; answer-pack contract coverage was moved to focused test files.
 import json
 import os
+import shutil
 from pathlib import Path
 
 from jikji.agent_index import build_agent_index
@@ -138,6 +140,14 @@ def test_compact_brief_uses_graph_routes_and_is_smaller(tmp_path, capsys):
     assert payload["candidates"][0]["wiki"].startswith(".jikji/wiki/sources/")
     assert (tmp_path / payload["candidates"][0]["wiki"]).exists()
     assert len(compact) < len(full) * 0.7
+    assert payload["handoff_policy"]["use_payload_directly"] is True
+    assert payload["handoff_policy"]["agent_budget"] == "zero_extra_discovery_calls"
+    assert payload["handoff_action"] == "direct_use"
+    assert payload["candidates"][0]["next_read"]["kind"] in {"cache", "wiki", "original"}
+    assert main(["brief", str(tmp_path), "ACME payment contract", "--top-k", "5", "--compact"]) == 0
+    markdown = capsys.readouterr().out
+    assert "Jikji Compact Agent Brief" in markdown
+    assert "contracts/ACME_2026_contract.txt" in markdown
 
 
 def test_find_cli_returns_minimal_paths(tmp_path, capsys):
@@ -176,7 +186,7 @@ def test_find_refreshes_when_source_tree_changes(tmp_path, capsys):
     assert refreshed_signature.get("digest") != signature.get("digest")
 
 
-def test_discover_cli_classifies_and_returns_candidates(tmp_path, capsys):
+def test_find_cli_classifies_and_returns_candidates(tmp_path, capsys):
     from jikji.__main__ import main
 
     (tmp_path / "sports").mkdir()
@@ -185,15 +195,33 @@ def test_discover_cli_classifies_and_returns_candidates(tmp_path, capsys):
     assert main(["prepare", str(tmp_path), "--json"]) == 0
     capsys.readouterr()
 
-    assert main(["discover", str(tmp_path), "What is my primary sports interest?", "--json"]) == 0
+    assert main(["find", str(tmp_path), "What is my primary sports interest?", "--json"]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["mode"] == "discover"
+    assert payload["mode"] == "find"
+    assert payload["command"] == "jikji find"
     assert payload["query_type"] == "evidence_set"
     assert payload["recommended_action"] == "return_top5_to_top10_evidence_set"
     assert payload["confidence_score"] > 0
     assert payload["confidence_factors"]["family_coherence"] >= 0
     assert "sports/tennis_lessons.txt" in payload["paths"]
     assert payload["query_variants"]
+    assert payload["handoff_policy"]["use_payload_directly"] is True
+    assert payload["handoff_policy"]["agent_budget"] == "zero_extra_discovery_calls"
+    assert payload["next_commands"] == []
+    assert payload["handoff_action"] == "direct_use"
+    assert payload["candidates"][0]["next_read"]["kind"] in {"original", "wiki", "cache"}
+
+    assert payload["answer_paths"] == payload["paths"]
+    assert payload["answer_pack_version"] == 1
+    assert payload["answerability"] == "answerable_from_payload"
+    assert payload["allowed_agent_tool_calls"] == 0
+    assert payload["max_jikji_retries"] == 0
+    assert payload["max_raw_fallback_commands"] == 0
+    assert payload["max_verification_reads"] == 3
+    assert payload["raw_fallback_allowed"] is False
+    assert payload["allowed_llm_calls"] == 0
+    assert payload["agent_should_not_rerank"] is True
+    assert payload["evidence_pack"]
 
 
 def test_discover_promotes_explicit_path_anchor(tmp_path):
@@ -215,6 +243,9 @@ def test_discover_promotes_explicit_path_anchor(tmp_path):
         top_k=5,
     )
     assert payload["paths"][0] == "contracts/IGC-Non-Disclosure-Agreement-LSE-Sample.pdf"
+    assert payload["handoff_policy"]["use_payload_directly"] is True
+    assert payload["handoff_action"] == "direct_use"
+    assert payload["candidates"][0]["next_read"]["kind"] == "original"
 
 
 def test_graph_cli_status_query_and_explain(tmp_path, capsys):
@@ -345,6 +376,10 @@ def test_doctor_json_reports_ok(tmp_path, capsys):
     assert report["manifest"]["search_index_schema_version"] == 3
     assert report["image_support"]["metadata_indexing"] is True
     assert isinstance(report["image_support"]["ocr_active"], bool)
+    assert report["media_support"]["enabled"] is False
+    assert "image_ocr_available" in report["media_support"]
+    assert "audio_video_transcription_available" in report["media_support"]
+    assert report["manifest"]["media_index"]["enabled"] is False
 
 
 def test_clean_removes_only_jikji_artifacts(tmp_path, capsys):
@@ -354,21 +389,32 @@ def test_clean_removes_only_jikji_artifacts(tmp_path, capsys):
     doc.write_text("original file must survive", encoding="utf-8")
     assert main(["prepare", str(tmp_path), "--json"]) == 0
     capsys.readouterr()
+    user_note = tmp_path / ".jikji" / "user-created-note.txt"
+    user_note.write_text("user file inside .jikji must survive", encoding="utf-8")
+    user_wiki_note = tmp_path / ".jikji" / "wiki" / "sources" / "user-note.md"
+    user_wiki_note.write_text("user wiki note must survive", encoding="utf-8")
 
     assert (tmp_path / ".jikji").exists()
     assert (tmp_path / ".jikji_agent_map.md").exists()
     assert main(["clean", str(tmp_path), "--dry-run", "--json"]) == 0
     dry = json.loads(capsys.readouterr().out)
     assert dry["dry_run"] is True
-    assert str(tmp_path / ".jikji") in dry["would_remove"]
+    assert str(tmp_path / ".jikji" / "manifest.json") in dry["would_remove"]
+    assert str(user_note) not in dry["would_remove"]
+    assert str(user_wiki_note) not in dry["would_remove"]
     assert (tmp_path / ".jikji").exists()
     assert doc.exists()
+    assert user_note.exists()
 
     assert main(["clean", str(tmp_path), "--json"]) == 0
     cleaned = json.loads(capsys.readouterr().out)
     assert cleaned["ok"] is True
     assert cleaned["preserved_original_files"] is True
-    assert not (tmp_path / ".jikji").exists()
+    assert (tmp_path / ".jikji").exists()
+    assert user_note.read_text(encoding="utf-8") == "user file inside .jikji must survive"
+    assert user_wiki_note.read_text(encoding="utf-8") == "user wiki note must survive"
+    assert not (tmp_path / ".jikji" / "manifest.json").exists()
+    assert not any(path.name != "user-note.md" for path in (tmp_path / ".jikji" / "wiki" / "sources").glob("*.md"))
     assert not (tmp_path / ".jikji_agent_map.md").exists()
     assert doc.read_text(encoding="utf-8") == "original file must survive"
 
@@ -384,6 +430,302 @@ def test_clean_refuses_unverified_jikji_dir_without_force(tmp_path, capsys):
     refused = json.loads(capsys.readouterr().out)
     assert refused["reason"] == "missing_manifest"
     assert user_note.exists()
+
+
+def test_clean_ignores_manifest_paths_outside_root(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    root.mkdir()
+    outside_absolute = tmp_path / "outside-absolute.txt"
+    outside_relative = tmp_path / "outside-relative.txt"
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+    outside_absolute.write_text("absolute outside survives", encoding="utf-8")
+    outside_relative.write_text("relative outside survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    manifest_path = root / ".jikji" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["owned_paths"] = [
+        ".jikji/manifest.json",
+        str(outside_absolute),
+        "../outside-relative.txt",
+    ]
+    manifest["retired_cleanup_paths"] = []
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(outside_absolute) not in cleaned["would_remove"]
+    assert str(outside_relative) not in cleaned["would_remove"]
+    assert outside_absolute.read_text(encoding="utf-8") == "absolute outside survives"
+    assert outside_relative.read_text(encoding="utf-8") == "relative outside survives"
+    assert not manifest_path.exists()
+
+
+def test_clean_ignores_manifest_paths_not_in_generated_allowlist(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    root.mkdir()
+    source = root / "keep.txt"
+    source.write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    user_note = root / ".jikji" / "user-created-note.txt"
+    user_note.write_text("user note survives", encoding="utf-8")
+    manifest_path = root / ".jikji" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["owned_paths"] = [
+        ".jikji/manifest.json",
+        "keep.txt",
+        ".jikji/user-created-note.txt",
+    ]
+    manifest["retired_cleanup_paths"] = []
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(source) not in cleaned["would_remove"]
+    assert str(user_note) not in cleaned["would_remove"]
+    assert source.read_text(encoding="utf-8") == "source survives"
+    assert user_note.read_text(encoding="utf-8") == "user note survives"
+    assert not manifest_path.exists()
+
+
+def test_clean_ignores_forged_index_paths_not_matching_generated_patterns(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    user_note = root / ".jikji" / "user-created-note.txt"
+    user_wiki_note = root / ".jikji" / "wiki" / "sources" / "user-note.md"
+    user_note.write_text("user note survives", encoding="utf-8")
+    user_wiki_note.write_text("user wiki note survives", encoding="utf-8")
+    (root / ".jikji" / "graph_routes.jsonl").write_text(
+        json.dumps({"wiki_path": ".jikji/wiki/sources/user-note.md"}) + "\n",
+        encoding="utf-8",
+    )
+    (root / ".jikji" / "document_index.jsonl").write_text(
+        json.dumps({"text_cache_path": ".jikji/user-created-note.txt"}) + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(user_note) not in cleaned["would_remove"]
+    assert str(user_wiki_note) not in cleaned["would_remove"]
+    assert user_note.read_text(encoding="utf-8") == "user note survives"
+    assert user_wiki_note.read_text(encoding="utf-8") == "user wiki note survives"
+
+
+def test_clean_ignores_forged_index_paths_with_generated_names_but_user_content(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    fake_hash = "a" * 64
+    fake_cache = root / ".jikji" / "doc_text" / f"sha256_{fake_hash}.txt"
+    fake_meta = root / ".jikji" / "doc_meta" / f"sha256_{fake_hash}.json"
+    fake_cache.write_text("user cache-shaped file survives", encoding="utf-8")
+    fake_meta.write_text('{"schema_version": 999, "note": "user meta survives"}', encoding="utf-8")
+    (root / ".jikji" / "document_index.jsonl").write_text(
+        json.dumps({
+            "text_cache_path": f".jikji/doc_text/sha256_{fake_hash}.txt",
+            "doc_meta_path": f".jikji/doc_meta/sha256_{fake_hash}.json",
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(fake_cache) not in cleaned["would_remove"]
+    assert str(fake_meta) not in cleaned["would_remove"]
+    assert fake_cache.read_text(encoding="utf-8") == "user cache-shaped file survives"
+    assert json.loads(fake_meta.read_text(encoding="utf-8"))["note"] == "user meta survives"
+
+
+def test_clean_ignores_generated_shaped_cache_when_file_id_mismatches(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    fake_hash = "b" * 64
+    wrong_hash = "c" * 64
+    fake_cache = root / ".jikji" / "doc_text" / f"sha256_{fake_hash}.txt"
+    fake_meta = root / ".jikji" / "doc_meta" / f"sha256_{fake_hash}.json"
+    fake_cache.write_text(
+        f"# Source: forged\n# File ID: sha256:{wrong_hash}\n# Parsed by: Jikji\n\nuser content",
+        encoding="utf-8",
+    )
+    fake_meta.write_text(json.dumps({"schema_version": 1, "file_id": f"sha256:{wrong_hash}"}), encoding="utf-8")
+    (root / ".jikji" / "document_index.jsonl").write_text(
+        json.dumps({
+            "text_cache_path": f".jikji/doc_text/sha256_{fake_hash}.txt",
+            "doc_meta_path": f".jikji/doc_meta/sha256_{fake_hash}.json",
+        })
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(fake_cache) not in cleaned["would_remove"]
+    assert str(fake_meta) not in cleaned["would_remove"]
+    assert fake_cache.exists()
+    assert fake_meta.exists()
+
+
+def test_clean_ignores_generated_paths_through_symlinks_outside_root(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    shutil.rmtree(root / ".jikji" / "doc_text")
+    (root / ".jikji" / "doc_text").symlink_to(outside, target_is_directory=True)
+    fake_hash = "d" * 64
+    outside_cache = outside / f"sha256_{fake_hash}.txt"
+    outside_cache.write_text(
+        f"# Source: forged\n# File ID: sha256:{fake_hash}\n# Parsed by: Jikji\n\noutside content",
+        encoding="utf-8",
+    )
+    (root / ".jikji" / "document_index.jsonl").write_text(
+        json.dumps({"text_cache_path": f".jikji/doc_text/sha256_{fake_hash}.txt"}) + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(root / ".jikji" / "doc_text" / outside_cache.name) not in cleaned["would_remove"]
+    assert outside_cache.read_text(encoding="utf-8") == (
+        f"# Source: forged\n# File ID: sha256:{fake_hash}\n# Parsed by: Jikji\n\noutside content"
+    )
+
+
+def test_clean_ignores_symlinked_generated_index_outside_root(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    outside = tmp_path / "outside"
+    root.mkdir()
+    outside.mkdir()
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    fake_hash = "e" * 64
+    cache = root / ".jikji" / "doc_text" / f"sha256_{fake_hash}.txt"
+    cache.write_text(
+        f"# Source: forged\n# File ID: sha256:{fake_hash}\n# Parsed by: Jikji\n\nlocal user content",
+        encoding="utf-8",
+    )
+    forged_index = outside / "document_index.jsonl"
+    forged_index.write_text(
+        json.dumps({"text_cache_path": f".jikji/doc_text/sha256_{fake_hash}.txt"}) + "\n",
+        encoding="utf-8",
+    )
+    (root / ".jikji" / "document_index.jsonl").unlink()
+    (root / ".jikji" / "document_index.jsonl").symlink_to(forged_index)
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(cache) not in cleaned["would_remove"]
+    assert cache.exists()
+
+
+def test_clean_preserves_user_files_in_retired_generated_dirs(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    retired_user_file = root / ".jikji" / "folder_cards" / "user-note.txt"
+    retired_user_file.parent.mkdir(exist_ok=True)
+    retired_user_file.write_text("retired dir user file survives", encoding="utf-8")
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(retired_user_file.parent) not in cleaned["would_remove"]
+    assert retired_user_file.read_text(encoding="utf-8") == "retired dir user file survives"
+
+
+def test_clean_removes_generated_document_metadata(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    doc = tmp_path / "report.rtf"
+    doc.write_text(r"{\rtf1\ansi Jikji generated metadata}", encoding="utf-8")
+
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
+    rows = _jsonl(tmp_path / ".jikji" / "document_index.jsonl")
+    meta_path = tmp_path / rows[0]["doc_meta_path"]
+    cache_path = tmp_path / rows[0]["text_cache_path"]
+    assert meta_path.exists()
+    assert cache_path.exists()
+
+    assert main(["clean", str(tmp_path), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(meta_path) in cleaned["would_remove"]
+    assert str(cache_path) in cleaned["would_remove"]
+    assert not meta_path.exists()
+    assert not cache_path.exists()
+
+
+def test_clean_requires_jikji_source_marker_for_document_metadata(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "source.txt").write_text("source survives", encoding="utf-8")
+
+    assert main(["prepare", str(root), "--json"]) == 0
+    capsys.readouterr()
+    fake_hash = "f" * 64
+    fake_meta = root / ".jikji" / "doc_meta" / f"sha256_{fake_hash}.json"
+    fake_meta.write_text(json.dumps({"schema_version": 1, "file_id": f"sha256:{fake_hash}"}), encoding="utf-8")
+    (root / ".jikji" / "document_index.jsonl").write_text(
+        json.dumps({"doc_meta_path": f".jikji/doc_meta/sha256_{fake_hash}.json"}) + "\n",
+        encoding="utf-8",
+    )
+
+    assert main(["clean", str(root), "--json"]) == 0
+    cleaned = json.loads(capsys.readouterr().out)
+
+    assert str(fake_meta) not in cleaned["would_remove"]
+    assert fake_meta.exists()
 
 
 def test_prepare_recovers_stale_lock(tmp_path):
@@ -782,6 +1124,9 @@ def test_hermes_jikji_fast_prompt_is_map_first_no_browse(tmp_path):
 
     assert _mode_family("jikji-direct") == "jikji-direct"
     assert _mode_family("skill-direct") == "jikji-direct"
+    assert _mode_family("jikji-answer-pack") == "jikji-answer-pack"
+    assert _mode_family("answer-pack") == "jikji-answer-pack"
+    assert _mode_family("discover-direct") == "jikji-answer-pack"
     assert _mode_family("map-first") == "jikji-fast"
     assert _mode_family("jikji-pass-through") == "jikji-fast"
     assert "JIKJI MAP-FIRST FAST PATH" in prompt
@@ -875,7 +1220,7 @@ def test_agent_skill_install_to_explicit_dest(tmp_path):
     assert dest.exists()
     text = dest.read_text(encoding="utf-8")
     assert "selected automatically" in text
-    assert "jikji brief" in text
+    assert "jikji find" in text
 
 
 def test_agent_skill_install_cli_alias_to_explicit_dest(tmp_path, capsys):
@@ -955,6 +1300,34 @@ def test_agent_skill_install_queues_background_prepare_for_explicit_root(tmp_pat
     assert payload["post_install_prepare"]["roots"][0]["root"] == str(root.resolve())
     assert calls
     assert "post-install-prepare" in calls[0][0]
+
+
+def test_agent_skill_install_does_not_prepare_default_roots(tmp_path, capsys, monkeypatch):
+    from jikji import __main__ as cli
+
+    calls = []
+
+    class FakePopen:
+        pid = 12345
+
+        def __init__(self, cmd, **kwargs):
+            calls.append((cmd, kwargs))
+
+    dest = tmp_path / "agent" / "SKILL.md"
+    monkeypatch.setattr(cli.subprocess, "Popen", FakePopen)
+
+    assert cli.main([
+        "agent-skill-install",
+        "--dest",
+        str(dest),
+        "--json",
+    ]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["post_install_prepare"]["mode"] == "disabled"
+    assert payload["post_install_prepare"]["reason"] == "explicit_prepare_root_required"
+    assert payload["post_install_prepare"]["roots"] == []
+    assert calls == []
 
 
 def test_agent_skill_install_foreground_prepare_for_explicit_root(tmp_path, capsys):

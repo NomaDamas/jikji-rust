@@ -1,10 +1,22 @@
 """Adaptive Jikji discovery cascade for local-agent file retrieval."""
 from __future__ import annotations
 
+# SIZE_OK: legacy discovery scorer/cascade; answer-pack helpers were split out, ranking calibration stays co-located for regression stability.
+import hashlib
+import re
+import shlex
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
+from .answer_pack import (
+    answer_pack_for,
+    handoff_action_for,
+    handoff_budget_for,
+    handoff_policy_for,
+    is_generated_artifact_path,
+    next_read_for_candidate,
+)
 from .eval import search
 
 _SINGLE_HINTS = {
@@ -28,9 +40,12 @@ _GENERIC_PATH_ANCHORS = {
     "DOC",
     "DOCX",
     "INC",
+    "LLP",
     "LLC",
     "NDA",
     "PDF",
+    "PLC",
+    "PTE",
     "PPT",
     "PPTX",
     "RFP",
@@ -38,8 +53,26 @@ _GENERIC_PATH_ANCHORS = {
     "XLS",
     "XLSX",
 }
-_GENERIC_PATH_ANCHORS.update({"ADAM", "CLIENT", "SINGAPORE"})
+_GENERIC_PATH_ANCHORS.update({"ADAM", "CLIENT", "LIMITED", "LTD", "SINGAPORE"})
 
+_SHELL_NOISE_TERMS = {
+    "bash",
+    "cat",
+    "chmod",
+    "curl",
+    "echo",
+    "find",
+    "grep",
+    "ls",
+    "rm",
+    "rf",
+    "rmdir",
+    "sed",
+    "sh",
+    "sudo",
+    "wget",
+}
+_SHELL_SYNTAX_RE = re.compile(r"[$`;&|<>\\]")
 
 
 _TOPIC_REWRITES: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...] = (
@@ -72,6 +105,21 @@ def _trigger_present(query_norm: str, trigger: str) -> bool:
     return trigger_norm in set(query_norm.split())
 
 
+def _strip_shell_noise(query: str) -> str:
+    words: list[str] = []
+    for raw in str(query or "").replace("$", " ").replace("`", " ").split():
+        token = raw.strip(".,:;!?()[]{}\"'")
+        folded = token.casefold().lstrip("-")
+        if not token or folded in _SHELL_NOISE_TERMS:
+            continue
+        if token.startswith("-") and len(folded) <= 2:
+            continue
+        if folded and set(folded) <= {"/", "."}:
+            continue
+        if _SHELL_SYNTAX_RE.search(token):
+            continue
+        words.append(token)
+    return " ".join(words).strip()
 
 
 def classify_query(query: str) -> str:
@@ -85,6 +133,42 @@ def classify_query(query: str) -> str:
     return "adaptive"
 
 
+_YEAR_RE = re.compile(r"(?:FY)?(20\d{2}|19\d{2})", re.IGNORECASE)
+_SHORT_FY_RE = re.compile(r"FY(\d{2})", re.IGNORECASE)
+
+
+def _is_query_anchor_token(token: str, index: int) -> bool:
+    if len(token) < 3:
+        return False
+    if token.isupper() or any(ch.isdigit() for ch in token):
+        return True
+    has_upper = any(ch.isupper() for ch in token)
+    has_lower = any(ch.islower() for ch in token)
+    if has_upper and has_lower and not (token[:1].isupper() and token[1:].islower()):
+        return True
+    return index > 0 and len(token) >= 4 and token[:1].isupper() and token[1:].islower()
+
+
+def _anchor_tokens(query: str) -> list[str]:
+    tokens: list[str] = []
+    for raw in re.split(r"[^A-Za-z0-9]+", str(query or "")):
+        if not raw or len(raw) < 2:
+            continue
+        tokens.append(raw)
+        match = _YEAR_RE.fullmatch(raw)
+        if match:
+            year = match.group(1)
+            tokens.append(year)
+            tokens.append(year[-2:])
+            continue
+        short_fy = _SHORT_FY_RE.fullmatch(raw)
+        if short_fy:
+            year = f"20{short_fy.group(1)}"
+            tokens.append(year)
+            tokens.append(year[-2:])
+    return tokens
+
+
 def query_variants(query: str) -> list[str]:
     q = _norm(query)
     variants: list[str] = [query]
@@ -92,8 +176,16 @@ def query_variants(query: str) -> list[str]:
         if any(_trigger_present(q, trigger) for trigger in triggers):
             variants.extend(rewrites)
     # Keep quoted/capitalized-looking anchors available without relying on the agent.
-    words = [w.strip(".,:;!?()[]{}\"'") for w in str(query).split()]
-    anchors = [w for w in words if len(w) >= 3 and (w.isupper() or any(ch.isdigit() for ch in w))]
+    words = _anchor_tokens(query)
+    anchors: list[str] = []
+    seen_anchors: set[str] = set()
+    for idx, word in enumerate(words):
+        if not _is_query_anchor_token(word, idx) or word.upper() in _GENERIC_PATH_ANCHORS:
+            continue
+        if word.casefold() in seen_anchors:
+            continue
+        seen_anchors.add(word.casefold())
+        anchors.append(word)
     if anchors:
         variants.append(" ".join(anchors))
     out: list[str] = []
@@ -108,14 +200,8 @@ def query_variants(query: str) -> list[str]:
 
 def _query_anchors(query: str) -> list[str]:
     anchors: list[str] = []
-    for idx, word in enumerate(str(query or "").split()):
-        token = word.strip(".,:;!?()[]{}\"'")
-        if len(token) < 3:
-            continue
-        is_anchor = token.isupper() or any(ch.isdigit() for ch in token)
-        if idx > 0 and len(token) >= 4 and token[:1].isupper() and token[1:].islower():
-            is_anchor = True
-        if not is_anchor:
+    for idx, token in enumerate(_anchor_tokens(query)):
+        if not _is_query_anchor_token(token, idx):
             continue
         if token.upper() in _GENERIC_PATH_ANCHORS:
             continue
@@ -128,17 +214,13 @@ def _query_anchors(query: str) -> list[str]:
             out.append(anchor)
     return out
 
-
-
-
-
 def _merge_candidates(root: Path, variants: list[str], *, top_k: int, per_query_k: int) -> list[dict[str, Any]]:
     merged: OrderedDict[str, dict[str, Any]] = OrderedDict()
     query_anchors = _query_anchors(variants[0] if variants else "")
     for variant_index, variant in enumerate(variants):
         for rank, item in enumerate(search(root, variant, top_k=per_query_k), 1):
             path = str(item.get("path") or "")
-            if not path:
+            if not path or is_generated_artifact_path(path):
                 continue
             score = float(item.get("score") or 0.0)
             weighted = score / max(1.0, rank ** 0.35)
@@ -146,10 +228,14 @@ def _merge_candidates(root: Path, variants: list[str], *, top_k: int, per_query_
                 weighted *= 3.0
             path_key = path.casefold()
             matched_terms = {str(term).casefold() for term in item.get("matched_terms") or []}
-            if query_anchors and any(anchor in path_key for anchor in query_anchors):
+            path_anchor_hits = sum(1 for anchor in query_anchors if anchor in path_key)
+            term_anchor_hits = sum(1 for anchor in query_anchors if anchor in matched_terms)
+            if path_anchor_hits >= 2:
+                weighted = weighted * (12.0 + path_anchor_hits) + 150_000.0 * path_anchor_hits
+            elif path_anchor_hits == 1:
                 weighted = weighted * 8.0 + 50_000.0
-            elif query_anchors and any(anchor in matched_terms for anchor in query_anchors):
-                weighted = weighted * 4.0 + 20_000.0
+            elif term_anchor_hits:
+                weighted = weighted * (4.0 + term_anchor_hits) + 20_000.0 * term_anchor_hits
             existing = merged.get(path)
             if existing is None:
                 clone = dict(item)
@@ -168,6 +254,74 @@ def _merge_candidates(root: Path, variants: list[str], *, top_k: int, per_query_
         key=lambda item: (-float(item.get("discover_score") or 0.0), int(item.get("best_query_rank") or 999), str(item.get("path") or "")),
     )
     return ranked[:top_k]
+
+
+def _search_plan(root: Path, variants: list[str], *, top_k: int, per_route_top_k: int) -> dict[str, Any]:
+    routes = [
+        {
+            "route": "lexical_file_map",
+            "source": ".jikji/file_cards.jsonl",
+            "query_variants": variants,
+            "per_route_top_k": per_route_top_k,
+        },
+        {
+            "route": "graph_route",
+            "source": ".jikji/knowledge_graph.json",
+            "query_variants": variants,
+            "per_route_top_k": per_route_top_k,
+        },
+    ]
+    if (root / ".jikji" / "wiki").exists():
+        routes.append(
+            {
+                "route": "wiki_cache",
+                "source": ".jikji/wiki/",
+                "query_variants": variants,
+                "per_route_top_k": per_route_top_k,
+            }
+        )
+    if (root / ".jikji" / "file_cards.jsonl").exists():
+        routes.append(
+            {
+                "route": "metadata",
+                "source": ".jikji/file_cards.jsonl",
+                "query_variants": variants,
+                "per_route_top_k": per_route_top_k,
+            }
+        )
+    return {
+        "mode": "deterministic_multi_search",
+        "routes": routes,
+        "merge": "dedupe_by_path_then_rank_by_discover_score",
+        "candidate_top_k": top_k,
+    }
+
+
+def _candidate_route_labels(root: Path, candidate: dict[str, Any]) -> list[str]:
+    labels = ["lexical_file_map"]
+    reasons = {str(reason) for reason in candidate.get("reasons") or []}
+    if reasons & {"fielded-bm25", "filename-anchor", "duplicate-anchor", "duplicate-expansion", "body-coverage"}:
+        labels.append("graph_route")
+    if candidate.get("wiki") or candidate.get("wiki_path") or (root / ".jikji" / "wiki").exists():
+        labels.append("wiki_cache")
+    if candidate.get("metadata") or candidate.get("matched_terms") or (root / ".jikji" / "file_cards.jsonl").exists():
+        labels.append("metadata")
+    return labels
+
+
+def _judge_candidate_slate(root: Path, candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "rank": index,
+            "path": str(item.get("path") or ""),
+            "score": round(float(item.get("discover_score") or item.get("score") or 0.0), 3),
+            "routes": _candidate_route_labels(root, item),
+            "queries": (item.get("queries") or [])[:3],
+            "evidence": (item.get("evidence") or [])[:2],
+            "next_read": next_read_for_candidate(item),
+        }
+        for index, item in enumerate(candidates, 1)
+    ]
 
 
 def _clamp01(value: float) -> float:
@@ -256,16 +410,64 @@ def _recommended_action(query_type: str, confidence: str) -> str:
     return "verify_top_candidates"
 
 
-def discover(root: Path, query: str, *, top_k: int = 20, per_query_k: int | None = None) -> dict[str, Any]:
+def handoff_contract_for(query: str, candidates: list[dict[str, Any]], *, retry_exhausted: bool = False) -> dict[str, Any]:
+    retrieval_query = _strip_shell_noise(query)
+    query_type = classify_query(retrieval_query)
+    variants = query_variants(retrieval_query) if retrieval_query else [""]
+    factors = _confidence_factors(query_type, candidates, variants)
+    score = _confidence_score(query_type, factors)
+    confidence = _confidence(query_type, candidates, factors, score)
+    return {
+        "query_type": query_type,
+        "confidence": confidence,
+        "confidence_score": score,
+        "confidence_factors": factors,
+        "handoff_action": handoff_action_for(confidence, retry_exhausted=retry_exhausted),
+        "handoff_policy": handoff_policy_for(query_type, confidence, retry_exhausted=retry_exhausted),
+    }
+
+
+def retry_proof_for(root: Path, query: str, top_k: int) -> str:
+    material = f"{Path(root).resolve()}\0{query}\0{top_k}\0jikji-retry-v1"
+    return hashlib.sha256(material.encode("utf-8", errors="surrogateescape")).hexdigest()[:24]
+
+
+def _retry_query(query: str, variants: list[str]) -> str:
+    return variants[1] if len(variants) > 1 else query
+
+
+def _next_commands(root: Path, retry_query: str, confidence: str, top_k: int, retry_proof: str) -> list[str]:
+    if confidence != "low":
+        return []
+    commands: list[str] = []
+    commands.append(
+        " ".join([
+            "jikji",
+            "discover",
+            shlex.quote(str(root)),
+            shlex.quote(retry_query),
+            "--top-k",
+            str(top_k),
+            "--after-jikji-retry",
+            "--retry-proof",
+            shlex.quote(retry_proof),
+            "--json",
+        ])
+    )
+    return commands
+
+
+def discover(root: Path, query: str, *, top_k: int = 20, per_query_k: int | None = None, retry_exhausted: bool = False, retry_proof: str = "") -> dict[str, Any]:
     root = Path(root).expanduser().resolve()
-    query_type = classify_query(query)
-    variants = query_variants(query)
-    per_query_k = per_query_k or max(top_k, 20)
-    candidates = _merge_candidates(root, variants, top_k=top_k, per_query_k=per_query_k)
-    confidence_factors = _confidence_factors(query_type, candidates, variants)
-    confidence_score = _confidence_score(query_type, confidence_factors)
-    confidence = _confidence(query_type, candidates, confidence_factors, confidence_score)
-    paths = [str(item.get("path") or "") for item in candidates if item.get("path")]
+    retrieval_query = _strip_shell_noise(query)
+    query_type = classify_query(retrieval_query)
+    variants = query_variants(retrieval_query) if retrieval_query else [""]
+    retry_query = _retry_query(retrieval_query, variants)
+    current_query_proof = retry_proof_for(root, retrieval_query, top_k)
+    retry_command_proof = retry_proof_for(root, retry_query, top_k)
+    verified_retry_exhausted = retry_exhausted and retry_proof == current_query_proof
+    per_query_k = per_query_k or max(top_k * 3, 60)
+    candidates = [] if not retrieval_query else _merge_candidates(root, variants, top_k=top_k, per_query_k=per_query_k)
     compact_candidates = [
         {
             "p": item.get("path"),
@@ -275,19 +477,57 @@ def discover(root: Path, query: str, *, top_k: int = 20, per_query_k: int | None
             "terms": (item.get("matched_terms") or [])[:8],
             "queries": (item.get("queries") or [])[:3],
             "ev": " | ".join(str(x) for x in (item.get("evidence") or [])[:2])[:240],
+            "next_read": next_read_for_candidate(item),
         }
         for item in candidates
     ]
+    search_plan = _search_plan(root, variants, top_k=top_k, per_route_top_k=per_query_k)
+    judge_candidate_slate = _judge_candidate_slate(root, candidates)
+    candidate_paths = [str(item.get("path") or "") for item in candidates if item.get("path")]
+    handoff_contract = handoff_contract_for(query, candidates, retry_exhausted=verified_retry_exhausted)
+    answer_pack = answer_pack_for(query_type, handoff_contract["confidence"], candidates)
+    handoff_action = str(handoff_contract["handoff_action"])
+    budget = handoff_budget_for(handoff_action)
+    allowed_llm_calls = int(budget["allowed_llm_calls"])
+    if handoff_action == "direct_use" and answer_pack["requires_llm_rerank"]:
+        allowed_llm_calls = max(allowed_llm_calls, int(answer_pack["allowed_llm_calls"]))
     return {
         "mode": "discover",
+        "answer_pack_version": 1,
         "root": str(root),
         "query": query,
         "query_type": query_type,
-        "confidence": confidence,
-        "confidence_score": confidence_score,
-        "confidence_factors": confidence_factors,
-        "recommended_action": _recommended_action(query_type, confidence),
-        "paths": paths,
+        "confidence": handoff_contract["confidence"],
+        "confidence_score": handoff_contract["confidence_score"],
+        "confidence_factors": handoff_contract["confidence_factors"],
+        "recommended_action": _recommended_action(query_type, handoff_contract["confidence"]),
+        "handoff_action": handoff_contract["handoff_action"],
+        "handoff_policy": handoff_contract["handoff_policy"],
+        "retry_proof": retry_command_proof if handoff_contract["confidence"] == "low" and not verified_retry_exhausted else "",
+        "next_commands": [] if verified_retry_exhausted else _next_commands(root, retry_query, handoff_contract["confidence"], top_k, retry_command_proof),
+        "paths": candidate_paths,
+        "answer_paths": answer_pack["answer_paths"],
+        "supporting_paths": answer_pack["supporting_paths"],
+        "requires_llm_rerank": answer_pack["requires_llm_rerank"],
+        "agent_should_not_rerank": answer_pack["agent_should_not_rerank"],
+        "answerability": budget["answerability"],
+        "allowed_agent_tool_calls": budget["allowed_agent_tool_calls"],
+        "allowed_llm_calls": allowed_llm_calls,
+        "max_jikji_retries": budget["max_jikji_retries"],
+        "max_raw_fallback_commands": budget["max_raw_fallback_commands"],
+        "max_verification_reads": budget["max_verification_reads"],
+        "raw_fallback_allowed": budget["raw_fallback_allowed"],
         "query_variants": variants,
+        "llm_search_plan": {
+            "mode": "one_call_multi_search_judge",
+            "calls_per_cycle": 1,
+            "judge": "choose_best_file_from_merged_candidate_slate",
+            "rewrite_cycle": "none",
+            "candidate_top_k": top_k,
+            "token_accounting": "query_variants_plus_merged_candidate_slate",
+        },
+        "search_plan": search_plan,
+        "judge_candidate_slate": judge_candidate_slate,
+        "evidence_pack": answer_pack["evidence_pack"],
         "candidates": compact_candidates,
     }

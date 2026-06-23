@@ -18,28 +18,29 @@ This implementation is fully local and deterministic. It does not require LLM ca
 
 ## Agent protocol
 
-Use the compact route first:
+Use Jikji find first:
 
 ```bash
-jikji brief /path/to/root "natural language clue" --top-k 10 --compact --json
+jikji find /path/to/root "natural language clue" --json
 ```
 
-The compact payload returns:
+The payload returns:
 
-- `candidates[].p`: original relative path.
+- `answer_paths[]` / `paths[]`: ordered answer paths.
+- `candidates[].p`: merged candidate path.
 - `candidates[].wiki`: compact source wiki page.
 - `candidates[].cache`: parser text cache when available.
 - `candidates[].terms` / `intents`: graph evidence.
 - `candidates[].ev`: bounded evidence preview.
 
-Only when the compact route is empty or ambiguous should the agent read `.jikji/knowledge_graph.json`, `.jikji/graph_routes.jsonl`, full `brief`, or older map JSONL artifacts.
+Only when the returned `handoff_action` allows it should the agent read broader `.jikji/knowledge_graph.json`, `.jikji/graph_routes.jsonl`, or older map JSONL artifacts.
 
 ## Deterministic-first retrieval loop
 
-For a single file lookup, the ideal path is zero LLM calls:
+For a single file lookup:
 
 ```bash
-jikji find /path/to/root "user request text" --first
+jikji find /path/to/root "user request text" --json
 ```
 
 Jikji now indexes each file as a fielded document:
@@ -50,7 +51,7 @@ Jikji now indexes each file as a fielded document:
 - metadata tags / summaries / format hints
 - deterministic semantic text (`content_terms`, `rare_terms`, `phrase_signatures`, `intent_tags`, evidence previews)
 
-The instant SQLite index stores field term frequencies, field lengths, field IDF, and average field lengths. Search uses field-weighted BM25 first, then Jikji's map/card scoring and duplicate/path heuristics. LLMs should only enter the loop after deterministic `find`/`brief --compact` fails: generate query variants, run Jikji again for each variant, merge top-n, then judge whether a candidate is sufficient.
+The instant SQLite index stores field term frequencies, field lengths, field IDF, and average field lengths. Jikji find uses field-weighted BM25 first, then Jikji's map/card scoring and duplicate/path heuristics, and returns the merged top-k slate for bounded agent judgment.
 
 ## Graph exploration commands
 
@@ -87,7 +88,7 @@ Old fallback behavior encouraged agents to read `.jikji_agent_map.md`, `.jikji/a
 Expected local-agent flow:
 
 ```text
-one compact brief call → return candidate path or verify top file
+jikji find → return candidate path or verify top evidence
 ```
 
 instead of:

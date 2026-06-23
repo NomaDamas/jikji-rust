@@ -60,8 +60,8 @@ test eval cases      18
 ## Actual Hermes agent result
 
 `raw Hermes` searched the original folders/files and was instructed not to read
-Jikji artifacts. `Hermes + Jikji` received the query-specific `jikji brief`
-candidate route sheet and could inspect original files only if needed.
+Jikji artifacts. `Hermes + Jikji find` received the query-specific candidate
+slate and could inspect original files only if needed.
 
 ```text
 Agent mode       Cases  Hit@1   Hit@3   Hit@5   Hit@10  Seconds  Avg sec/case

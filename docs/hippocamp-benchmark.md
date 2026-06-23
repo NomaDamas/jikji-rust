@@ -98,7 +98,6 @@ jikji hermes-bench ./benchmarks/hippocamp/Adam_Subset \
   --json
 ```
 
-`jikji` mode is tool-first: the benchmark injects the output of `jikji search`
-as ranked candidates and tells Hermes not to browse the filesystem unless the
-candidate list is empty or irrelevant. Use `jikji-passive` for the older
-map-reading behavior.
+`jikji` mode is tool-first: the benchmark injects the candidate slate that
+`jikji find` would provide and tells Hermes not to browse the filesystem unless
+the handoff contract allows fallback.

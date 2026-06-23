@@ -52,13 +52,14 @@ jikji hermes-bench .benchmarks/media_bench/corpus \
   --eval-set .benchmarks/media_bench/media_eval_set.jsonl \
   --modes raw,jikji-fast --cases 10 --max-turns 8 --fast-max-turns 1 \
   --candidate-top-k 5 --skills jikji \
-  --provider openrouter --model google/gemini-2.5-flash \
   --out .benchmarks/media_bench/hermes_media.json --json
 ```
 
 ## Results
 
-Actual Hermes agent, `google/gemini-2.5-flash`, 10 cases/mode:
+Actual Hermes agent, `google/gemini-2.5-flash`, 10 cases/mode. For new runs,
+omit `--provider` and usually omit `--model` so Hermes uses the current account's
+default GPT/model configuration:
 
 | Agent mode | Hit@1 | Hit@3 | MRR | llm_calls | input (prompt) | output (completion) | total tokens |
 |---|---:|---:|---:|---:|---:|---:|---:|

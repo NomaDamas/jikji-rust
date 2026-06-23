@@ -61,12 +61,12 @@
       <circle cx="24" cy="21" r="5" fill="#ff7b72"/>
       <circle cx="42" cy="21" r="5" fill="#ffd166"/>
       <circle cx="60" cy="21" r="5" fill="#65f2ad"/>
-      <text x="82" y="26" font-size="13" font-weight="760" class="muted">jikji-brief.json</text>
+      <text x="82" y="26" font-size="13" font-weight="760" class="muted">jikji-find.json</text>
       <text x="26" y="76" font-size="15" font-weight="780" class="good">WITH JIKJI</text>
-      <text x="26" y="106" font-size="24" font-weight="820" class="title">Map-first discovery</text>
+      <text x="26" y="106" font-size="24" font-weight="820" class="title">Jikji find</text>
 
       <g class="mono" font-size="15" transform="translate(26 138)">
-        <text y="0" class="cmd">$ jikji brief ~/Documents "contract last spring" --top-k 3</text>
+        <text y="0" class="cmd">$ jikji find ~/Documents "contract last spring" --json</text>
         <text y="27" class="comment">{</text>
         <text y="54" class="good">  "rank": 1,</text>
         <text y="81" class="cmd">  "path": "Contracts/2025/vendor-renewal.pdf",</text>

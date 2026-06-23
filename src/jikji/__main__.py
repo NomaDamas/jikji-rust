@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+# SIZE_OK: legacy CLI command registry; this slice only wires existing focused modules into CLI flags/output.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -17,6 +19,8 @@ from .agent_brief import (
 )
 from .agent_index import (
     AGENT_DIR_NAME,
+    OWNED_GENERATED_PATHS,
+    RETIRED_GENERATED_PATHS,
     VISIBLE_MAP_NAME,
     VISIBLE_MAP_NAMES,
     build_agent_index,
@@ -29,6 +33,8 @@ from .agent_skill_install import (
     repo_skill_path,
 )
 from .beir import materialize_beir_dataset, run_beir_suite
+from .benchmark_two_call import write_two_call_value_report
+from .benchmark_value import Pricing
 from .config import Config
 from .discover import discover
 from .edith import edith_answer_summary, materialize_edith_dataset, run_edith_suite
@@ -47,6 +53,7 @@ from .hermes_compare import compare_benchmark_reports
 from .hippocamp import fetch_subset, import_eval_set, run_benchmark, run_suite
 from .holdout_eval import generate_holdout_eval_set
 from .improvement_loop import run_improvement_loop
+from .parsers.media import image_ocr_available, transcription_available
 from .publicdata_bench import build_publicdata_benchmark, run_publicdata_suite
 from .search_index import instant_index_path
 from .version import __version__
@@ -56,6 +63,11 @@ from .workspacebench import (
     build_workspacebench_benchmark,
     run_workspacebench_suite,
 )
+
+_WIKI_SOURCE_PAGE_RE = re.compile(r"^[0-9A-Za-z가-힣_-]+-[0-9a-f]{12}\.md$")
+_DOC_CACHE_FILE_RE = re.compile(r"^sha256_[0-9a-f]{64}\.txt$")
+_DOC_CACHE_DIR_RE = re.compile(r"^sha256_[0-9a-f]{64}$")
+_DOC_META_FILE_RE = re.compile(r"^sha256_[0-9a-f]{64}\.json$")
 
 
 def _config_from_args(args) -> Config:
@@ -98,8 +110,215 @@ def cmd_prepare(args) -> int:
     return 0
 
 
+def _clean_manifest_paths() -> list[str]:
+    return [*OWNED_GENERATED_PATHS, *RETIRED_GENERATED_PATHS]
+
+
 def _clean_targets(root: Path) -> list[Path]:
-    return [root / AGENT_DIR_NAME, *(root / name for name in VISIBLE_MAP_NAMES)]
+    clean_root = root.resolve()
+    targets: list[Path] = []
+    cleanup_dirs: list[Path] = []
+    for raw_path in _clean_manifest_paths():
+        rel_path = _safe_clean_rel_path(raw_path)
+        if not rel_path:
+            continue
+        path = root / rel_path
+        if not _is_path_under_root(path, clean_root):
+            continue
+        if raw_path.endswith("/"):
+            targets.extend(_generated_directory_targets(path, rel_path, clean_root))
+            cleanup_dirs.append(path)
+        elif path.exists():
+            targets.append(path)
+    targets.extend(_clean_recorded_generated_paths(root, clean_root))
+    cleanup_dirs.append(root / AGENT_DIR_NAME)
+    return _dedupe_clean_targets([*targets, *_empty_directories(cleanup_dirs, clean_root)])
+
+
+def _safe_clean_rel_path(raw_path: str) -> str:
+    rel_path = raw_path.rstrip("/")
+    path = Path(rel_path)
+    if path.is_absolute() or ".." in path.parts:
+        return ""
+    return rel_path
+
+
+def _generated_directory_targets(path: Path, rel_path: str, clean_root: Path) -> list[Path]:
+    if not path.exists() or not path.is_dir():
+        return []
+    match rel_path:
+        case ".jikji/wiki":
+            return [candidate for candidate in [path / "index.md"] if candidate.exists() and _is_path_under_root(candidate, clean_root)]
+        case ".jikji/doc_text" | ".jikji/doc_meta":
+            return []
+        case ".jikji/folder_cards" | ".jikji/file_cards":
+            return []
+        case ".jikji/eval":
+            return []
+        case _:
+            return []
+
+
+def _clean_recorded_generated_paths(root: Path, clean_root: Path) -> list[Path]:
+    targets: list[Path] = []
+    for rel_path in _read_generated_rel_paths(root / AGENT_DIR_NAME / "graph_routes.jsonl", clean_root):
+        path = root / rel_path
+        if _is_path_under_root(path, clean_root) and path.is_file() and _is_generated_recorded_file(path, "wiki_path"):
+            targets.append(path)
+    for rel_path in _read_generated_rel_paths(root / AGENT_DIR_NAME / "document_index.jsonl", clean_root):
+        path = root / rel_path
+        if not _is_path_under_root(path, clean_root):
+            continue
+        if path.is_file() and _is_generated_recorded_file(path, "text_cache_path"):
+            targets.append(path)
+        elif path.is_dir() and Path(rel_path).parent.as_posix() == f"{AGENT_DIR_NAME}/doc_text":
+            targets.extend(
+                child
+                for child in path.glob("chunk_*.txt")
+                if _is_path_under_root(child, clean_root)
+                and child.is_file()
+                and _is_generated_recorded_file(child, "text_cache_path")
+            )
+        if path.is_file() and _is_generated_recorded_file(path, "doc_meta_path"):
+            targets.append(path)
+    return targets
+
+
+def _read_generated_rel_paths(path: Path, clean_root: Path) -> list[str]:
+    rel_paths: list[str] = []
+    if not _is_path_under_root(path, clean_root):
+        return rel_paths
+    try:
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return rel_paths
+    for line in lines:
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(row, dict):
+            continue
+        for key in ("wiki_path", "text_cache_path", "doc_meta_path", "meta_cache_path"):
+            value = row.get(key)
+            if not isinstance(value, str) or not value.startswith(f"{AGENT_DIR_NAME}/"):
+                continue
+            rel_path = _safe_clean_rel_path(value)
+            if rel_path and _matches_recorded_generated_pattern(key, rel_path):
+                rel_paths.append(rel_path)
+    return rel_paths
+
+
+def _matches_recorded_generated_pattern(key: str, rel_path: str) -> bool:
+    path = Path(rel_path)
+    match key:
+        case "wiki_path":
+            return (
+                path.parent.as_posix() == f"{AGENT_DIR_NAME}/wiki/sources"
+                and _WIKI_SOURCE_PAGE_RE.fullmatch(path.name) is not None
+            )
+        case "text_cache_path":
+            return (
+                path.parent.as_posix() == f"{AGENT_DIR_NAME}/doc_text"
+                and (_DOC_CACHE_FILE_RE.fullmatch(path.name) is not None or _DOC_CACHE_DIR_RE.fullmatch(path.name) is not None)
+            )
+        case "doc_meta_path" | "meta_cache_path":
+            return (
+                path.parent.as_posix() == f"{AGENT_DIR_NAME}/doc_meta"
+                and _DOC_META_FILE_RE.fullmatch(path.name) is not None
+            )
+        case _:
+            return False
+
+
+def _is_generated_recorded_file(path: Path, key: str) -> bool:
+    match key:
+        case "wiki_path":
+            try:
+                head = path.read_text(encoding="utf-8", errors="ignore")[:512]
+            except OSError:
+                return False
+            try:
+                wiki_rel = path.relative_to(path.parents[2]).as_posix()
+            except ValueError:
+                return False
+            return (
+                "schema: jikji.llm_wiki.source.v1" in head
+                and f"wiki_path: {json.dumps(wiki_rel, ensure_ascii=False)}" in head
+            )
+        case "text_cache_path":
+            try:
+                head = path.read_text(encoding="utf-8", errors="ignore")[:256]
+            except OSError:
+                return False
+            digest = _recorded_doc_digest(path)
+            return (
+                digest
+                and "# Source:" in head
+                and f"# File ID: sha256:{digest}" in head
+                and "# Parsed by: Jikji" in head
+            )
+        case "doc_meta_path" | "meta_cache_path":
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                return False
+            digest = _recorded_doc_digest(path)
+            return (
+                isinstance(payload, dict)
+                and payload.get("schema_version") == 1
+                and payload.get("source") == "jikji"
+                and bool(digest)
+                and payload.get("file_id") == f"sha256:{digest}"
+            )
+        case _:
+            return False
+
+
+def _recorded_doc_digest(path: Path) -> str:
+    if path.name.startswith("chunk_") and path.parent.name.startswith("sha256_"):
+        stem = path.parent.name
+    elif path.suffix == ".txt":
+        stem = path.stem
+    elif path.suffix == ".json":
+        stem = path.stem
+    else:
+        stem = path.name
+    if not stem.startswith("sha256_"):
+        return ""
+    digest = stem.removeprefix("sha256_")
+    return digest if re.fullmatch(r"[0-9a-f]{64}", digest) else ""
+
+
+def _empty_directories(paths: list[Path], clean_root: Path) -> list[Path]:
+    empty: list[Path] = []
+    for path in sorted(paths, key=lambda item: len(item.parts), reverse=True):
+        if _is_path_under_root(path, clean_root) and path.is_dir() and not any(path.iterdir()):
+            empty.append(path)
+    return empty
+
+
+def _is_path_under_root(path: Path, root: Path) -> bool:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return False
+    return resolved == root or root in resolved.parents
+
+
+def _dedupe_clean_targets(paths: list[Path]) -> list[Path]:
+    targets: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        targets.append(path)
+    return targets
 
 
 def _read_manifest_for_clean(root: Path) -> dict:
@@ -133,16 +352,17 @@ def cmd_clean(args) -> int:
     allowed, reason = _clean_allowed(root, force=args.force)
     targets = _clean_targets(root)
     existing = [p for p in targets if p.exists()]
+    has_agent_dir = (root / AGENT_DIR_NAME).exists()
     payload = {
         "root": str(root),
-        "ok": allowed or not existing,
+        "ok": allowed or (not existing and not has_agent_dir),
         "reason": reason,
         "dry_run": args.dry_run,
         "removed": [],
         "would_remove": [str(p) for p in existing],
         "preserved_original_files": True,
     }
-    if existing and not allowed:
+    if (existing or has_agent_dir) and not allowed:
         payload["error"] = (
             f"Refusing to remove {root / AGENT_DIR_NAME} without a verified Jikji manifest. "
             "Use --force only if this directory is known to be Jikji-generated."
@@ -156,7 +376,11 @@ def cmd_clean(args) -> int:
         return 1
     if not args.dry_run:
         removed: list[str] = []
+        clean_root = root.resolve()
         for p in existing:
+            if not _is_path_under_root(p, clean_root):
+                payload.setdefault("errors", []).append({"path": str(p), "error": "outside_root"})
+                continue
             try:
                 if p.is_dir():
                     shutil.rmtree(p)
@@ -300,12 +524,25 @@ def cmd_doctor(args) -> int:
             if key not in live_hashes:
                 warnings.append(f"dangling generated artifact: {child.relative_to(root).as_posix()}")
 
+    media_manifest = manifest.get("media_index") if isinstance(manifest.get("media_index"), dict) else {}
     tesseract_path = shutil.which("tesseract") or ""
+    ocr_available = image_ocr_available()
     image_support = {
         "metadata_indexing": True,
-        "ocr_active": bool(tesseract_path),
+        "ocr_active": ocr_available,
+        "ocr_available": ocr_available,
+        "ocr_activated": bool(media_manifest.get("enabled")) and ocr_available,
         "tesseract_path": tesseract_path,
         "indexed_image_documents": image_doc_count,
+    }
+    media_support = {
+        "enabled": bool(media_manifest.get("enabled")),
+        "status": media_manifest.get("status", "unknown"),
+        "max_mb": media_manifest.get("max_mb"),
+        "media_files": media_manifest.get("media_files", 0),
+        "image_ocr_available": ocr_available,
+        "audio_video_transcription_available": transcription_available(),
+        "opt_in_flag": "--enable-media-index",
     }
 
     report = {
@@ -320,8 +557,10 @@ def cmd_doctor(args) -> int:
             "folders": manifest.get("folders"),
             "documents": manifest.get("documents"),
             "parse_errors": manifest.get("parse_errors"),
+            "media_index": media_manifest,
         },
         "image_support": image_support,
+        "media_support": media_support,
     }
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -334,8 +573,8 @@ def cmd_doctor(args) -> int:
             print(f"ERR  {error}")
         print("INFO image metadata indexing: active")
         print(
-            "INFO image OCR (tesseract): "
-            + ("active" if image_support["ocr_active"] else "inactive")
+            "INFO image OCR backend availability: "
+            + ("available" if image_support["ocr_available"] else "unavailable")
         )
     if errors:
         return 1
@@ -658,21 +897,24 @@ def cmd_find(args) -> int:
     elif should_prepare and not args.auto_prepare:
         print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
         return 1
-    ranked = search(root, args.query, top_k=args.top_k)
-    paths = [str(item.get("path") or "") for item in ranked if item.get("path")]
+    payload = discover(
+        root,
+        args.query,
+        top_k=args.top_k,
+        retry_exhausted=getattr(args, "after_jikji_retry", False),
+        retry_proof=getattr(args, "retry_proof", ""),
+    )
+    paths = [str(path) for path in payload.get("answer_paths") or payload.get("paths") or [] if str(path)]
     if args.first:
         paths = paths[:1]
-        ranked = ranked[:1]
-    candidates = [
-        {
-            "p": item.get("path"),
-            "s": item.get("score"),
-            "why": (item.get("reasons") or [])[:3],
-            "terms": (item.get("matched_terms") or [])[:6],
-        }
-        for item in ranked
-    ]
-    payload = {"root": str(root), "q": args.query, "index": index_status, "paths": paths, "candidates": candidates}
+        payload["answer_paths"] = paths
+        payload["paths"] = paths
+        payload["candidates"] = list(payload.get("candidates") or [])[:1]
+        payload["evidence_pack"] = list(payload.get("evidence_pack") or [])[:1]
+    payload["mode"] = "find"
+    payload["command"] = "jikji find"
+    payload["index_status"] = index_status
+    payload["paths"] = paths
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     else:
@@ -690,7 +932,13 @@ def cmd_discover(args) -> int:
     elif should_prepare and not args.auto_prepare:
         print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
         return 1
-    payload = discover(root, args.query, top_k=args.top_k)
+    payload = discover(
+        root,
+        args.query,
+        top_k=args.top_k,
+        retry_exhausted=args.after_jikji_retry,
+        retry_proof=args.retry_proof,
+    )
     payload["index_status"] = index_status
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
@@ -895,6 +1143,8 @@ def cmd_hermes_compare(args) -> int:
         max_token_ratio=args.max_token_ratio,
         max_call_ratio=args.max_call_ratio,
         max_seconds_ratio=args.max_seconds_ratio,
+        max_avg_llm_calls=args.max_avg_llm_calls,
+        max_p95_llm_calls=args.max_p95_llm_calls,
     )
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -905,6 +1155,44 @@ def cmd_hermes_compare(args) -> int:
             print(f"- {key}: {'ok' if ok else 'FAIL'}")
         print(f"ratios={payload['ratios']}")
     return 0 if payload["ok"] else 1
+
+
+def cmd_benchmark_value_report(args) -> int:
+    payload = write_two_call_value_report(
+        Path(args.raw_discover_dir).expanduser().resolve(),
+        Path(args.out).expanduser().resolve(),
+        answer_pack_dir=Path(args.answer_pack_dir).expanduser().resolve(),
+        answer_pack_report=Path(args.answer_pack_report).expanduser().resolve() if args.answer_pack_report else None,
+        pricing=Pricing(
+            input_per_1m_usd=args.input_per_1m_usd,
+            output_per_1m_usd=args.output_per_1m_usd,
+            usd_to_krw=args.usd_to_krw,
+        ),
+        judge_top_k=args.judge_top_k,
+        llm_latency_seconds=args.llm_latency_seconds,
+    )
+    if args.json:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+    else:
+        raw = payload["modes"]["raw"]
+        headline = str(payload.get("headline_strategy") or "jikji-one-call-raw-floor")
+        recommended = payload["modes"][headline]
+        savings = payload["savings"][f"{headline}_vs_raw"]
+        print(f"Benchmark value report written: {Path(args.out).expanduser().resolve()}")
+        print(
+            f"- raw: hit@1={raw['hit_at_1']} hit@10={raw['hit_at_10']} "
+            f"calls={raw['llm_calls']} tokens={raw['total_tokens']} seconds={raw['seconds']}"
+        )
+        print(
+            f"- Jikji find: hit@1={recommended['hit_at_1']} "
+            f"hit@10={recommended['hit_at_10']} calls={recommended['llm_calls']} "
+            f"tokens={recommended['total_tokens']} seconds={recommended['seconds']}"
+        )
+        print(
+            f"- saved: calls={savings['llm_calls_saved']} tokens={savings['total_tokens_saved']} "
+            f"seconds={savings['seconds_saved']} krw={savings['krw_saved']}"
+        )
+    return 0
 
 
 def cmd_hermes_bench(args) -> int:
@@ -988,7 +1276,9 @@ def cmd_agent_skill_install(args) -> int:
         "after_install_protocol": (
             "When this SKILL.md is in an agent's skill directory, local file/document "
             "discovery requests under an explicit root should trigger Jikji first: "
-            "jikji find ROOT \"query\" --first, then jikji brief ROOT \"query\" --compact --json when evidence is needed."
+            "jikji find ROOT \"query\" --json, then follow handoff_action. "
+            "Jikji find builds the multi-query, multi-route candidate slate before "
+            "any raw filesystem fallback is considered."
         ),
     }
     if args.json:
@@ -1052,8 +1342,9 @@ def _prepare_after_skill_install(args) -> dict[str, object]:
     if getattr(args, "no_prepare", False):
         return {"mode": "disabled", "roots": []}
     raw_roots = list(getattr(args, "prepare_root", None) or [])
-    explicit_roots = bool(raw_roots)
-    roots = _select_post_install_roots(raw_roots, explicit_roots=explicit_roots)
+    if not raw_roots:
+        return {"mode": "disabled", "roots": [], "reason": "explicit_prepare_root_required"}
+    roots = _select_post_install_roots(raw_roots)
     if not roots:
         return {"mode": "none", "roots": []}
     if getattr(args, "foreground_prepare", False):
@@ -1072,11 +1363,8 @@ def _prepare_after_skill_install(args) -> dict[str, object]:
     )
 
 
-def _select_post_install_roots(raw_roots: list[str], *, explicit_roots: bool) -> list[Path]:
+def _select_post_install_roots(raw_roots: list[str]) -> list[Path]:
     candidates = [Path(item).expanduser() for item in raw_roots]
-    if not candidates:
-        candidates = _default_post_install_prepare_roots()
-    limit = len(candidates) if explicit_roots else min(len(candidates), _auto_post_install_root_limit())
     roots: list[Path] = []
     seen: set[Path] = set()
     for candidate in candidates:
@@ -1088,8 +1376,6 @@ def _select_post_install_roots(raw_roots: list[str], *, explicit_roots: bool) ->
             continue
         seen.add(root)
         roots.append(root)
-        if len(roots) >= limit:
-            break
     return roots
 
 
@@ -1178,11 +1464,6 @@ def _start_background_post_install_prepare(
         }
 
 
-def _auto_post_install_root_limit() -> int:
-    policy = _post_install_load_policy()
-    return int(policy["max_default_roots"])
-
-
 def _post_install_load_policy() -> dict[str, object]:
     cpu_count = os.cpu_count() or 1
     memory_gib = _memory_gib()
@@ -1216,6 +1497,8 @@ def _print_post_install_prepare(payload: dict[str, object]) -> None:
     mode = payload.get("mode")
     if mode == "disabled":
         print("POST-INSTALL PREPARE disabled.")
+        if payload.get("reason"):
+            print(f"POST-INSTALL PREPARE reason: {payload.get('reason')}")
         return
     if mode == "background":
         if payload.get("started"):
@@ -1236,74 +1519,6 @@ def _print_post_install_prepare(payload: dict[str, object]) -> None:
                 f"PREPARED {item['root']}: files={item.get('files')} "
                 f"folders={item.get('folders')} docs_failed={item.get('docs_failed')}"
             )
-
-
-def _default_post_install_prepare_roots() -> list[Path]:
-    """Return common user-content roots for immediate post-install usefulness."""
-    home = Path.home()
-    candidates: list[Path] = []
-
-    def add(path: Path | str | None) -> None:
-        if not path:
-            return
-        candidates.append(Path(path).expanduser())
-
-    for env_name in ("USERPROFILE", "OneDrive", "OneDriveCommercial", "OneDriveConsumer"):
-        add(os.environ.get(env_name))
-
-    for rel in (
-        "Documents",
-        "Downloads",
-        "Desktop",
-        "문서",
-        "다운로드",
-        "바탕화면",
-        "Google Drive",
-        "GoogleDrive",
-        "My Drive",
-        "Dropbox",
-        "OneDrive",
-        "iCloud Drive",
-        "Library/Mobile Documents/com~apple~CloudDocs",
-    ):
-        add(home / rel)
-
-    candidates.extend(_xdg_user_dirs(home).values())
-
-    roots: list[Path] = []
-    seen: set[Path] = set()
-    for candidate in candidates:
-        try:
-            resolved = candidate.expanduser().resolve()
-        except (OSError, RuntimeError):
-            continue
-        if resolved in seen or not resolved.exists() or not resolved.is_dir():
-            continue
-        seen.add(resolved)
-        roots.append(resolved)
-    return roots
-
-
-def _xdg_user_dirs(home: Path) -> dict[str, Path]:
-    path = home / ".config" / "user-dirs.dirs"
-    wanted = {"XDG_DESKTOP_DIR", "XDG_DOWNLOAD_DIR", "XDG_DOCUMENTS_DIR"}
-    dirs: dict[str, Path] = {}
-    try:
-        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
-    except OSError:
-        return dirs
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        if key not in wanted:
-            continue
-        value = value.strip().strip('"').replace("$HOME", str(home))
-        if value:
-            dirs[key] = Path(value).expanduser()
-    return dirs
 
 
 def cmd_hippocamp_suite(args) -> int:
@@ -1717,7 +1932,11 @@ def cmd_hardbench_suite(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jikji", description="Prepare local files as agent-readable knowledge maps.")
     parser.add_argument("--version", action="version", version=f"jikji {__version__}")
-    sub = parser.add_subparsers(dest="cmd")
+    public_command_metavar = (
+        "{prepare,refresh,clean,map,doctor,find,graph,gui,"
+        "agent-skill-install,skill-export,bench-run,hermes-bench}"
+    )
+    sub = parser.add_subparsers(dest="cmd", metavar=public_command_metavar)
 
     def add_common(p):
         p.add_argument("path", nargs="?", default=".")
@@ -1802,10 +2021,10 @@ def main(argv: list[str] | None = None) -> int:
     p_analyze.add_argument("--json", action="store_true")
     p_analyze.set_defaults(func=cmd_bench_analyze)
 
-    p_find = sub.add_parser("find", help="print likely paths only; zero-LLM file lookup handoff")
+    p_find = sub.add_parser("find", help="find local files with Jikji's candidate slate")
     p_find.add_argument("path")
     p_find.add_argument("query")
-    p_find.add_argument("--top-k", type=int, default=5)
+    p_find.add_argument("--top-k", type=int, default=20)
     p_find.add_argument("--first", action="store_true", help="print/return only the top path")
     p_find.add_argument("--fresh", action="store_true", help="run a foreground refresh before finding")
     p_find.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false")
@@ -1816,11 +2035,13 @@ def main(argv: list[str] | None = None) -> int:
     p_find.add_argument("--exclude", action="append", default=[])
     p_find.add_argument("--max-hash-bytes", type=int, default=512 * 1024 * 1024)
     p_find.add_argument("--parse-timeout", type=float, default=5.0)
+    p_find.add_argument("--after-jikji-retry", action="store_true", help=argparse.SUPPRESS)
+    p_find.add_argument("--retry-proof", default="", help=argparse.SUPPRESS)
     p_find.add_argument("--json", action="store_true")
     p_find.set_defaults(auto_prepare=True, background_refresh=False)
     p_find.set_defaults(func=cmd_find)
 
-    p_discover = sub.add_parser("discover", help="adaptive accuracy-first local discovery cascade for agents")
+    p_discover = sub.add_parser("discover", help=argparse.SUPPRESS)
     p_discover.add_argument("path")
     p_discover.add_argument("query")
     p_discover.add_argument("--top-k", type=int, default=20)
@@ -1833,11 +2054,20 @@ def main(argv: list[str] | None = None) -> int:
     p_discover.add_argument("--exclude", action="append", default=[])
     p_discover.add_argument("--max-hash-bytes", type=int, default=512 * 1024 * 1024)
     p_discover.add_argument("--parse-timeout", type=float, default=5.0)
+    p_discover.add_argument(
+        "--after-jikji-retry",
+        action="store_true",
+        help=(
+            "mark this call as the one allowed Jikji retry so low-confidence "
+            "output can permit raw fallback"
+        ),
+    )
+    p_discover.add_argument("--retry-proof", default="", help="retry proof emitted by the previous low-confidence discover payload")
     p_discover.add_argument("--json", action="store_true")
     p_discover.set_defaults(auto_prepare=True, background_refresh=False)
     p_discover.set_defaults(func=cmd_discover)
 
-    p_search = sub.add_parser("search", help="rank likely files from Jikji indexes for a natural-language query")
+    p_search = sub.add_parser("search", help=argparse.SUPPRESS)
     p_search.add_argument("path")
     p_search.add_argument("query")
     p_search.add_argument("--top-k", type=int, default=20)
@@ -1857,7 +2087,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_brief = sub.add_parser(
         "brief",
-        help="emit a compact query-specific route brief for local agents",
+        help=argparse.SUPPRESS,
     )
     p_brief.add_argument("path")
     p_brief.add_argument("query")
@@ -1923,18 +2153,18 @@ def main(argv: list[str] | None = None) -> int:
     p_hb.add_argument("--cases", type=int, default=0, help="limit cases; 0 means all")
     p_hb.add_argument("--out", default="")
     p_hb.add_argument("--hermes-bin", default="hermes")
-    p_hb.add_argument("--model", default="", help="Hermes model override (e.g. anthropic/claude-sonnet-4); blank uses config default")
-    p_hb.add_argument("--provider", default="", help="Hermes inference provider override; blank uses config default")
+    p_hb.add_argument("--model", default="", help="Hermes model override; blank uses the current Hermes account default GPT/model")
+    p_hb.add_argument("--provider", default="", help="Hermes inference provider override; blank uses the current Hermes account/provider")
     p_hb.add_argument("--timeout", type=int, default=240)
     p_hb.add_argument("--max-turns", type=int, default=20)
     p_hb.add_argument(
         "--fast-max-turns",
         type=int,
         default=1,
-        help="Hermes max turns for jikji-fast/map-first modes; raw and brief modes still use --max-turns",
+        help="Hermes max turns for fast Jikji find-assisted modes; raw modes still use --max-turns",
     )
     p_hb.add_argument("--skills", default="")
-    p_hb.add_argument("--candidate-top-k", type=int, default=20, help="inject top Jikji search candidates into Jikji prompts (accuracy-first default: 20)")
+    p_hb.add_argument("--candidate-top-k", type=int, default=20, help="inject top Jikji find candidates into Jikji prompts")
     p_hb.add_argument("--retries", type=int, default=1, help="retry a case when Hermes returns no parseable paths")
     p_hb.add_argument("--yolo", action="store_true", help="pass Hermes --yolo --accept-hooks; benchmark will still detect mutations")
     p_hb.add_argument("--allow-leak", action="store_true", help="allow eval/annotation files inside root for diagnostics only")
@@ -1945,12 +2175,48 @@ def main(argv: list[str] | None = None) -> int:
     p_hc.add_argument("raw_report")
     p_hc.add_argument("jikji_report")
     p_hc.add_argument("--raw-mode", default="raw")
-    p_hc.add_argument("--jikji-mode", default="jikji-discover")
+    p_hc.add_argument("--jikji-mode", default="jikji")
     p_hc.add_argument("--max-token-ratio", type=float, default=0.75)
     p_hc.add_argument("--max-call-ratio", type=float, default=0.75)
     p_hc.add_argument("--max-seconds-ratio", type=float, default=1.0)
+    p_hc.add_argument("--max-avg-llm-calls", type=float)
+    p_hc.add_argument("--max-p95-llm-calls", type=int)
     p_hc.add_argument("--json", action="store_true")
     p_hc.set_defaults(func=cmd_hermes_compare)
+
+    p_bv = sub.add_parser("benchmark-value-report", help="build a raw-vs-Jikji accuracy/cost value report from saved Hermes artifacts")
+    p_bv.add_argument(
+        "--raw-report-dir",
+        dest="raw_discover_dir",
+        metavar="DIR",
+        default=".benchmarks/hippocamp-full/_hermes_full_gpt54mini_chunks5",
+        help="directory containing saved raw-vs-Jikji full-set Hermes reports",
+    )
+    p_bv.add_argument("--raw-discover-dir", dest="raw_discover_dir", help=argparse.SUPPRESS)
+    p_bv.add_argument(
+        "--find-candidate-report",
+        dest="answer_pack_report",
+        metavar="REPORT",
+        default=".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/full_answer_pack_aggregate_report.json",
+        help="optional aggregate report for Jikji find candidate diagnostics",
+    )
+    p_bv.add_argument("--answer-pack-report", dest="answer_pack_report", help=argparse.SUPPRESS)
+    p_bv.add_argument(
+        "--find-candidate-dir",
+        dest="answer_pack_dir",
+        metavar="DIR",
+        default=".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix",
+        help="directory containing per-profile Jikji find candidate reports",
+    )
+    p_bv.add_argument("--answer-pack-dir", dest="answer_pack_dir", help=argparse.SUPPRESS)
+    p_bv.add_argument("--judge-top-k", type=int, default=20)
+    p_bv.add_argument("--llm-latency-seconds", type=float, default=1.5)
+    p_bv.add_argument("--out", default="docs/jikji-value-report.json")
+    p_bv.add_argument("--input-per-1m-usd", type=float, default=0.30)
+    p_bv.add_argument("--output-per-1m-usd", type=float, default=2.50)
+    p_bv.add_argument("--usd-to-krw", type=float, default=1380.0)
+    p_bv.add_argument("--json", action="store_true")
+    p_bv.set_defaults(func=cmd_benchmark_value_report)
 
     p_hs = sub.add_parser("hermes-skill-install", help="install the Jikji skill into ~/.hermes/skills")
     p_hs.add_argument("--dest", default="")
@@ -2015,7 +2281,7 @@ def main(argv: list[str] | None = None) -> int:
         "--prepare-root",
         action="append",
         default=[],
-        help="queue this explicit root for post-install prepare; repeatable; defaults to common user document/download roots",
+        help="queue this explicit root for post-install prepare; repeatable; no root is prepared by default",
     )
     p_asi.add_argument("--no-prepare", action="store_true", help="install the skill without preparing any root")
     p_asi.add_argument("--foreground-prepare", action="store_true", help="wait for post-install prepare instead of running it in the background")
@@ -2049,7 +2315,7 @@ def main(argv: list[str] | None = None) -> int:
         "--prepare-root",
         action="append",
         default=[],
-        help="queue this explicit root for post-install prepare after writing --dest; repeatable; defaults to common user document/download roots",
+        help="queue this explicit root for post-install prepare after writing --dest; repeatable; no root is prepared by default",
     )
     p_export.add_argument("--no-prepare", action="store_true", help="write --dest without preparing any root")
     p_export.add_argument("--foreground-prepare", action="store_true")
@@ -2210,6 +2476,11 @@ def main(argv: list[str] | None = None) -> int:
     p_hardbench_suite.add_argument("--max-total-bytes", type=int, default=0, help="cap selected source bytes when --source-dir is used; 0 means no cap")
     p_hardbench_suite.add_argument("--json", action="store_true")
     p_hardbench_suite.set_defaults(func=cmd_hardbench_suite)
+
+    hidden_subcommands = {"discover", "search", "brief", "post-install-prepare"}
+    sub._choices_actions = [  # noqa: SLF001 - argparse has no public API for hiding compatibility aliases.
+        action for action in sub._choices_actions if getattr(action, "dest", "") not in hidden_subcommands
+    ]
 
     args = parser.parse_args(argv)
     if args.cmd is None:

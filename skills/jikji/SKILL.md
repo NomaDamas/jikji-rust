@@ -1,32 +1,27 @@
 ---
 name: jikji
-description: Use Jikji to find local files, folders, metadata, and parsed document text through a non-destructive prebuilt agent map/search index.
+description: Use Jikji find to locate local files, folders, metadata, and parsed document text through a non-destructive prebuilt agent map/search index while saving repeated LLM calls, tokens, and time.
 ---
 
 # Jikji Local File Discovery Skill
 
 Use this skill in any coding, desktop, or local-agent environment when the user
 asks you to find, identify, compare, or verify local files, folders, filenames,
-metadata, or document contents under an explicit root path. Jikji is for agent
-discovery, not physical file organization.
+metadata, or document contents under an explicit root. Jikji is for discovery,
+not physical file organization.
 
 When this skill is installed, it should be selected automatically for local
-file/folder/document discovery requests in any agent that supports skills,
-persistent instructions, project memory, or prompt snippets. Do not wait for the
-user to mention "Jikji" if the task is plainly about finding local paths,
-filenames, metadata, or document contents under a bounded root.
+file/folder/document discovery requests. Do not wait for the user to mention
+"Jikji" when the task is plainly about finding local paths under a bounded root.
 
-Trigger examples:
+Jikji is the first action for local file discovery because it turns blind
+filesystem crawling into a bounded candidate slate. In the main Hermes raw-vs-
+Jikji benchmark, it cut file-search calls and wall time by 10-30x while improving
+Hit@1, and total token/cost savings were higher.
 
-- "Find the proposal PDF in this project."
-- "Search this drive for the document that mentions the vendor renewal."
-- "Which local file contains this phrase?"
-- "Locate the spreadsheet about last quarter's budget."
+## If Jikji Is Missing
 
-
-## If Jikji is missing, install it from GitHub
-
-When a local file-discovery task needs Jikji but the `jikji` CLI is not available, the agent should install it from GitHub instead of giving up:
+Install it from GitHub instead of giving up:
 
 ```bash
 mkdir -p ~/.local/share/jikji
@@ -40,33 +35,39 @@ python3 -m venv .venv
 .venv/bin/jikji --help
 ```
 
-Then use `~/.local/share/jikji/repo/.venv/bin/jikji` for all commands, or add that venv's `bin` directory to the agent session PATH. For Hermes/Codex/CLI agents, this bootstrap is part of the skill protocol whenever the CLI is absent and network access is available.
+Then use `~/.local/share/jikji/repo/.venv/bin/jikji`, or add that venv's `bin`
+directory to PATH.
 
-## Absolute rule: Jikji search FIRST, never crawl blind
+## Absolute Rule: Jikji Find First
 
-When Jikji is installed and a root has a `.jikji/` index, you MUST treat
-`jikji discover` / `jikji find` / `jikji brief --compact` / `jikji search` as the **mandatory first action** for any local
-file/folder/document discovery request. This is non-negotiable:
-The goal is not to avoid LLM calls blindly; the goal is to beat raw grep/find
-exploration on accuracy while reducing calls/tokens. Use Jikji first, then use
-LLM judgment, query rewrites, and targeted original-file verification when the
-first deterministic result is not sufficient.
+When a bounded root is available, your first tool call for local file discovery
+must be:
 
-- **NEVER** start by running `grep`, `rg`, `ls`, `find`, `fd`, `cat`, `tree`,
-  or any manual filesystem crawl to locate a file. Jikji has already built the
-  map; re-crawling wastes turns and is strictly slower.
-- Your **first tool call** for general file discovery must be:
-  `jikji discover /explicit/root "natural language clue" --top-k 20 --json`
-  Use `jikji find … --first` only when the task is definitely a single-file path lookup.
-  Use `jikji brief … --compact --json` when extra evidence/wiki/cache hints are needed.
-- For JSON `discover` / `brief`, accept `paths[]` or `candidates[].p` as the working answer. Open at
-  most the top 1–3 candidates, or `candidates[].wiki`/`cache`, only to verify.
-- `grep`/`rg`/`ls`/`find` are permitted **only** as a last resort, and **only
-  after** Jikji returned an empty or clearly-wrong candidate list.
-- If you catch yourself about to run a raw search command before calling Jikji,
-  stop and call `jikji brief`/`jikji search` instead.
+```bash
+jikji find /explicit/root "natural language file clue" --json
+```
 
-## Safety contract
+Do not start with `grep`, `rg`, `ls`, `find`, `fd`, `cat`, or `tree` to locate a
+file. Jikji has already built the local map, parser text cache, file cards,
+metadata routes, and graph routes needed for this step.
+
+Interpret the JSON contract:
+
+- `answer_paths[]` is the primary ordered answer list.
+- `paths[]` is the public path list to return when the user only needs paths.
+- `candidates[]` is the merged top-k slate from multiple query/search routes.
+- `evidence_pack[].next_read` and `candidates[].next_read` identify the cheapest
+  bounded verification target: `cache`, `wiki`, `original`, or `none`.
+- `handoff_action=direct_use` means accept the payload and avoid broad crawling.
+- `handoff_action=jikji_retry` means run exactly one sharper `jikji find` retry.
+- `handoff_action=raw_fallback_after_retry` means raw filesystem search is
+  allowed only after that retry failed, stayed empty, or stayed clearly wrong.
+- If `agent_should_not_rerank` is true, preserve Jikji's order.
+
+For a single path-only answer you may add `--first`, but the default public
+protocol remains `jikji find ROOT "query" --json`.
+
+## Safety Contract
 
 - Never move, rename, delete, or reorganize source files.
 - Never scan all drives by default; require or infer a bounded explicit root.
@@ -74,55 +75,12 @@ first deterministic result is not sufficient.
   text.
 - Do not commit `.jikji/` or `.jikji_agent_map.md` unless the user explicitly
   wants generated artifacts tracked.
-- Open original files only for final verification after Jikji has returned
-  likely paths.
+- Open original files only for final verification after Jikji returned likely
+  paths.
 
-## Fast agent protocol
+## Admin Commands
 
-Default to the smallest deterministic command that answers the task:
-For a single file path, default to `find`:
-
-```bash
-jikji find /explicit/root "natural language file clue" --first
-```
-
-`find` performs a cheap source-tree freshness check before searching. If files
-were added/deleted/renamed since prepare, it refreshes Jikji artifacts in the
-foreground and then returns the path; do not manually crawl first to compensate
-for possible staleness.
-
-```bash
-jikji brief /explicit/root "natural language file clue" --top-k 10 --compact --json
-```
-
-Use `search` when you only need ranked candidates:
-
-```bash
-jikji search /explicit/root "natural language file clue" --top-k 10 --json
-```
-
-Interpretation:
-
-- `candidates[].p` is the relative path to return or inspect.
-- `ev`, `terms`, and `intents` explain why the candidate was ranked.
-- `wiki` points to a compact LLM Wiki source page; `cache` points to parser text when available.
-- Preserve paths exactly as returned.
-
-Use non-compact `brief` only when the compact graph route is insufficient.
-
-## Direct handoff rule
-
-If the candidate list is plausible, do **not** perform a new broad `find`, `ls`,
-`rg`, or manual filesystem crawl. Use Jikji's ranked paths directly and verify
-only the top candidates when needed.
-
-This is the intended speed benefit: Jikji has already done the repeated file-map
-work before the agent receives the task.
-
-## Prepare/refresh/admin commands
-
-`brief` and `search` can auto-prepare a missing explicit root. Use these admin
-commands when the user asks for setup, refresh, diagnostics, or cleanup:
+Use these only for setup, refresh, diagnostics, or cleanup:
 
 ```bash
 jikji prepare /explicit/root --json
@@ -133,52 +91,36 @@ jikji clean /explicit/root --dry-run --json
 jikji clean /explicit/root --json
 ```
 
-## Human GUI handoff
+## Human GUI Handoff
 
-Jikji remains a CLI/agent skill. If the user asks to see or manage the Jikji state visually, start the loopback dashboard in the background and send the URL:
+If the user asks to see or manage Jikji state visually:
 
 ```bash
 jikji gui /explicit/root --background --json
 ```
 
-Return the JSON `url` as the clickable local link. The dashboard shows prepare status, LLM Wiki/knowledge graph counts, artifact presence, refresh/root-switch controls, and optional search/open/download actions.
+Return the JSON `url`. The dashboard shows prepare status, LLM Wiki/knowledge
+graph counts, artifact presence, refresh/root-switch controls, and optional
+search/open/download actions.
 
-## Fallback route
+## Last-Resort Fallback
 
-Only when compact `brief`/`search` is empty or clearly wrong:
+Only after the JSON contract allows raw fallback:
 
 ```bash
 cat /explicit/root/.jikji_agent_map.md
 cat /explicit/root/.jikji/wiki/index.md
 rg "keyword" /explicit/root/.jikji/graph_routes.jsonl
-cat /explicit/root/.jikji/agent_routes.md
 rg "keyword" /explicit/root/.jikji/*.jsonl
 rg "keyword" /explicit/root/.jikji/doc_text
 rg "keyword" /explicit/root --glob '!**/.jikji/**'
 ```
 
 Use parser-extracted `.jikji/doc_text/` for PDF/HWP/HWPX/Office document bodies.
-Search native text-like files in original locations as a final fallback.
+Search native text-like files in original locations only as the final fallback.
 
 ## Evaluation
 
-To test whether Jikji helps on a root:
-
-```bash
-jikji eval-generate /explicit/root --cases 80 --json
-jikji eval /explicit/root --json
-```
-
-For actual-agent comparison with Hermes:
-
-```bash
-jikji hermes-skill-install --json
-jikji hermes-bench /benchmark/root \
-  --eval-set /external/eval.jsonl \
-  --modes raw,jikji-fast,jikji-direct \
-  --candidate-top-k 10 --skills jikji --json
-```
-
-`raw` means no Jikji. `jikji-fast` gives Hermes a compact map-first handoff.
-`jikji-direct` measures the tool/skill behavior where the agent accepts Jikji's
-ranked candidates without an extra exploratory chat turn.
+For actual-agent comparison, headline comparisons should be raw local agent vs
+the same agent with Jikji attached. Public reports should label the Jikji side as
+`Jikji find`.

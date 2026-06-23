@@ -10,6 +10,8 @@ __pycache__/
 .benchmarks/
 .omc/
 .omx/
+.omo/
+.gjc/
 .DS_Store
 
 # piper tts voices (downloaded locally for media benchmark)

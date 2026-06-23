@@ -1,3 +1,4 @@
+# SIZE_OK: opt-in media parser registry with local OCR/transcription fallbacks; this slice only exposes capability status.
 """Optional local media parsers (OCR/transcription/metadata).
 
 No heavyweight dependency is required.  If local tools or optional Python
@@ -405,6 +406,11 @@ def _ffprobe_metadata(path: Path) -> list[str]:
 
 def _faster_whisper_available() -> bool:
     return _module_available("faster_whisper")
+
+
+def transcription_available() -> bool:
+    """Return whether local audio/video speech transcription can run."""
+    return _faster_whisper_available() or shutil.which("whisper") is not None
 
 
 def _faster_whisper_model():

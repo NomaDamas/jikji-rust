@@ -1,12 +1,14 @@
 """Compact query-specific route briefs for local agents."""
 from __future__ import annotations
 
+# SIZE_OK: legacy brief payload/markdown renderer; this slice only exposes discover handoff metadata for compact briefs.
 import json
 import shlex
 from pathlib import Path
 from typing import Any
 
 from .agent_index import AGENT_DIR_NAME, VISIBLE_MAP_NAME
+from .discover import handoff_contract_for, next_read_for_candidate
 
 
 def _read_json_obj(path: Path) -> dict[str, Any]:
@@ -82,7 +84,6 @@ def _shell_join(parts: list[str]) -> str:
     return " ".join(shlex.quote(str(part)) for part in parts)
 
 
-
 def build_compact_agent_brief_payload(
     root: Path,
     query: str,
@@ -109,7 +110,7 @@ def build_compact_agent_brief_payload(
         path = str(item.get("path") or "")
         route = routes.get(path, {})
         preview = route.get("preview") or (item.get("evidence") or [""])[0]
-        compact_candidates.append({
+        compact = {
             "r": rank,
             "p": path,
             "s": item.get("score"),
@@ -119,7 +120,10 @@ def build_compact_agent_brief_payload(
             "wiki": route.get("wiki_path", ""),
             "cache": route.get("text_cache_path", ""),
             "ev": _truncate_evidence(preview, evidence_max_chars),
-        })
+        }
+        compact["next_read"] = next_read_for_candidate(compact)
+        compact_candidates.append(compact)
+    handoff_contract = handoff_contract_for(query, candidates)
     return {
         "schema_version": 1,
         "mode": "compact_graph_brief",
@@ -130,6 +134,8 @@ def build_compact_agent_brief_payload(
         "prepared": foreground_prepared,
         "refreshing": background_refresh_started,
         "policy": "Use candidates[].p first. Read candidates[].wiki/cache only if ambiguous. Open original only for final verification. Do not browse whole filesystem first.",
+        "handoff_action": handoff_contract["handoff_action"],
+        "handoff_policy": handoff_contract["handoff_policy"],
         "artifacts": {
             "graph_routes": str(root / AGENT_DIR_NAME / "graph_routes.jsonl"),
             "knowledge_graph": str(root / AGENT_DIR_NAME / "knowledge_graph.json"),
@@ -137,6 +143,8 @@ def build_compact_agent_brief_payload(
         },
         "candidates": compact_candidates,
     }
+
+
 def build_agent_brief_payload(
     root: Path,
     query: str,
@@ -245,6 +253,31 @@ def build_agent_brief_payload(
 
 
 def brief_markdown(payload: dict[str, Any]) -> str:
+    if payload.get("mode") == "compact_graph_brief":
+        lines = [
+            "# Jikji Compact Agent Brief",
+            "",
+            f"- Root: `{payload['root']}`",
+            f"- Query: `{payload['q']}`",
+            f"- Index: `{payload['index']}`",
+            f"- Policy: {payload.get('policy', '')}",
+            f"- Handoff action: `{payload.get('handoff_action', '')}`",
+            "",
+            "## Candidate paths",
+        ]
+        for item in payload.get("candidates") or []:
+            reasons = ",".join(str(x) for x in item.get("why") or [])
+            lines.append(f"{item['r']:02d}. `{item['p']}` — score={item.get('s')} reasons={reasons}")
+            if item.get("ev"):
+                lines.append(f"    - evidence: {item['ev']}")
+            if item.get("wiki"):
+                lines.append(f"    - wiki: `{item['wiki']}`")
+            if item.get("cache"):
+                lines.append(f"    - cache: `{item['cache']}`")
+            next_read = item.get("next_read") or {}
+            if next_read.get("kind"):
+                lines.append(f"    - next_read: {next_read.get('kind')} `{next_read.get('path', '')}`")
+        return "\n".join(lines) + "\n"
     lines = [
         "# Jikji Agent Brief",
         "",

@@ -3,171 +3,153 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Jikji prepares non-destructive local file maps and instant search indexes so AI agents can find files without crawling every folder." />
-  <title>Jikji — Local file maps for AI agents</title>
+  <meta name="description" content="Jikji find value proof with call, token, time, and cost accounting." />
+  <title>Jikji find value proof</title>
   <style>
     :root {
-      --bg:#070b14; --panel:#101827; --panel2:#142033; --line:rgba(255,255,255,.13);
-      --text:#f5f8ff; --muted:#aab5ca; --blue:#7dd9ff; --green:#65f2ad; --amber:#ffd166; --purple:#b8a1ff;
+      --bg: #070a0f;
+      --panel: #111923;
+      --line: #283545;
+      --text: #eef5fb;
+      --muted: #9eacba;
+      --cyan: #69d2f8;
+      --green: #64e69f;
+      --amber: #f4c35f;
+      color-scheme: dark;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+      font-variant-numeric: tabular-nums;
     }
-    *{box-sizing:border-box} body{margin:0;color:var(--text);background:radial-gradient(circle at 15% 0%,rgba(125,217,255,.22),transparent 33%),radial-gradient(circle at 88% 6%,rgba(184,161,255,.20),transparent 31%),var(--bg)}
-    .wrap{width:min(1120px,calc(100% - 36px));margin:0 auto} header{display:flex;justify-content:space-between;align-items:center;padding:24px 0;color:var(--muted)}
-    .logo{display:flex;gap:10px;align-items:center;font-weight:950;color:var(--text)} .mark{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:#06101c;background:linear-gradient(135deg,var(--blue),var(--green))}
-    .tag{padding:8px 12px;border:1px solid var(--line);border-radius:999px;font-size:13px}.hero{padding:72px 0 44px;text-align:center} h1{max-width:1000px;margin:0 auto 20px;font-size:clamp(44px,7vw,84px);line-height:.97;letter-spacing:-.07em}.grad{background:linear-gradient(90deg,#fff,var(--blue),var(--green));-webkit-background-clip:text;background-clip:text;color:transparent}.lead{max-width:780px;margin:0 auto;color:var(--muted);font-size:clamp(18px,2vw,23px);line-height:1.55;letter-spacing:-.02em}.cta{margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}.pill{display:inline-flex;padding:12px 16px;border-radius:16px;border:1px solid rgba(125,217,255,.25);background:rgba(125,217,255,.10);color:var(--blue);font-weight:900}.pill.green{border-color:rgba(101,242,173,.28);background:rgba(101,242,173,.11);color:var(--green)}
-    section{padding:40px 0}.section-title{margin:0 0 18px;text-align:center;font-size:clamp(28px,4vw,46px);letter-spacing:-.05em}.sub{max-width:760px;margin:-4px auto 22px;text-align:center;color:var(--muted);line-height:1.6}.compare{display:grid;grid-template-columns:1fr 1fr;gap:18px}.lane{border:1px solid var(--line);border-radius:28px;background:rgba(255,255,255,.055);overflow:hidden}.lane-head{padding:22px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.045)}.label{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:950;letter-spacing:.08em;margin-bottom:10px}.as .label{color:var(--amber);background:rgba(255,209,102,.13)}.to .label{color:var(--green);background:rgba(101,242,173,.13)}.lane h2{margin:0;font-size:28px;letter-spacing:-.04em}.steps{padding:18px;display:grid;gap:12px}.step{display:grid;grid-template-columns:42px 1fr;gap:13px;align-items:start;padding:16px;border:1px solid var(--line);border-radius:20px;background:rgba(7,11,20,.62)}.num{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#07101c;font-weight:950;background:linear-gradient(135deg,var(--amber),#ff8e8e)}.to .num{background:linear-gradient(135deg,var(--green),var(--blue))}.step b{display:block;font-size:18px;margin-bottom:4px}.step span{color:var(--muted);line-height:1.5}.result{margin:0 18px 18px;padding:16px;border-radius:18px;font-weight:950;text-align:center}.as .result{color:var(--amber);background:rgba(255,209,102,.10);border:1px dashed rgba(255,209,102,.35)}.to .result{color:var(--green);background:rgba(101,242,173,.10);border:1px dashed rgba(101,242,173,.35)}
-    .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}.card{padding:22px;border:1px solid var(--line);border-radius:26px;background:rgba(255,255,255,.055)}.card h3{margin:0 0 14px;font-size:26px;letter-spacing:-.04em}.list{display:grid;gap:10px}.artifact{display:grid;grid-template-columns:160px 1fr;gap:14px;padding:14px;border-radius:16px;background:rgba(7,11,20,.55);border:1px solid var(--line)}.artifact b{color:var(--blue)}.artifact span{color:var(--muted);line-height:1.5}.terminal{padding:18px;border-radius:20px;background:#050912;border:1px solid var(--line);height:100%}.terminal pre{margin:0;white-space:pre-wrap;color:#dce8ff;font:13px/1.62 "SFMono-Regular",Consolas,monospace}.blue{color:var(--blue)}.green{color:var(--green)}.amber{color:var(--amber)}
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}.metric{padding:24px;border:1px solid var(--line);border-radius:24px;background:rgba(255,255,255,.06);text-align:center}.metric small{display:block;color:var(--muted);margin-bottom:8px}.metric strong{display:block;font-size:clamp(28px,4vw,44px);letter-spacing:-.05em;color:var(--green)}.table{margin-top:18px;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:rgba(255,255,255,.05)}table{width:100%;border-collapse:collapse}th,td{padding:15px;border-bottom:1px solid var(--line);text-align:left}tr:last-child td{border-bottom:0}th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}td{font-weight:850}.good{color:var(--green)}
-    .bottom{margin:40px 0 60px;padding:30px;border-radius:28px;border:1px solid rgba(125,217,255,.28);background:linear-gradient(135deg,rgba(125,217,255,.13),rgba(184,161,255,.10));text-align:center}.bottom h2{margin:0 0 10px;font-size:34px;letter-spacing:-.045em}.bottom p{margin:0 auto;max-width:760px;color:var(--muted);font-size:18px;line-height:1.6}code{color:var(--blue)} a{color:var(--blue)}
-    @media(max-width:900px){header{align-items:flex-start;flex-direction:column;gap:10px}.compare,.grid,.metrics{grid-template-columns:1fr}.table{overflow-x:auto}table{min-width:760px}.artifact{grid-template-columns:1fr}}
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.6; }
+    a { color: var(--cyan); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+    .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+    .mark { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--green); }
+    nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; }
+    nav a { color: var(--muted); text-decoration: none; }
+    .hero { padding: 54px 0 36px; border-bottom: 1px solid var(--line); }
+    .eyebrow { margin: 0 0 10px; color: var(--green); font-size: 14px; font-weight: 800; }
+    h1 { margin: 0 0 16px; max-width: 1100px; font-size: 48px; line-height: 1.12; letter-spacing: 0; word-break: keep-all; text-wrap: balance; }
+    .hook { color: var(--amber); white-space: nowrap; }
+    .lead { max-width: 820px; margin: 0; color: var(--muted); font-size: 20px; }
+    section { padding: 34px 0; }
+    h2 { margin: 0 0 10px; font-size: 30px; line-height: 1.2; }
+    .sub { margin: 0 0 18px; color: var(--muted); max-width: 900px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .metric { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .metric span { display: block; color: var(--muted); font-size: 13px; }
+    .metric strong { display: block; margin-top: 6px; color: var(--green); font-size: 28px; line-height: 1.15; }
+    .metric.warn strong { color: var(--amber); }
+    .whygrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .why { padding: 15px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .why h3 { margin: 0 0 7px; color: var(--green); font-size: 18px; line-height: 1.25; }
+    .why p { margin: 0; color: var(--muted); font-size: 14px; }
+    .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    table { width: 100%; min-width: 920px; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .recommended td { background: rgba(100, 230, 159, 0.07); }
+    .good { color: var(--green); }
+    .terminal { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: #05080c; overflow-x: auto; }
+    pre { margin: 0; color: #d8e7f1; font: 13px/1.65 "SFMono-Regular", Consolas, monospace; }
+    code { color: var(--cyan); }
+    footer { padding: 28px 0 54px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    @media (max-width: 820px) {
+      header { align-items: flex-start; flex-direction: column; }
+      h1 { font-size: 34px; text-wrap: auto; }
+      .hook { white-space: normal; }
+      .lead { font-size: 18px; }
+      .metrics, .whygrid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <div class="logo"><span class="mark">직</span>Jikji</div>
-      <div class="tag">Local file maps for AI agents</div>
+      <div class="brand"><span class="mark">직</span><span>Jikji find</span></div>
+      <nav>
+        <a href="./index.html">Home</a>
+        <a href="./jikji-benchmarks.html">Benchmarks</a>
+        <a href="../README.md">README</a>
+      </nav>
     </header>
 
     <main>
       <section class="hero">
-        <h1>에이전트가 파일을 <span class="grad">헤매지 않고 찾게</span> 만든다</h1>
-        <p class="lead">Jikji는 파일을 정리하지 않는다. 파일을 옮기지도 않는다. 대신 Claude Code, Codex, Hermes, OpenCode 같은 로컬 에이전트가 바로 사용할 수 있는 파일 지도와 즉시 검색 인덱스를 만든다.</p>
-        <div class="cta">
-          <span class="pill green">Non-destructive</span>
-          <span class="pill">No embeddings / No RAG core</span>
-          <span class="pill">PDF · HWP · HWPX · Office text cache</span>
-        </div>
+        <p class="eyebrow">One public file-search command for agents</p>
+        <h1>파일 하나 찾을 때마다 <span id="rotating-hook" class="hook">38,650 토큰 쓰는 거</span> 실화냐?</h1>
+        <p class="lead">Jikji find는 파일 탐색 요청마다 raw agent가 쓰는 반복 LLM 호출, 토큰, 시간을 줄인다. 핵심은 0-call 홍보가 아니라, raw보다 낮아지지 않는 정확도와 훨씬 작은 탐색 예산이다.</p>
       </section>
 
       <section>
-        <h2 class="section-title">As-is vs To-be</h2>
-        <p class="sub">차이는 “에이전트가 직접 뒤지는가”와 “이미 만든 지도를 보고 후보를 받는가”다.</p>
-        <div class="compare">
-          <article class="lane as">
-            <div class="lane-head"><span class="label">AS-IS</span><h2>Raw agent 탐색</h2></div>
-            <div class="steps">
-              <div class="step"><div class="num">1</div><div><b>질문을 받음</b><span>파일명·본문·폴더 기억이 섞여 있음</span></div></div>
-              <div class="step"><div class="num">2</div><div><b>검색어를 추측</b><span>키워드가 빗나가면 다시 시도</span></div></div>
-              <div class="step"><div class="num">3</div><div><b>폴더를 순회</b><span>검토본, 임시보관, 원본_섞임 사이를 헤맴</span></div></div>
-              <div class="step"><div class="num">4</div><div><b>문서를 열어봄</b><span>PDF/HWP/XLSX 본문 확인 비용이 반복됨</span></div></div>
-              <div class="step"><div class="num">5</div><div><b>후보를 재판단</b><span>중복·decoy·비슷한 파일에서 순위가 흔들림</span></div></div>
-            </div>
-            <div class="result">느리고, 반복되고, 에이전트 턴을 많이 쓴다</div>
-          </article>
-
-          <article class="lane to">
-            <div class="lane-head"><span class="label">TO-BE</span><h2>Jikji 장착 탐색</h2></div>
-            <div class="steps">
-              <div class="step"><div class="num">1</div><div><b>명시된 루트 확인</b><span>에이전트가 먼저 <code>jikji brief</code> 호출</span></div></div>
-              <div class="step"><div class="num">2</div><div><b>후보를 즉시 받음</b><span>파일명·경로·메타데이터·본문 인덱스 검색</span></div></div>
-              <div class="step"><div class="num">3</div><div><b>근거를 함께 봄</b><span>본문 스니펫, 폴더 맥락, matched terms 제공</span></div></div>
-              <div class="step"><div class="num">4</div><div><b>필요할 때만 검증</b><span>원본 파일은 마지막 확인 수단</span></div></div>
-              <div class="step"><div class="num">5</div><div><b>정확한 경로 반환</b><span>상대 경로를 그대로 답함</span></div></div>
-            </div>
-            <div class="result">빠르고, 근거 있고, 재사용 가능한 탐색</div>
-          </article>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="section-title">Jikji가 만들어내는 실체</h2>
-        <div class="grid">
-          <div class="card">
-            <h3>원본을 건드리지 않는 생성물</h3>
-            <div class="list">
-              <div class="artifact"><b>.jikji_agent_map.md</b><span>루트에 보이는 에이전트용 시작 지도.</span></div>
-              <div class="artifact"><b>.jikji/search_index.sqlite</b><span>Everything-style 사전 검색 인덱스.</span></div>
-              <div class="artifact"><b>.jikji/doc_text/</b><span>PDF, HWP, HWPX, DOCX, PPTX, XLSX 등에서 추출한 본문 텍스트 캐시.</span></div>
-              <div class="artifact"><b>file_cards.jsonl</b><span>파일별 경로, 확장자, 태그, 파싱 상태, 검색 단서.</span></div>
-              <div class="artifact"><b>folder_profile.jsonl</b><span>폴더가 어떤 역할과 파일 구성을 갖는지 요약.</span></div>
-              <div class="artifact"><b>agent_routes.md</b><span>후보 → 인덱스 → doc_text → 원본 순서의 안전한 탐색 경로.</span></div>
-            </div>
-          </div>
-          <div class="card">
-            <h3>에이전트가 호출하는 방식</h3>
-            <div class="terminal"><pre><span class="blue">git clone</span> https://github.com/nomadamas/jikji.git
-<span class="blue">cd</span> jikji
-<span class="blue">python3 -m venv</span> .venv
-<span class="blue">.venv/bin/pip install -e</span> .
-
-<span class="green">jikji brief</span> ~/Documents \
-  "작년 봄 계약서 pdf" \
-  --top-k 10 --json
-
-{
-  <span class="green">"candidates"</span>: [{
-    "path": "Contracts/2025/spring_final.pdf",
-    "evidence": "계약서, 2025년 4월, 최종본"
-  }],
-  <span class="green">"route_order"</span>: ["candidates", "doc_text", "original files"],
-  <span class="amber">"policy"</span>: "never move/rename/delete source files"
-}</pre></div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <h2 class="section-title">체감되는 혜택</h2>
-        <p class="sub">600개 공개 문서 기반 고난이도 로컬 벤치마크의 4-case 실제 Hermes 비교. Direct handoff는 에이전트가 Jikji 후보를 받아 새 탐색 턴 없이 사용하는 이상적인 스킬 경로다.</p>
+        <h2>Fullset value proof</h2>
+        <p class="sub">HippoCamp Fullset 551 cases. 가격 추정은 입력 $0.30/1M, 출력 $2.50/1M, 환율 1,380 KRW/USD 기준이다. 모델 가격은 환경별로 달라질 수 있으므로 입력/출력 토큰을 별도로 보존한다.</p>
         <div class="metrics">
-          <div class="metric"><small>Raw Hermes</small><strong>91.571s</strong></div>
-          <div class="metric"><small>Jikji direct</small><strong>0.800s</strong></div>
-          <div class="metric"><small>Latency</small><strong>114x</strong></div>
-          <div class="metric"><small>Hit@10</small><strong>0.75→1.00</strong></div>
+          <div class="metric"><span>LLM call reduction</span><strong>11.65x</strong></div>
+          <div class="metric"><span>Time reduction</span><strong>26.83x</strong></div>
+          <div class="metric warn"><span>Token reduction</span><strong>86.46x</strong></div>
+          <div class="metric"><span>Cost reduction</span><strong>85.65x</strong></div>
         </div>
-        <div class="table">
+      </section>
+
+      <section>
+        <h2>측정 장부</h2>
+        <div class="tablewrap">
           <table>
-            <thead><tr><th>Agent mode</th><th>Cases</th><th>Hit@1</th><th>Hit@3</th><th>Hit@5</th><th>Hit@10</th><th>Seconds</th><th>Avg sec/case</th></tr></thead>
+            <thead>
+              <tr><th>Mode</th><th>Hit@1</th><th>Hit@10</th><th>LLM calls</th><th>Input tokens</th><th>Output tokens</th><th>Total tokens</th><th>Seconds</th><th>Cost</th></tr>
+            </thead>
             <tbody>
-              <tr><td>raw Hermes</td><td>4</td><td>0.5000</td><td>0.7500</td><td>0.7500</td><td>0.7500</td><td>366.282</td><td>91.571</td></tr>
-              <tr><td>Hermes + Jikji fast</td><td>4</td><td>0.2500</td><td>0.7500</td><td>0.7500</td><td class="good">1.0000</td><td>157.014</td><td>39.254</td></tr>
-              <tr><td class="good">Hermes + Jikji direct</td><td>4</td><td>0.2500</td><td>0.7500</td><td>0.7500</td><td class="good">1.0000</td><td class="good">3.202</td><td class="good">0.800</td></tr>
+              <tr><td>raw Hermes</td><td>0.6697</td><td>0.7786</td><td>6,420</td><td>19,799,362</td><td>1,496,916</td><td>21,296,278</td><td>31,231.9</td><td>$9.6821 / 13,361원</td></tr>
+              <tr class="recommended"><td><strong>Jikji find</strong></td><td class="good">0.7949</td><td class="good">0.7949</td><td class="good">551</td><td class="good">228,684</td><td class="good">17,632</td><td class="good">246,316</td><td class="good">1,164.2</td><td class="good">$0.1127 / 156원</td></tr>
             </tbody>
           </table>
         </div>
+      </section>
 
-        <!-- HippoCamp Quick Link/Summary Section for Mobile Compatibility -->
-        <div style="margin-top: 36px; padding: 24px; border: 1px solid rgba(125,217,255,.3); border-radius: 24px; background: rgba(125,217,255,.04); text-align: left;">
-          <h3 style="margin: 0 0 10px; font-size: 22px; color: var(--blue);">🏕️ HippoCamp 개인 PC 벤치마크 결과 (프로필별 구분)</h3>
-          <p style="color: var(--muted); font-size: 14.5px; line-height: 1.5; margin-bottom: 20px;">
-            가상 사용자 PC 환경(Adam, Bei, Victoria)의 복잡한 이메일·문서·미디어 파일 더미 속에서, Jikji가 문서를 얼마나 잘 찾아내는지 완전히 구분하여 측정한 벤치마크입니다. 
-          </p>
-          
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 24px;">
-            <!-- Adam Card -->
-            <div style="padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg);">
-              <h4 style="margin: 0 0 8px; color: var(--blue);">👤 Adam 프로필 (138 cases)</h4>
-              <p style="margin: 0 0 12px; font-size: 13px; color: var(--muted);">복잡한 HWP, PDF 및 이메일 백업 탐색</p>
-              <div style="font-size: 15px; font-weight: bold; color: var(--green);">Hit@1 정확도: 49.2% ➜ 94.2% (2배 상승)</div>
-            </div>
-            <!-- Bei Card -->
-            <div style="padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg);">
-              <h4 style="margin: 0 0 8px; color: var(--green);">👤 Bei 프로필 (32 cases)</h4>
-              <p style="margin: 0 0 12px; font-size: 13px; color: var(--muted);">직관적인 키워드/단서 파일 매칭</p>
-              <div style="font-size: 15px; font-weight: bold; color: var(--green);">Jikji vs Raw 모두 100% 만점 달성</div>
-            </div>
-            <!-- Victoria Card -->
-            <div style="padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg); opacity: 0.6;">
-              <h4 style="margin: 0 0 8px; color: var(--muted);">👤 Victoria 프로필 (N/A)</h4>
-              <p style="margin: 0 0 12px; font-size: 13px; color: var(--muted);">가상 사용자 평가 준비 단계</p>
-              <div style="font-size: 14px; color: var(--muted);">평가 미수행 (인덱싱 준비 중)</div>
-            </div>
-          </div>
-
-          <div style="text-align: center;">
-            <a href="./jikji-benchmarks.html?v=2#hippocamp" style="display: inline-block; padding: 12px 24px; border-radius: 16px; background: linear-gradient(135deg, var(--blue), var(--green)); color: #07101c; font-weight: bold; text-decoration: none; font-size: 15px; box-shadow: 0 4px 15px rgba(125,217,255,.3);">
-              👉 전체 벤치마크 및 프로필별 상세 지표 보러가기
-            </a>
-          </div>
+      <section>
+        <h2>절약과 정확도의 원인</h2>
+        <p class="sub">Jikji find는 매번 파일시스템을 뒤지는 대신, prepare 때 만든 local retrieval context를 사용한다.</p>
+        <div class="whygrid">
+          <div class="why"><h3>사전 파싱 캐시</h3><p>문서/텍스트/미디어 본문을 미리 추출해 검색 시 원본 열기와 파싱 반복을 줄인다.</p></div>
+          <div class="why"><h3>파일 지도와 route</h3><p>폴더 맥락, 파일 카드, 중복 힌트, route row가 경로 탐색을 후보 선택으로 바꾼다.</p></div>
+          <div class="why"><h3>LLM Wiki와 그래프</h3><p>에이전트 친화적인 wiki source page와 knowledge graph route를 후보 검색에 사용한다.</p></div>
+          <div class="why"><h3>여러 검색의 top-k 병합</h3><p>메타데이터, 본문, 그래프, wiki/cache, 로컬 인덱스 후보를 dedupe한 slate로 만든다.</p></div>
+          <div class="why"><h3>짧은 evidence 우선</h3><p>agent는 큰 원본 대신 next_read와 evidence_pack을 먼저 읽어 토큰을 아낀다.</p></div>
+          <div class="why"><h3>로컬 RAG-style</h3><p>벡터DB/클라우드 RAG 필수 제품이 아니라, 로컬 wiki/graph/context를 쓰는 검색 레이어다.</p></div>
         </div>
       </section>
 
-      <div class="bottom">
-        <h2>Jikji는 파일 정리 앱이 아니다</h2>
-        <p>Jikji는 로컬 에이전트가 사용자의 현재 파일·폴더·문서 내용을 더 잘 찾도록 만드는 비파괴 파일 지도 레이어다. 폴더 구조는 그대로 두고, 탐색 능력만 장착한다.</p>
-      </div>
+      <section>
+        <h2>에이전트 호출 규칙</h2>
+        <p class="sub">Jikji find가 후보를 만들고, 에이전트는 그 후보 안에서 판단한다. raw 탐색은 JSON 계약이 허용할 때만 fallback이다.</p>
+        <div class="terminal"><pre>jikji find ROOT "query" --json
+# direct_use: answer_paths를 그대로 사용
+# jikji_retry: 더 날카로운 find 재시도 1회
+# raw_fallback_after_retry: 재시도 실패 뒤에만 raw 탐색 허용</pre></div>
+      </section>
     </main>
+
+    <footer>
+      Detailed benchmark ledger: <a href="./jikji-benchmarks.html#usage-ledger">jikji-benchmarks.html#usage-ledger</a>.
+    </footer>
   </div>
+  <script>
+    const hooks = [
+      "38,650 토큰 쓰는 거",
+      "57초 찾는 거",
+      "11.7번 LLM 호출하는 거",
+      "24원 쓰는 거"
+    ];
+    let hookIndex = 0;
+    const hookNode = document.getElementById("rotating-hook");
+    window.setInterval(() => {
+      hookIndex = (hookIndex + 1) % hooks.length;
+      hookNode.textContent = hooks[hookIndex];
+    }, 2400);
+  </script>
 </body>
 </html>

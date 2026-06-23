@@ -1,333 +1,64 @@
-# Jikji Local Agent Search Standard
+# Local Agent Search Standard
 
-Status: Draft v0.2 baseline  
-Scope: Jikji CLI, generated `.jikji/` artifacts, and local-agent skill usage
+This standard defines how local agents should use Jikji for file discovery.
 
-## 1. Purpose
+## Product Boundary
 
-Jikji is a non-destructive local discovery layer for AI coding/desktop agents.
-A local agent such as Claude Code, Codex, Hermes, OpenCode/OpenClone, or another
-CLI-capable assistant should be able to install Jikji from a GitHub checkout or
-Python package, run it on an explicitly supplied local folder/drive, and then use
-standard command-line tools (`rg`, `jq`, `cat`, shell globbing) to discover files,
-folders, metadata, and extracted document text.
+Jikji prepares local folders for AI-agent discovery without moving, renaming, or
+deleting user files. It creates generated artifacts under `.jikji/` plus
+`.jikji_agent_map.md`.
 
-Jikji does **not** replace an agent's permissions. It only prepares indexes for
-paths the user or agent already has permission to read.
-
-## 2. Product Boundary
-
-Jikji must:
-
-- create/update agent-readable artifacts under `.jikji/`;
-- create/update a root signpost named `.jikji_agent_map.md`;
-- preserve original user file paths and folder layout;
-- work through explicit CLI commands and generated skill context;
-- prefer deterministic text-first, grep-friendly outputs.
-
-Jikji must not:
-
-- move, rename, delete, or reorganize original user files;
-- auto-scan every drive without an explicit user-supplied target path;
-- hide parser failures from agents;
-- require cloud services, LLM calls, or network APIs for local search preparation;
-- merge with Folder1004's physical file-organization role.
-
-## 3. Core CLI Contract
-
-The stable commands are:
+## Public Discovery Command
 
 ```bash
-jikji discover /path/to/folder "query" [--top-k N] [--json] # adaptive accuracy-first cascade
-jikji find /path/to/folder "query" [--first] [--json]   # path-only deterministic lookup
-jikji search /path/to/folder "query" [--top-k N] [--json]
-jikji agent-skill-install [--agent NAME|all] [--prepare-root PATH] [--foreground-prepare] [--no-prepare] [--json]
-jikji hermes-compare RAW_REPORT JIKJI_REPORT [--json]       # benchmark regression gate
-jikji skill-export [--dest /agent/skills/jikji/SKILL.md] [--json]
-jikji prepare /path/to/folder [--json]
-jikji refresh /path/to/folder [--json]   # alias for prepare
-jikji map /path/to/folder
-jikji doctor /path/to/folder [--json]
-jikji gui /path/to/folder       # local loopback GUI with open/download actions
-jikji eval-generate /path/to/folder [--cases N] [--json]
-jikji eval /path/to/folder [--top-k N] [--json]
+jikji find ROOT "query" --json
 ```
 
-`find` is the primary zero-LLM path for one-file lookup: it prints likely paths only.
-On every `find`, Jikji compares a content-free source-tree signature
-`sha256(relpath,size,mtime_ns)` against the manifest and refreshes in the
-foreground when files were added, deleted, or renamed. `search` and `brief` may
-use a changed/stale-but-present index for immediate results and launch a
-background refresh unless disabled. Manual `prepare`/`refresh` are administrative
-controls, not something users should need to run before every lookup.
+`jikji find` is the only public local-file discovery command agents should use.
+It builds a multi-query, multi-route candidate slate from:
 
-This is an accuracy-first protocol. Jikji is not trying to force zero LLM calls;
-it gives local agents a better first retrieval tool than raw `grep`/`find`, then
-lets the LLM judge sufficiency, rewrite queries, merge candidates, and verify
-original files when needed.
-Benchmark gates should compare raw Hermes reports against `jikji-discover` and
-fail when Jikji lowers Hit@1/Hit@10 or misses the configured call/token/time
-ratios.
+- file and folder metadata
+- parser text caches
+- file cards and route rows
+- LLM Wiki source pages
+- knowledge-graph routes
+- local lexical/content indexes
 
-Important prepare/refresh options:
+The agent then uses the returned top-k slate for bounded verification or one LLM
+judgment, instead of running repeated raw filesystem searches.
 
-- `--max-files N` — refuse unexpectedly huge scans.
-- Document/text formats (`pdf`, `hwp`, `hwpx`, Office, `txt`, subtitles, structured text, archives) are parser candidates by default within size/timeout limits.
-- Image/audio/video content OCR-ASR is opt-in via `--enable-media-index`; without it, media files remain metadata-only. Use `--media-index-max-mb N` to bound CPU/RAM exposure.
-- `--include-hidden` — include hidden dotfiles except safety-denied names.
-- `--include-sensitive` — explicitly include safety-denied names such as `.env`,
-  private keys, and certificate material.
-- `--exclude PATTERN` — additional fnmatch exclude; repeatable.
-- `--max-hash-bytes N` — skip SHA256/cache identity for files larger than N.
-- `--doc-text-max-chars N` — cap extracted parser text per document.
-- `--doc-text-chunk-chars N` — chunk large extracted text caches.
+Jikji uses RAG-style local retrieval context, but it is not a mandatory
+embedding/vectorDB/cloud RAG stack. The default search path is local and
+deterministic; the agent may spend an LLM call only to judge the returned slate.
 
-Defaults must remain safe and non-destructive.
+## Required Handoff Contract
 
-## 4. Generated Artifact Contract
+- Prefer `answer_paths[]`, then `paths[]`.
+- Preserve Jikji order when `agent_should_not_rerank` is true.
+- Use `evidence_pack[].next_read` or `candidates[].next_read` for verification.
+- `direct_use`: no broad raw crawl.
+- `jikji_retry`: exactly one sharper `jikji find` retry.
+- `raw_fallback_after_retry`: raw search only after the retry failed or remained
+  clearly wrong.
 
-### 4.1 Root signpost
+## Administrative Commands
 
-`.jikji_agent_map.md` is intentionally short. It is a visible entry point for
-humans and agents, not a dump of every file or every document body.
+```bash
+jikji prepare ROOT --json
+jikji refresh ROOT --json
+jikji doctor ROOT --json
+jikji map ROOT
+jikji clean ROOT --dry-run --json
+```
 
-### 4.2 `.jikji/agent_map.md`
+## Reporting Standard
 
-`.jikji/agent_map.md` is a concise route map. It should include generation time,
-schema version, root path, counts, parser error count, representative folders,
-representative document cache candidates, and exact search instructions.
-
-### 4.3 Route and guide documents
-
-- `.jikji/agent_routes.md` — step-by-step route for local agents.
-- `.jikji/agent_skill_context.md` — compact context a local agent skill can read.
-- `.jikji/human_guide.md` — human-facing safety and privacy note.
-- `.jikji/eval/` — generated local evaluation sets, corpus profiles, and reports.
-
-These are generated artifacts and may be regenerated.
-
-### 4.4 JSONL indexes
-
-Jikji's machine-readable indexes are newline-delimited JSON so agents can stream,
-filter, and grep large folders.
-
-Required indexes:
-
-- `.jikji/file_index.jsonl` — one row per present file plus visible deleted rows
-  from the previous index generation.
-- `.jikji/folder_index.jsonl` — one row per discovered folder, including root.
-- `.jikji/document_index.jsonl` — one row per parser-required document.
-- `.jikji/parse_errors.jsonl` — non-fatal parser/metadata/hash failures.
-- `.jikji/file_cards.jsonl` — one row per file with map-facing lexical,
-  structural, duplicate, and filename lookup hints.
-- `.jikji/chunk_map.jsonl` — bounded per-document/per-text chunk clues for
-  map-only content discovery.
-- `.jikji/search_index.sqlite` — Everything-style prebuilt lexical search
-  accelerator generated from the JSONL map; it is disposable and may be
-  regenerated from the JSONL artifacts.
-- `.jikji/duplicate_map.jsonl` — duplicate/hash/family groups for copy-aware
-  hit@k evaluation and agent navigation.
-- `.jikji/wiki/index.md` and `.jikji/wiki/sources/*.md` — deterministic local
-  LLM Wiki pages that standardize extracted local knowledge as compact Markdown.
-- `.jikji/knowledge_graph.json` — typed local knowledge graph linking corpus,
-  folders, sources, terms, intents, and duplicate groups.
-- `.jikji/graph_routes.jsonl` — low-token route rows used by compact briefs so
-  agents do not need to read full maps or browse the filesystem.
-- `.jikji/llm_wiki_schema.md` — wiki/graph schema and safety contract.
-
-`keywords` and `summary` fields are local deterministic heuristics only. They
-must never require LLM calls, cloud services, or network access.
-
-### 4.5 Document text cache
-
-`.jikji/doc_text/` stores extracted text for parser-required documents. Caches
-may be capped or chunked. Extraction may fail for encrypted, malformed,
-oversized, or unsupported files; failures must be visible in `parse_errors.jsonl`,
-`document_index.jsonl`, and summary counts.
-
-Parser-required extensions in v0.2:
+Public benchmark rows should compare:
 
 ```text
-.pdf .doc .docx .ppt .pptx .pps .ppsx .xls .xlsx .hwp .hwpx .odt .rtf
+raw local agent
+same agent + Jikji find
 ```
 
-Native text-like files such as `.txt`, `.md`, `.csv`, `.json`, `.yaml`, and logs
-are not required to be copied into `.jikji/doc_text/`. Agents should search those
-files in their original locations and search parser-required document bodies in
-`.jikji/doc_text/`.
-
-### 4.6 Rich metadata
-
-Rich metadata that does not belong in the flat file index should live in
-`.jikji/doc_meta/sha256_<hash>.json`. v0.2 uses a minimal envelope with empty
-values allowed and free-form flat dictionaries for `exif`, `office`, and
-`parser`.
-
-## 5. `.jikji/` Ownership and Safety Contract
-
-Jikji owns and may regenerate only the paths listed in `manifest.json` under
-`owned_paths`. Retired generated artifacts listed under `retired_cleanup_paths`
-may be removed by prepare for compatibility cleanup. Future generated artifacts
-must be added there before implementation. Jikji must not delete arbitrary
-user-created files under `.jikji/`.
-
-Generated stale-pruning is limited to `sha256_*` artifacts under generated cache
-folders.
-
-## 6. Cache Key, Lock, and Refresh Policy
-
-The cache key for document text is `sha256:<content-hash>`.
-
-Refresh policy:
-
-- Store a content-free source-tree signature in `.jikji/manifest.json` using
-  relative path, size, and `mtime_ns`; do not read file bodies for freshness
-  checks.
-- On `jikji find`, refresh in the foreground when that signature changes so
-  newly created files can be returned by the same command.
-- On `jikji search` / `jikji brief`, return the previous index immediately when
-  the signature changed or the index is age-stale, and launch a background
-  refresh unless disabled.
-- Use `(size, mtime_ns)` to detect unchanged files during refresh.
-- Do not recompute SHA256 for unchanged files.
-- Recompute SHA256 and parser caches only when size or mtime changes, or when a
-  previous cache is missing.
-- Keep deleted rows visible with `status: "deleted"`.
-- Prune only generated `sha256_*` doc caches/cards that are no longer referenced
-  by current document rows.
-
-Write policy:
-
-- Use atomic tmp-file replacement for generated files.
-- Use `.jikji/.lock` to prevent overlapping write phases for the same root.
-- Record `cache_key_policy` and `owned_paths` in `manifest.json`.
-
-## 7. Local Agent Search Procedure
-
-A local agent using Jikji should follow this sequence:
-
-1. Run `jikji discover ROOT "query" --top-k 20 --json` first for general agent
-   discovery. It classifies the query, estimates confidence, merges deterministic
-   query variants, and returns a recommended action.
-2. Run `jikji find ROOT "query" --first` when the task is definitely a single-file
-   lookup and the cheapest path-only handoff is enough.
-3. Run `jikji brief ROOT "query" --compact --json` when the agent needs route
-   evidence, source wiki paths, cache hints, and short evidence.
-4. Run `jikji brief ROOT "query" --json` for a fuller query-specific route
-   sheet when compact evidence is insufficient. Use its candidate paths first
-   when evidence/reasons match.
-5. Run `jikji search ROOT "query" --json` when only ranked candidates are
-   needed or when refining the query.
-6. Read `.jikji_agent_map.md`.
-7. Read `.jikji/wiki/index.md`, `.jikji/graph_routes.jsonl`, or
-   `.jikji/knowledge_graph.json` to traverse source/term/intent/folder links.
-8. Read `.jikji/agent_map.md` and `.jikji/agent_routes.md` for human-oriented
-   fallback routing.
-9. Query `.jikji/file_index.jsonl`, `.jikji/folder_index.jsonl`, and
-   `.jikji/document_index.jsonl` with `rg`/`jq` only after compact routes are
-   insufficient.
-10. Search parser-required document bodies in `.jikji/doc_text/`.
-11. Search native text-like files in their original locations, excluding `.jikji`.
-12. Open the original file only through the `path` field after finding a match.
-13. Never move, rename, delete, or reorganize source files as part of search.
-
-Example:
-
-```bash
-jikji find . "contract pdf from last spring" --first
-jikji brief . "contract pdf from last spring" --top-k 10 --compact --json
-rg "contract|계약" .jikji/doc_text .jikji/*.jsonl
-jq -r 'select(.ext==".pdf") | [.path, .text_cache_path] | @tsv' .jikji/document_index.jsonl
-rg "TODO|회의" . --glob '!**/.jikji/**'
-```
-
-## 8. Multi-root / Local-drive Guidance
-
-Jikji can be run against any folder or mounted drive path that the caller can
-read. To prepare multiple drives or roots, run `jikji prepare` once per explicit
-root. Jikji must not silently enumerate all system drives by default.
-
-Nested explicit roots are allowed but independent: each root owns only its own
-`.jikji/` artifacts, and scanner ignores nested `.jikji/` folders.
-
-## 9. Privacy and Security
-
-- `.jikji/doc_text/` can contain sensitive extracted text.
-- `.jikji/*.jsonl` can contain file names, paths, timestamps, and hashes.
-- Defaults skip hidden files and safety-denied names such as `.env`, private
-  keys, certificate material, `.git`, `node_modules`, and virtualenv/cache dirs.
-- Users should review before committing `.jikji/` or `.jikji_agent_map.md` to
-  Git.
-- Recommended `.gitignore`:
-
-```gitignore
-.jikji/
-.jikji_agent_map.md
-```
-
-- Jikji does not bypass filesystem permissions.
-- Symlinks are not followed by default.
-- Permission and parser errors are recorded but should not abort the whole index.
-
-## 10. Doctor Verification Checklist
-
-`jikji doctor ROOT` verifies:
-
-- required artifacts exist;
-- `manifest.json` parses and has supported `schema_version`;
-- JSONL rows parse as JSON objects;
-- successful document rows have existing `text_cache_path` targets;
-- `doc_meta_path` targets are present or warned;
-- dangling generated `sha256_*` cache artifacts are warned;
-- `non_destructive` is true.
-
-The doctor JSON also reports `image_support`: lightweight image metadata
-indexing is always active, while `image_support.ocr_active` shows whether a
-local `tesseract` binary is available for OCR on images/scanned PDFs.
-
-Exit codes:
-
-- `0`: no errors or warnings;
-- `1`: missing/broken required artifact or schema error;
-- `2`: warnings only.
-
-## 11. P0 Acceptance Criteria
-
-A Jikji build satisfies the local-agent search baseline when:
-
-- `jikji prepare ROOT --json` creates `.jikji/` and `.jikji_agent_map.md`.
-- Original files and folders remain unchanged.
-- `jikji map ROOT` prints a route to the full indexes.
-- `jikji doctor ROOT` verifies required artifacts and cache references.
-- `file_index.jsonl` contains all scanned file names and core metadata.
-- `folder_index.jsonl` contains all scanned folders.
-- `document_index.jsonl` links parser-required documents to caches or visible
-  failure/empty statuses.
-- `.jikji/doc_text/` contains reusable extracted text where parsing succeeds.
-- `agent_routes.md` tells agents exactly where to search native text vs parser
-  cache text.
-- Validation passes: `ruff`, `pytest`, and `compileall`.
-
-
-## 12. Local Search Evaluation
-
-Jikji should be evaluated against the actual folder/file characteristics it is
-preparing. `jikji eval-generate ROOT` reads the current Jikji index and creates a
-deterministic local eval set under `.jikji/eval/eval_set.jsonl`.
-
-Scenario families:
-
-- `filename_exact` — find a file by its complete file name.
-- `filename_partial` — find a file by a distinctive file-name token.
-- `lexical_content` — find a file by exact tokens from native text or parsed
-  document cache text.
-- `semantic_description` — find a file from a natural-language description built
-  from local content/folder/name signals; no LLM or embeddings are required.
-- `file_description` — find a file from folder, extension, and descriptive name
-  clues.
-
-`jikji eval ROOT` runs an agent-like deterministic ranker over `.jikji` indexes,
-`.jikji/doc_text/`, and native text files, then writes `.jikji/eval/eval_report.json`.
-Metrics include hit@1, hit@3, hit@5, MRR, and per-scenario scores. These metrics
-are intended to compare map/index changes over time, not to claim perfect
-semantic retrieval.
+Do not expose internal experiment names as product options in public benchmark
+tables or agent instructions.

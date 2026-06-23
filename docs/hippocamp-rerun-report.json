@@ -1,104 +1,27 @@
 {
-  "split": "Fullset",
-  "note": "Official HippoCamp Full-split (Fullset) benchmark for Adam, Bei, Victoria. Bounded full-set fetch: per-file cap 60MB skips only large video, capturing the entire document+audio corpus.",
-  "fetch": {
-    "Adam": {
-      "files_downloaded": 342,
-      "bytes_downloaded": 355675242,
-      "skipped": 2,
-      "eval_cases": 122,
-      "scenarios": {
-        "hippocamp_factual_retention": 102,
-        "hippocamp_profiling": 20
-      }
-    },
-    "Bei": {
-      "files_downloaded": 826,
-      "bytes_downloaded": 4102851609,
-      "skipped": 49,
-      "eval_cases": 206,
-      "scenarios": {
-        "hippocamp_factual_retention": 186,
-        "hippocamp_profiling": 20
-      }
-    },
-    "Victoria": {
-      "files_downloaded": 705,
-      "bytes_downloaded": 2346713958,
-      "skipped": 1,
-      "eval_cases": 223,
-      "scenarios": {
-        "hippocamp_factual_retention": 203,
-        "hippocamp_profiling": 20
-      }
-    }
-  },
   "deterministic_suite": {
-    "top_k": 10,
     "aggregate": {
-      "raw": {
-        "profiles": 3,
-        "cases": 551,
-        "hit_at_1": 0.285,
-        "hit_at_3": 0.3847,
-        "hit_at_5": 0.4465,
-        "mrr": 0.3606,
-        "seconds": 21.891
-      },
       "jikji": {
-        "profiles": 3,
         "cases": 551,
         "hit_at_1": 0.3666,
         "hit_at_3": 0.5045,
         "hit_at_5": 0.5789,
         "mrr": 0.4587,
+        "profiles": 3,
         "seconds": 216.591
+      },
+      "raw": {
+        "cases": 551,
+        "hit_at_1": 0.285,
+        "hit_at_3": 0.3847,
+        "hit_at_5": 0.4465,
+        "mrr": 0.3606,
+        "profiles": 3,
+        "seconds": 21.891
       }
     },
     "profiles": {
       "Adam": {
-        "raw": {
-          "by_scenario": {
-            "hippocamp_factual_retention": {
-              "cases": 102,
-              "duplicate_or_exact_hit_at_10": 0.8137,
-              "hash_or_exact_hit_at_10": 0.8137,
-              "hit_at_1": 0.6078,
-              "hit_at_10": 0.8137,
-              "hit_at_5": 0.7647,
-              "mrr": 0.6782,
-              "set_recall_at_10": 0.7339,
-              "set_recall_at_5": 0.6918
-            },
-            "hippocamp_profiling": {
-              "cases": 20,
-              "duplicate_or_exact_hit_at_10": 0.5,
-              "hash_or_exact_hit_at_10": 0.5,
-              "hit_at_1": 0.2,
-              "hit_at_10": 0.5,
-              "hit_at_5": 0.4,
-              "mrr": 0.2956,
-              "set_recall_at_10": 0.1395,
-              "set_recall_at_5": 0.17
-            }
-          },
-          "cases": 122,
-          "duplicate_or_exact_hit_at_10": 0.7623,
-          "duplicate_or_exact_hit_at_5": 0.7049,
-          "hash_or_exact_hit_at_10": 0.7623,
-          "hash_or_exact_hit_at_5": 0.7049,
-          "hit_at_1": 0.541,
-          "hit_at_10": 0.7623,
-          "hit_at_3": 0.6721,
-          "hit_at_5": 0.7049,
-          "mrr": 0.6154,
-          "seconds": 3.447,
-          "set_precision_at_10": 0.1008,
-          "set_precision_at_5": 0.1705,
-          "set_recall_at_10": 0.6365,
-          "set_recall_at_5": 0.6063,
-          "top_k": 10
-        },
         "jikji": {
           "by_scenario": {
             "hippocamp_factual_retention": {
@@ -140,51 +63,51 @@
           "set_recall_at_10": 0.7796,
           "set_recall_at_5": 0.7488,
           "top_k": 10
-        }
-      },
-      "Bei": {
+        },
         "raw": {
           "by_scenario": {
             "hippocamp_factual_retention": {
-              "cases": 186,
-              "duplicate_or_exact_hit_at_10": 0.4086,
-              "hash_or_exact_hit_at_10": 0.4086,
-              "hit_at_1": 0.2258,
-              "hit_at_10": 0.4086,
-              "hit_at_5": 0.3226,
-              "mrr": 0.2734,
-              "set_recall_at_10": 0.3356,
-              "set_recall_at_5": 0.2797
+              "cases": 102,
+              "duplicate_or_exact_hit_at_10": 0.8137,
+              "hash_or_exact_hit_at_10": 0.8137,
+              "hit_at_1": 0.6078,
+              "hit_at_10": 0.8137,
+              "hit_at_5": 0.7647,
+              "mrr": 0.6782,
+              "set_recall_at_10": 0.7339,
+              "set_recall_at_5": 0.6918
             },
             "hippocamp_profiling": {
               "cases": 20,
-              "duplicate_or_exact_hit_at_10": 0.4,
-              "hash_or_exact_hit_at_10": 0.4,
-              "hit_at_1": 0.4,
-              "hit_at_10": 0.4,
+              "duplicate_or_exact_hit_at_10": 0.5,
+              "hash_or_exact_hit_at_10": 0.5,
+              "hit_at_1": 0.2,
+              "hit_at_10": 0.5,
               "hit_at_5": 0.4,
-              "mrr": 0.4,
-              "set_recall_at_10": 0.2617,
-              "set_recall_at_5": 0.295
+              "mrr": 0.2956,
+              "set_recall_at_10": 0.1395,
+              "set_recall_at_5": 0.17
             }
           },
-          "cases": 206,
-          "duplicate_or_exact_hit_at_10": 0.4078,
-          "duplicate_or_exact_hit_at_5": 0.3301,
-          "hash_or_exact_hit_at_10": 0.4078,
-          "hash_or_exact_hit_at_5": 0.3301,
-          "hit_at_1": 0.2427,
-          "hit_at_10": 0.4078,
-          "hit_at_3": 0.301,
-          "hit_at_5": 0.3301,
-          "mrr": 0.2857,
-          "seconds": 7.055,
-          "set_precision_at_10": 0.1155,
-          "set_precision_at_5": 0.1437,
-          "set_recall_at_10": 0.3284,
-          "set_recall_at_5": 0.2811,
+          "cases": 122,
+          "duplicate_or_exact_hit_at_10": 0.7623,
+          "duplicate_or_exact_hit_at_5": 0.7049,
+          "hash_or_exact_hit_at_10": 0.7623,
+          "hash_or_exact_hit_at_5": 0.7049,
+          "hit_at_1": 0.541,
+          "hit_at_10": 0.7623,
+          "hit_at_3": 0.6721,
+          "hit_at_5": 0.7049,
+          "mrr": 0.6154,
+          "seconds": 3.447,
+          "set_precision_at_10": 0.1008,
+          "set_precision_at_5": 0.1705,
+          "set_recall_at_10": 0.6365,
+          "set_recall_at_5": 0.6063,
           "top_k": 10
-        },
+        }
+      },
+      "Bei": {
         "jikji": {
           "by_scenario": {
             "hippocamp_factual_retention": {
@@ -226,51 +149,51 @@
           "set_recall_at_10": 0.4094,
           "set_recall_at_5": 0.3683,
           "top_k": 10
-        }
-      },
-      "Victoria": {
+        },
         "raw": {
           "by_scenario": {
             "hippocamp_factual_retention": {
-              "cases": 203,
-              "duplicate_or_exact_hit_at_10": 0.6256,
-              "hash_or_exact_hit_at_10": 0.6256,
-              "hit_at_1": 0.1626,
-              "hit_at_10": 0.6256,
-              "hit_at_5": 0.3793,
-              "mrr": 0.2653,
-              "set_recall_at_10": 0.5787,
-              "set_recall_at_5": 0.3131
+              "cases": 186,
+              "duplicate_or_exact_hit_at_10": 0.4086,
+              "hash_or_exact_hit_at_10": 0.4086,
+              "hit_at_1": 0.2258,
+              "hit_at_10": 0.4086,
+              "hit_at_5": 0.3226,
+              "mrr": 0.2734,
+              "set_recall_at_10": 0.3356,
+              "set_recall_at_5": 0.2797
             },
             "hippocamp_profiling": {
               "cases": 20,
-              "duplicate_or_exact_hit_at_10": 0.85,
-              "hash_or_exact_hit_at_10": 0.85,
+              "duplicate_or_exact_hit_at_10": 0.4,
+              "hash_or_exact_hit_at_10": 0.4,
               "hit_at_1": 0.4,
-              "hit_at_10": 0.85,
-              "hit_at_5": 0.75,
-              "mrr": 0.5458,
-              "set_recall_at_10": 0.3187,
-              "set_recall_at_5": 0.38
+              "hit_at_10": 0.4,
+              "hit_at_5": 0.4,
+              "mrr": 0.4,
+              "set_recall_at_10": 0.2617,
+              "set_recall_at_5": 0.295
             }
           },
-          "cases": 223,
-          "duplicate_or_exact_hit_at_10": 0.6457,
-          "duplicate_or_exact_hit_at_5": 0.4126,
-          "hash_or_exact_hit_at_10": 0.6457,
-          "hash_or_exact_hit_at_5": 0.4126,
-          "hit_at_1": 0.1839,
-          "hit_at_10": 0.6457,
-          "hit_at_3": 0.3049,
-          "hit_at_5": 0.4126,
-          "mrr": 0.2904,
-          "seconds": 11.389,
-          "set_precision_at_10": 0.1076,
-          "set_precision_at_5": 0.1211,
-          "set_recall_at_10": 0.5553,
-          "set_recall_at_5": 0.3191,
+          "cases": 206,
+          "duplicate_or_exact_hit_at_10": 0.4078,
+          "duplicate_or_exact_hit_at_5": 0.3301,
+          "hash_or_exact_hit_at_10": 0.4078,
+          "hash_or_exact_hit_at_5": 0.3301,
+          "hit_at_1": 0.2427,
+          "hit_at_10": 0.4078,
+          "hit_at_3": 0.301,
+          "hit_at_5": 0.3301,
+          "mrr": 0.2857,
+          "seconds": 7.055,
+          "set_precision_at_10": 0.1155,
+          "set_precision_at_5": 0.1437,
+          "set_recall_at_10": 0.3284,
+          "set_recall_at_5": 0.2811,
           "top_k": 10
-        },
+        }
+      },
+      "Victoria": {
         "jikji": {
           "by_scenario": {
             "hippocamp_factual_retention": {
@@ -312,134 +235,424 @@
           "set_recall_at_10": 0.6325,
           "set_recall_at_5": 0.4336,
           "top_k": 10
+        },
+        "raw": {
+          "by_scenario": {
+            "hippocamp_factual_retention": {
+              "cases": 203,
+              "duplicate_or_exact_hit_at_10": 0.6256,
+              "hash_or_exact_hit_at_10": 0.6256,
+              "hit_at_1": 0.1626,
+              "hit_at_10": 0.6256,
+              "hit_at_5": 0.3793,
+              "mrr": 0.2653,
+              "set_recall_at_10": 0.5787,
+              "set_recall_at_5": 0.3131
+            },
+            "hippocamp_profiling": {
+              "cases": 20,
+              "duplicate_or_exact_hit_at_10": 0.85,
+              "hash_or_exact_hit_at_10": 0.85,
+              "hit_at_1": 0.4,
+              "hit_at_10": 0.85,
+              "hit_at_5": 0.75,
+              "mrr": 0.5458,
+              "set_recall_at_10": 0.3187,
+              "set_recall_at_5": 0.38
+            }
+          },
+          "cases": 223,
+          "duplicate_or_exact_hit_at_10": 0.6457,
+          "duplicate_or_exact_hit_at_5": 0.4126,
+          "hash_or_exact_hit_at_10": 0.6457,
+          "hash_or_exact_hit_at_5": 0.4126,
+          "hit_at_1": 0.1839,
+          "hit_at_10": 0.6457,
+          "hit_at_3": 0.3049,
+          "hit_at_5": 0.4126,
+          "mrr": 0.2904,
+          "seconds": 11.389,
+          "set_precision_at_10": 0.1076,
+          "set_precision_at_5": 0.1211,
+          "set_recall_at_10": 0.5553,
+          "set_recall_at_5": 0.3191,
+          "top_k": 10
         }
       }
+    },
+    "top_k": 10
+  },
+  "fetch": {
+    "Adam": {
+      "bytes_downloaded": 355675242,
+      "eval_cases": 122,
+      "files_downloaded": 342,
+      "scenarios": {
+        "hippocamp_factual_retention": 102,
+        "hippocamp_profiling": 20
+      },
+      "skipped": 2
+    },
+    "Bei": {
+      "bytes_downloaded": 4102851609,
+      "eval_cases": 206,
+      "files_downloaded": 826,
+      "scenarios": {
+        "hippocamp_factual_retention": 186,
+        "hippocamp_profiling": 20
+      },
+      "skipped": 49
+    },
+    "Victoria": {
+      "bytes_downloaded": 2346713958,
+      "eval_cases": 223,
+      "files_downloaded": 705,
+      "scenarios": {
+        "hippocamp_factual_retention": 203,
+        "hippocamp_profiling": 20
+      },
+      "skipped": 1
     }
   },
   "hermes_agent_benchmark": {
-    "model": "google/gemini-2.5-flash",
-    "provider": "openrouter",
-    "cases_per_profile": 10,
-    "max_turns": 8,
-    "fast_max_turns": 1,
+    "aggregate": {
+      "jikji": {
+        "accuracy": 0.7,
+        "cases": 30,
+        "completion_tokens": 18569,
+        "hit_at_1": 0.5,
+        "hit_at_10": 0.7,
+        "hit_at_3": 0.6667,
+        "hit_at_5": 0.7,
+        "llm_calls": 30,
+        "prompt_tokens": 278680,
+        "total_tokens": 297249
+      },
+      "raw": {
+        "accuracy": 0.3333,
+        "cases": 30,
+        "completion_tokens": 79384,
+        "hit_at_1": 0.2333,
+        "hit_at_10": 0.3333,
+        "hit_at_3": 0.3,
+        "hit_at_5": 0.3333,
+        "llm_calls": 106,
+        "prompt_tokens": 766706,
+        "total_tokens": 846090
+      }
+    },
     "candidate_top_k": 5,
+    "cases_per_profile": 10,
     "evidence_snippet_chars": 120,
+    "fast_max_turns": 1,
+    "jikji_mode_detail": "jikji = jikji-fast map-first 1-turn handoff with token-diet candidate injection (top-k 5, single 120-char evidence snippet).",
+    "max_turns": 8,
+    "model": "google/gemini-2.5-flash",
     "modes": [
       "raw",
       "jikji"
     ],
-    "jikji_mode_detail": "jikji = jikji-fast map-first 1-turn handoff with token-diet candidate injection (top-k 5, single 120-char evidence snippet).",
-    "aggregate": {
-      "raw": {
-        "cases": 30,
-        "hit_at_1": 0.2333,
-        "hit_at_3": 0.3,
-        "hit_at_5": 0.3333,
-        "hit_at_10": 0.3333,
-        "accuracy": 0.3333,
-        "llm_calls": 106,
-        "prompt_tokens": 766706,
-        "completion_tokens": 79384,
-        "total_tokens": 846090
-      },
-      "jikji": {
-        "cases": 30,
-        "hit_at_1": 0.5,
-        "hit_at_3": 0.6667,
-        "hit_at_5": 0.7,
-        "hit_at_10": 0.7,
-        "accuracy": 0.7,
-        "llm_calls": 30,
-        "prompt_tokens": 278680,
-        "completion_tokens": 18569,
-        "total_tokens": 297249
-      }
-    },
     "profiles": {
       "Adam": {
         "jikji": {
-          "cases": 10,
           "accuracy": 0.8,
+          "avg_seconds": 7.926,
+          "cases": 10,
+          "completion_tokens": 4724,
           "hit_at_1": 0.6,
+          "hit_at_10": 0.8,
           "hit_at_3": 0.8,
           "hit_at_5": 0.8,
-          "hit_at_10": 0.8,
-          "avg_seconds": 7.926,
           "llm_calls": 10,
           "prompt_tokens": 89670,
-          "completion_tokens": 4724,
           "total_tokens": 94394
         },
         "raw": {
-          "cases": 10,
           "accuracy": 0.1,
+          "avg_seconds": 61.442,
+          "cases": 10,
+          "completion_tokens": 31807,
           "hit_at_1": 0.1,
+          "hit_at_10": 0.1,
           "hit_at_3": 0.1,
           "hit_at_5": 0.1,
-          "hit_at_10": 0.1,
-          "avg_seconds": 61.442,
           "llm_calls": 50,
           "prompt_tokens": 403970,
-          "completion_tokens": 31807,
           "total_tokens": 435777
         }
       },
       "Bei": {
         "jikji": {
-          "cases": 10,
           "accuracy": 0.5,
+          "avg_seconds": 8.453,
+          "cases": 10,
+          "completion_tokens": 7520,
           "hit_at_1": 0.4,
+          "hit_at_10": 0.5,
           "hit_at_3": 0.5,
           "hit_at_5": 0.5,
-          "hit_at_10": 0.5,
-          "avg_seconds": 8.453,
           "llm_calls": 10,
           "prompt_tokens": 85685,
-          "completion_tokens": 7520,
           "total_tokens": 93205
         },
         "raw": {
-          "cases": 10,
           "accuracy": 0.3,
+          "avg_seconds": 33.329,
+          "cases": 10,
+          "completion_tokens": 17169,
           "hit_at_1": 0.1,
+          "hit_at_10": 0.3,
           "hit_at_3": 0.3,
           "hit_at_5": 0.3,
-          "hit_at_10": 0.3,
-          "avg_seconds": 33.329,
           "llm_calls": 27,
           "prompt_tokens": 152520,
-          "completion_tokens": 17169,
           "total_tokens": 169689
         }
       },
       "Victoria": {
         "jikji": {
-          "cases": 10,
           "accuracy": 0.8,
+          "avg_seconds": 11.44,
+          "cases": 10,
+          "completion_tokens": 6325,
           "hit_at_1": 0.5,
+          "hit_at_10": 0.8,
           "hit_at_3": 0.7,
           "hit_at_5": 0.8,
-          "hit_at_10": 0.8,
-          "avg_seconds": 11.44,
           "llm_calls": 10,
           "prompt_tokens": 103325,
-          "completion_tokens": 6325,
           "total_tokens": 109650
         },
         "raw": {
-          "cases": 10,
           "accuracy": 0.6,
+          "avg_seconds": 37.403,
+          "cases": 10,
+          "completion_tokens": 30408,
           "hit_at_1": 0.5,
+          "hit_at_10": 0.6,
           "hit_at_3": 0.5,
           "hit_at_5": 0.6,
-          "hit_at_10": 0.6,
-          "avg_seconds": 37.403,
           "llm_calls": 29,
           "prompt_tokens": 210216,
-          "completion_tokens": 30408,
           "total_tokens": 240624
         }
       }
-    }
-  }
+    },
+    "provider": "openrouter"
+  },
+  "hermes_full_actual_agent_benchmark": {
+    "aggregate": {
+      "jikji_answer_pack": {
+        "cases": 551,
+        "completion_tokens": 0,
+        "hit_at_1": 0.5136,
+        "hit_at_10": 0.7949,
+        "hit_at_3": 0.706,
+        "hit_at_5": 0.7495,
+        "llm_calls": 0,
+        "prompt_tokens": 0,
+        "reasoning_tokens": 0,
+        "seconds": 337.854,
+        "total_tokens": 0,
+        "usage_status": "not_applicable_zero_chat",
+        "usage_status_counts": {
+          "not_applicable_zero_chat": 551
+        }
+      },
+      "jikji_discover": {
+        "cases": 551,
+        "completion_tokens": 686411,
+        "hit_at_1": 0.6878,
+        "hit_at_10": 0.8004,
+        "hit_at_3": 0.775,
+        "hit_at_5": 0.7877,
+        "llm_calls": 2326,
+        "prompt_tokens": 6930603,
+        "reasoning_tokens": 0,
+        "seconds": 15603.2,
+        "total_tokens": 7617014
+      },
+      "raw": {
+        "cases": 551,
+        "completion_tokens": 1496916,
+        "hit_at_1": 0.6697,
+        "hit_at_10": 0.7786,
+        "hit_at_3": 0.7568,
+        "hit_at_5": 0.775,
+        "llm_calls": 6420,
+        "prompt_tokens": 19799362,
+        "reasoning_tokens": 0,
+        "seconds": 31231.9,
+        "total_tokens": 21296278
+      }
+    },
+    "cases": 551,
+    "date": "2026-06-23",
+    "gates_vs_raw": {
+      "jikji-answer-pack": {
+        "hit_at_10_not_lower": true,
+        "hit_at_1_not_lower": false,
+        "llm_calls_zero": true,
+        "seconds_not_slower": true,
+        "total_tokens_below_0_01": true,
+        "usage_accounting_zero_chat": true
+      },
+      "jikji-discover": {
+        "hit_at_10_not_lower": true,
+        "hit_at_1_not_lower": true,
+        "llm_calls_below_0_75": true,
+        "seconds_not_slower": true,
+        "total_tokens_below_0_75": true
+      }
+    },
+    "interpretation": {
+      "answer_pack_reports": [
+        ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Adam_jikji_answer_pack_report.json",
+        ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Bei_jikji_answer_pack_report.json",
+        ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/Victoria_jikji_answer_pack_report.json"
+      ],
+      "headline": "Jikji answer-pack completes all 551 cases with zero LLM calls and zero tokens; the anchor-calibrated run improves Hit@1 and Hit@10 versus the previous answer-pack run, but Hit@1 remains below raw Hermes.",
+      "previous_answer_pack_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623/full_answer_pack_aggregate_report.json",
+      "raw_discover_aggregate_report": ".benchmarks/hippocamp-full/_hermes_full_gpt54mini_chunks5/full_aggregate_report.json",
+      "top_1_final_answer_gate": "improved_but_still_fails_raw_parity",
+      "top_k_file_discovery_gate": "pass"
+    },
+    "local_report": ".benchmarks/hippocamp-full/_hermes_answer_pack_full_20260623_anchorfix/full_answer_pack_aggregate_report.json",
+    "model": "gpt-5.4-mini raw/discover baseline; no LLM calls for jikji-answer-pack",
+    "modes": [
+      "raw",
+      "jikji-discover",
+      "jikji-answer-pack"
+    ],
+    "profile_summary": {
+      "Adam": {
+        "jikji-answer-pack": {
+          "cases": 122,
+          "hit_at_1": 0.8443,
+          "hit_at_10": 0.9344,
+          "hit_at_3": 0.9344,
+          "hit_at_5": 0.9344,
+          "llm_calls": 0,
+          "seconds": 43.179,
+          "total_tokens": 0,
+          "usage_status": "not_applicable_zero_chat"
+        },
+        "jikji-discover": {
+          "cases": 122,
+          "hit_at_1": 0.918,
+          "hit_at_10": 0.9754,
+          "llm_calls": 315,
+          "seconds": 2303.7,
+          "total_tokens": 1064564
+        },
+        "raw": {
+          "cases": 122,
+          "hit_at_1": 0.8852,
+          "hit_at_10": 0.918,
+          "llm_calls": 1262,
+          "seconds": 6158.6,
+          "total_tokens": 4596985
+        }
+      },
+      "Bei": {
+        "jikji-answer-pack": {
+          "cases": 206,
+          "hit_at_1": 0.3447,
+          "hit_at_10": 0.5874,
+          "hit_at_3": 0.4951,
+          "hit_at_5": 0.5437,
+          "llm_calls": 0,
+          "seconds": 42.309,
+          "total_tokens": 0,
+          "usage_status": "not_applicable_zero_chat"
+        },
+        "jikji-discover": {
+          "cases": 206,
+          "hit_at_1": 0.5291,
+          "hit_at_10": 0.6068,
+          "llm_calls": 1256,
+          "seconds": 7480.6,
+          "total_tokens": 4098085
+        },
+        "raw": {
+          "cases": 206,
+          "hit_at_1": 0.4709,
+          "hit_at_10": 0.5777,
+          "llm_calls": 2775,
+          "seconds": 13568.6,
+          "total_tokens": 9493211
+        }
+      },
+      "Victoria": {
+        "jikji-answer-pack": {
+          "cases": 223,
+          "hit_at_1": 0.4888,
+          "hit_at_10": 0.9103,
+          "hit_at_3": 0.7758,
+          "hit_at_5": 0.8386,
+          "llm_calls": 0,
+          "seconds": 252.366,
+          "total_tokens": 0,
+          "usage_status": "not_applicable_zero_chat"
+        },
+        "jikji-discover": {
+          "cases": 223,
+          "hit_at_1": 0.7085,
+          "hit_at_10": 0.8834,
+          "llm_calls": 755,
+          "seconds": 5819.0,
+          "total_tokens": 2454365
+        },
+        "raw": {
+          "cases": 223,
+          "hit_at_1": 0.7354,
+          "hit_at_10": 0.8879,
+          "llm_calls": 2383,
+          "seconds": 11504.6,
+          "total_tokens": 7206082
+        }
+      }
+    },
+    "profiles": {
+      "Adam": 122,
+      "Bei": 206,
+      "Victoria": 223
+    },
+    "provider": "custom:nomadamas for raw/discover baseline; answer-pack is local zero-chat discover acceptance",
+    "ratios_vs_raw": {
+      "jikji-answer-pack": {
+        "calls": 0.0,
+        "completion": 0.0,
+        "prompt": 0.0,
+        "seconds": 0.0108,
+        "total": 0.0
+      },
+      "jikji-discover": {
+        "calls": 0.3623,
+        "completion": 0.4586,
+        "prompt": 0.35,
+        "seconds": 0.4996,
+        "total": 0.3577
+      }
+    },
+    "reductions_vs_raw": {
+      "jikji-answer-pack": {
+        "calls": 1.0,
+        "completion": 1.0,
+        "prompt": 1.0,
+        "seconds": 0.9892,
+        "total": 1.0
+      },
+      "jikji-discover": {
+        "calls": 0.6377,
+        "completion": 0.5414,
+        "prompt": 0.65,
+        "seconds": 0.5004,
+        "total": 0.6423
+      }
+    },
+    "skill": "jikji-local-search"
+  },
+  "note": "Official HippoCamp Full-split (Fullset) benchmark for Adam, Bei, Victoria. Bounded full-set fetch: per-file cap 60MB skips only large video, capturing the entire document+audio corpus.",
+  "split": "Fullset"
 }

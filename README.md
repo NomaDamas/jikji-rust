@@ -1,64 +1,89 @@
 <h1 align="center">Jikji</h1>
 
 <p align="center">
-  <strong>Local file maps for AI agents</strong><br>
-  <strong>로컬 에이전트를 위한 비파괴 파일 탐색 지도</strong>
+  <strong>Jikji find: local file discovery for AI agents</strong><br>
+  <strong>파일 하나 찾을 때마다 38,650 토큰, 57초, 11.7회 LLM 호출을 쓰던 raw agent 탐색을 줄이는 비파괴 로컬 탐색 스킬</strong><br>
+  <strong>같은 551건에서 Jikji find는 파일 하나당 447 토큰, 2.1초, 1회 호출로 더 높은 Hit@1을 냈다.</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/NomaDamas/jikji/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-65f2ad.svg"></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-7dd9ff.svg">
-  <img alt="Non destructive" src="https://img.shields.io/badge/Safety-Non--destructive-b8a1ff.svg">
-  <img alt="No RAG core" src="https://img.shields.io/badge/Core-No%20RAG%20%2F%20No%20embeddings-ffd166.svg">
-</p>
-
-<p align="center">
-  <a href="https://nomadamas.github.io/jikji/">
-    <img src="docs/jikji-readme-hero.svg" alt="Jikji — local file maps for AI agents" width="100%" />
-  </a>
+  <img alt="Safety: non destructive" src="https://img.shields.io/badge/Safety-Non--destructive-64e69f.svg">
 </p>
 
 <p align="center">
   <a href="https://nomadamas.github.io/jikji/"><strong>Live intro</strong></a> ·
+  <a href="https://github.com/NomaDamas/jikji"><strong>GitHub</strong></a> ·
+  <a href="docs/jikji-benchmarks.html"><strong>Benchmarks</strong></a> ·
   <a href="docs/agent-installation.md"><strong>Agent install guide</strong></a> ·
-  <a href="skills/jikji/SKILL.md"><strong>Skill file</strong></a> ·
-  <a href="docs/local-agent-search-standard.md"><strong>Search standard</strong></a>
-  · <a href="docs/llm-wiki-graph.md"><strong>LLM Wiki graph</strong></a>
+  <a href="skills/jikji/SKILL.md"><strong>Skill file</strong></a>
 </p>
+
+Public homepage: `https://nomadamas.github.io/jikji/`. It is a GitHub Pages
+static site, so the public landing page is served through GitHub's CDN rather
+than a local tunnel.
 
 ---
 
 ## What is Jikji?
 
-**English** — Jikji prepares an explicit local folder so AI agents can find files, folders, metadata, and parsed document text without repeatedly crawling the original filesystem.
+Jikji prepares an explicit local folder so AI agents can find files, folders,
+metadata, and parsed document text without repeatedly crawling the original
+filesystem.
 
-**한국어** — 직지는 명시된 로컬 폴더를 에이전트가 찾기 쉬운 지도로 바꿉니다. 원본 파일을 옮기거나, 이름을 바꾸거나, 삭제하지 않습니다.
+Jikji does not move, rename, delete, or reorganize user files. It creates
+generated maps and caches under `.jikji/` plus `.jikji_agent_map.md`.
 
-Raw agents wander:
+The public agent command is:
 
-```text
-guess query → list folders → grep files → open documents → repeat
+```bash
+jikji find ROOT "natural language file clue" --json
 ```
 
-Jikji-equipped agents replace blind crawl with deterministic local retrieval plus
-LLM judgment/rewrite when needed:
+`jikji find` builds a multi-query, multi-route candidate slate from metadata,
+file maps, parser caches, graph routes, and local text indexes. The agent can
+then use one bounded LLM judgment over the returned top-k slate instead of
+spending many exploratory chat turns on `ls`, `find`, `grep`, document opening,
+and query guessing.
 
-```text
-jikji discover ROOT "query"             # adaptive accuracy-first cascade
-jikji find ROOT "query" --first        # smallest single-file path handoff
-jikji search ROOT "query" --top-k 20   # ranked candidates replacing grep/find crawl
-jikji brief ROOT "query" --compact     # evidence/wiki/cache hints for agent reasoning
+## Why It Saves Calls And Gets More Accurate
+
+Jikji is faster because the expensive discovery work is done before the agent is
+asked to find a file:
+
+- **No parse-at-search-time loop:** PDF, HWP/HWPX, Office, text, subtitles, HTML,
+  archives, and opt-in media OCR/ASR are parsed into `.jikji/doc_text/` and
+  metadata caches during `prepare`.
+- **No repeated path wandering:** folder profiles, file cards, duplicate hints,
+  route rows, and `.jikji_agent_map.md` turn a messy tree into an agent-readable
+  file map.
+- **Fielded local search:** path, filename, folder, extension, body text,
+  metadata, and deterministic semantic terms are indexed separately, so obvious
+  path clues and body-only clues both rank well.
+- **LLM Wiki for agents:** each source gets a compact grounded wiki page, so the
+  agent can inspect a short source summary instead of opening large raw files.
+- **Knowledge graph routes:** source, folder, term, intent, and duplicate nodes
+  are prebuilt into `.jikji/knowledge_graph.json` and `.jikji/graph_routes.jsonl`
+  for low-token candidate routing.
+- **Multi-route candidate slate:** `jikji find` generates query variants, gathers
+  top-k candidates from metadata, file-map, wiki/cache, graph, and text routes,
+  deduplicates by path, then returns one slate for bounded agent judgment.
+- **Freshness without daemon cost:** `find` checks a source-tree signature and
+  refreshes generated artifacts when files changed.
+
+This is **RAG-style retrieval context**, not a mandatory vector DB or cloud RAG
+stack. Jikji's default index is local and deterministic: no embeddings, cloud
+parser, or LLM call is required to prepare or search. The LLM is used only by the
+agent when it needs to choose from the returned candidate slate.
+
+## Quick Start
+
+One-line install for a CLI agent:
+
+```bash
+mkdir -p ~/.local/share/jikji && { [ -d ~/.local/share/jikji/repo/.git ] || git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo; } && git -C ~/.local/share/jikji/repo pull --ff-only && python3 -m venv ~/.local/share/jikji/repo/.venv && ~/.local/share/jikji/repo/.venv/bin/pip install -e ~/.local/share/jikji/repo && ~/.local/share/jikji/repo/.venv/bin/jikji agent-skill-install --agent all --json
 ```
-
-The goal is not “zero LLM at all costs.” The goal is higher retrieval accuracy
-than raw Hermes/Codex-style grep/find exploration while using far fewer LLM calls
-and tokens. `find` is just the cheapest first step when one obvious file is enough.
-`discover` returns `query_type`, `confidence_score`, `confidence_factors`,
-`recommended_action`, query variants, merged candidates, and short evidence so
-agents know when to return top-1, return an evidence set, rewrite the query, or
-fall back to targeted original-file verification.
-
-## Quick start
 
 ```bash
 git clone https://github.com/nomadamas/jikji.git
@@ -66,215 +91,122 @@ cd jikji
 python3 -m venv .venv
 .venv/bin/pip install -e .
 
-.venv/bin/jikji brief ~/Documents "contract pdf from last spring" --top-k 10 --compact --json
+.venv/bin/jikji find ~/Documents "contract pdf from last spring" --json
 ```
 
-Agent가 `jikji`를 못 찾으면 GitHub에서 직접 bootstrap:
+Korean example:
 
 ```bash
-mkdir -p ~/.local/share/jikji
-if [ ! -d ~/.local/share/jikji/repo/.git ]; then
-  git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo
-fi
-cd ~/.local/share/jikji/repo
-git pull --ff-only
-python3 -m venv .venv
-.venv/bin/pip install -e .
-~/.local/share/jikji/repo/.venv/bin/jikji --help
+jikji find ~/Documents "작년 봄 계약서 PDF" --json
 ```
 
-Document/text formats such as PDF, HWP/HWPX, Office, text, subtitles, HTML,
-JSON/YAML, and archives are indexed by default during `prepare` within size and
-timeout safety limits (`JIKJI_MAX_PARSE_MB`, `--parse-timeout`,
-`--max-hash-bytes`).
-
-Image, audio, and video files are always indexed with lightweight local metadata
-(format, dimensions, EXIF datetime, ffprobe stream/duration). Their **content**
-OCR/ASR is opt-in because it can use CPU/RAM. Install optional backends with
-`pip install "jikji[media]"`, then run:
+`find` auto-prepares a missing explicit root by default and refreshes when the
+source tree signature changed. For setup and diagnostics:
 
 ```bash
-jikji prepare ROOT --enable-media-index --media-index-max-mb 25 --parse-timeout 600
+jikji prepare ROOT --json
+jikji refresh ROOT --json
+jikji doctor ROOT --json
+jikji map ROOT
+jikji clean ROOT --dry-run --json
 ```
 
-This enables image/video-frame OCR via RapidOCR or Tesseract and audio/video
-speech transcription via faster-whisper or the `whisper` CLI, bounded by the media
-size cap. Without opt-in, media remains metadata-only and the GUI/manifest reports
-`media_index.status = metadata_only_opt_in_available`.
+## Why Agents Need It
 
-한국어 예시:
-
-```bash
-jikji brief ~/Documents "작년 봄 계약서 PDF" --top-k 10 --compact --json
-jikji search ~/Documents "파일명, 본문 단서, 문서 설명" --top-k 10 --json
-```
-
-에이전트가 파일 하나만 찾으면 가장 먼저 `find`를 쓰되, 결과가 애매하면 LLM이 query rewrite와 `search`/`brief` 반복으로 보강합니다:
-
-```bash
-jikji find ~/Documents "작년 봄 계약서 PDF" --first
-```
-
-`brief --compact`는 evidence/wiki/cache까지 필요한 경우의 다음 단계입니다.
-`find`는 실행 때마다 `.jikji/manifest.json`의 source-tree signature와 현재
-`relpath,size,mtime_ns` signature를 비교합니다. 새 파일/삭제/이름변경이
-감지되면 그 명령 안에서 foreground refresh를 한 뒤 검색하므로 상주 데몬 없이도
-파일 탐색용 인덱스가 최신 상태를 따라갑니다.
-
-GUI 관리 대시보드:
-
-```bash
-jikji gui ~/Documents
-# CLI/Hermes agent가 사용자에게 링크만 보내야 할 때
-jikji gui ~/Documents --background --json
-```
-
-GUI는 Jikji의 본체가 아니라 사람용 관리 패널입니다. root의 prepare 상태, 파일/문서 수, LLM Wiki source 수, knowledge graph 노드/엣지, 주요 artifact 존재 여부를 보여주고 `prepare/refresh`와 root 전환을 제공합니다. 보조 검색 결과에서는 원본 파일을 OS 기본 앱으로 열거나 브라우저로 다운로드할 수 있습니다. 기본 바인딩은 `127.0.0.1`이며, 관리 작업은 페이지에 주입된 로컬 token이 있어야 하고 root 밖 경로 열기/다운로드는 차단합니다.
-
-## Why agents need it
-
-| Raw local agent | Agent + Jikji |
-| --- | --- |
-| Keeps guessing search terms | Gets ranked candidate paths |
-| Re-opens PDFs/HWP/Office files | Reuses parsed document text caches |
-| Wanders through messy folders | Reads folder context and route guides |
-| Confuses copies and decoys | Uses file cards and duplicate hints |
-| Burns exploratory turns | Verifies only the best candidates |
-
-
-## Real local agent benchmark
-
-On June 3, 2026, Jikji was tested with the same **Hermes Agent v0.10.0** in two modes:
-
-- `raw`: Hermes searches original folders/files without Jikji.
-- `jikji-fast`: Hermes receives Jikji's prebuilt map/search candidates first.
-
-Synthetic Office-body search, where clues lived inside DOCX/PPTX/XLSX files:
+Raw local agents typically do this:
 
 ```text
-mode          cases  hit@1   hit@10  avg_seconds
-raw           6      0.8333  0.8333  36.171
-jikji-fast    6      1.0000  1.0000  10.477
-jikji-direct  6      1.0000  1.0000   0.004
+guess query -> list folders -> grep files -> open documents -> repeat
 ```
 
-Large real local document root, anonymized: 20k+ files, 13k+ parser-target
-documents, HWP/HWPX/PDF/PPTX/XLSX-heavy. A balanced 12-case actual Hermes
-sample showed:
+Jikji-equipped agents start here:
 
 ```text
-mode          cases  hit@1   hit@10  avg_seconds
-raw           12     0.2500  0.2500  29.521
-jikji-fast    12     0.5833  0.7500  17.834
-jikji-direct  12     0.5833  0.7500   1.645
+jikji find ROOT "query" --json -> read answer_paths/candidates -> verify only top evidence
 ```
 
-A 36-case deterministic diagnostic on the same root showed path-only search at
-`Hit@10 = 0.4167` and Jikji at `Hit@10 = 0.8056`.
+Use Jikji as the first action whenever an explicit root is available. Raw
+filesystem search is a fallback only after the returned `handoff_action` allows
+it.
 
-Takeaway: for messy local document folders with Korean HWP/HWPX, PDFs, Office
-files, copies, and folder-context clues, Jikji gave Hermes a substantially better
-starting map. Remaining weak spot: exact phrase-memory cases still need ranking
-and parser-coverage improvements.
+## Measured Headline
 
-## What Jikji creates
+HippoCamp Fullset, 551 local file-search cases, same Hermes task scope. The
+table is the fullset total; the README headline above uses per-case averages.
 
 ```text
-.jikji_agent_map.md      root guide for humans and agents
-.jikji/search_index.sqlite  instant lexical/content/metadata search index
-.jikji/doc_text/            parsed PDF/HWP/HWPX/Office/etc. text cache
-.jikji/file_cards.jsonl     per-file cards, tags, parse status, evidence
-.jikji/folder_profile.jsonl folder roles and navigation context
-.jikji/agent_routes.md      safe fallback route for autonomous agents
-.jikji/wiki/index.md       deterministic local LLM Wiki entry point
-.jikji/wiki/sources/*.md   compact grounded Markdown page per source
-.jikji/knowledge_graph.json source/folder/term/intent/duplicate graph
-.jikji/graph_routes.jsonl  low-token route rows for compact agent briefs
+mode         cases  Hit@1   Hit@10  calls  input tokens  output tokens  total tokens  seconds    est. cost
+raw Hermes     551  0.6697  0.7786  6,420  19,799,362    1,496,916      21,296,278    31,231.9   13,361원
+Jikji find     551  0.7949  0.7949    551     228,684       17,632         246,316     1,164.2      156원
 ```
 
-These are generated artifacts. They can be regenerated or removed with `jikji clean`.
+Per file-search case, raw Hermes averaged `11.7` LLM calls, `38,650` total
+tokens, `56.7s`, and about `24원`; Jikji find averaged `1` call, `447` total
+tokens, `2.1s`, and about `0.3원`.
 
-## Agent protocol
+Fullset result: Hit@1 improves from `0.6697` to `0.7949`, Hit@10 improves from
+`0.7786` to `0.7949`, LLM calls drop `6,420 -> 551` (11.65x), wall time drops
+`31,231.9s -> 1,164.2s` (26.83x), and total tokens drop
+`21,296,278 -> 246,316` (86.46x). This is why the public product is now
+`Jikji find`.
 
-Paste this behavior into Claude Code, Codex, Hermes, OpenCode/OpenClone-style agents, or any CLI-capable local agent:
+Other benchmark examples are shown in
+[`docs/jikji-benchmarks.html`](docs/jikji-benchmarks.html), including media
+OCR/ASR, Korean public-data XLSX, hard KOGL document sets, Workspace-Bench-Lite,
+MIRACL-VISION, EDiTh, and BEIR diagnostics.
+
+## Agent Protocol
+
+Paste this behavior into Claude Code, Codex, Hermes, OpenCode/OpenClone-style
+agents, or any CLI-capable local agent:
 
 ```text
 Use Jikji for local file discovery when an explicit root is available.
-First call: jikji brief ROOT "query" --top-k 10 --compact --json.
-Prefer returned candidate paths and evidence over broad filesystem crawling.
-Only inspect original files for final verification.
+First call: jikji find ROOT "query" --json.
+Prefer answer_paths[] first. Preserve order when agent_should_not_rerank is true.
+When handoff_action is direct_use, accept answer_paths[] / paths[] and avoid broad crawling.
+When handoff_action is jikji_retry, run exactly one sharper Jikji find retry before raw fallback.
+When handoff_action is raw_fallback_after_retry, raw search is allowed only after that retry failed, stayed empty, or stayed clearly wrong.
+Inspect evidence_pack[].next_read, candidates[].next_read, or original files only for final verification.
 Never move, rename, delete, or reorganize user files.
 ```
 
 Install the reusable skill instruction:
 
 ```bash
-# Install into detected/common local-agent skill directories
 jikji agent-skill-install --agent all --json
-
-# Or install for one agent
-jikji codex-skill-install --json
-jikji claude-skill-install --json
 jikji hermes-skill-install --json
-jikji opencode-skill-install --json
-
-# Any other coding/local agent
+jikji codex-skill-install --json
 jikji skill-export --dest /path/to/that-agent/skills/jikji/SKILL.md --json
 ```
 
-Install also queues a low-impact background prepare for existing common
-user-content roots so the first agent search feels useful: Documents, Downloads,
-Desktop, and common cloud-sync folders such as Google Drive, OneDrive, Dropbox,
-and iCloud Drive. Jikji limits default roots from local CPU/memory and processes
-them sequentially. Add more roots, wait in the foreground, or disable
-post-install indexing:
+## What Jikji Creates
+
+```text
+.jikji_agent_map.md         root guide for humans and agents
+.jikji/search_index.sqlite  instant lexical/content/metadata search index
+.jikji/doc_text/            parsed PDF/HWP/HWPX/Office/etc. text cache
+.jikji/file_cards.jsonl     per-file cards, tags, parse status, evidence
+.jikji/folder_profile.jsonl folder roles and navigation context
+.jikji/agent_routes.md      safe fallback route for autonomous agents
+.jikji/wiki/index.md        deterministic local LLM Wiki entry point
+.jikji/wiki/sources/*.md    compact grounded Markdown page per source
+.jikji/knowledge_graph.json source/folder/term/intent/duplicate graph
+.jikji/graph_routes.jsonl   low-token route rows
+```
+
+Generated artifacts can be regenerated or removed with `jikji clean`.
+
+## Media Text
+
+PDF, HWP/HWPX, Office, text, subtitles, HTML, JSON/YAML, and archives are indexed
+within size and timeout limits. Image, audio, and video content OCR/ASR is opt-in
+because it can use CPU/RAM:
 
 ```bash
-jikji agent-skill-install --agent all --prepare-root /mnt/work-drive --json
-jikji agent-skill-install --agent all --foreground-prepare --json
-jikji agent-skill-install --agent all --no-prepare --json
+pip install "jikji[media]"
+jikji prepare ROOT --enable-media-index --media-index-max-mb 25 --parse-timeout 600
 ```
-
-After the skill is installed, local file/folder/document discovery requests should
-trigger Jikji automatically. The agent does not need the user to say "use Jikji";
-it should call `jikji brief ROOT "query" --top-k 10 --compact --json` first when a bounded
-root is available. For agents without a formal skill system, paste the output of
-`jikji skill-export` into their persistent instructions or project memory.
-
-## Core commands
-
-```bash
-jikji brief ROOT "natural language file clue" --top-k 10 --json
-jikji search ROOT "keyword, filename, or document description" --top-k 10 --json
-jikji prepare ROOT --json
-jikji refresh ROOT --json
-jikji map ROOT
-jikji doctor ROOT --json
-jikji clean ROOT --dry-run --json
-jikji clean ROOT --json
-```
-
-## Safety boundary
-
-- **Non-destructive by default** — no moving, renaming, deleting, or reorganizing source files.
-- **Explicit roots only** — Jikji does not silently scan every drive.
-- **Local-first** — no embeddings, vector DB, cloud parser, or LLM is required for core indexing/search.
-- **Sensitive output warning** — `.jikji/doc_text/` may contain extracted document text.
-
-Recommended `.gitignore` for indexed roots:
-
-```gitignore
-.jikji/
-.jikji_agent_map.md
-```
-
-## Docs
-
-- [Agent installation manual](docs/agent-installation.md)
-- [Local-agent search standard](docs/local-agent-search-standard.md)
-- [Promo page](https://nomadamas.github.io/jikji/) / [source](docs/jikji-value.html)
-- [Hardbench benchmark notes](docs/hardbench-benchmark.md)
-- [Media OCR/ASR benchmark notes](docs/media-benchmark.md)
 
 ## Development
 

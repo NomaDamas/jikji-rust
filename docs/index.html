@@ -2,11 +2,159 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="refresh" content="0; url=./jikji-benchmarks.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Jikji</title>
+  <meta name="description" content="Jikji find cuts repeated LLM calls, tokens, and time for local AI-agent file discovery." />
+  <title>Jikji find - 로컬 에이전트 파일 탐색 스킬</title>
+  <style>
+    :root {
+      --bg: #070a0f;
+      --panel: #111923;
+      --line: #283545;
+      --text: #eef5fb;
+      --muted: #9eacba;
+      --cyan: #69d2f8;
+      --green: #64e69f;
+      --amber: #f4c35f;
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-size: 16px; line-height: 1.6; }
+    a { color: inherit; }
+    .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; }
+    .mark { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--green); }
+    nav { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; }
+    nav a { color: var(--muted); text-decoration: none; }
+    nav a:hover { color: var(--cyan); }
+    .hero { position: relative; min-height: 72vh; display: grid; align-content: center; padding: 54px 0 42px; border-bottom: 1px solid var(--line); overflow: hidden; }
+    .hero::after { content: ""; position: absolute; inset: 0; background: url("./jikji-readme-hero.svg") no-repeat right 4% center / min(560px, 52vw); opacity: 0.12; pointer-events: none; }
+    .hero-inner { position: relative; z-index: 1; max-width: 930px; }
+    .eyebrow { margin: 0 0 10px; color: var(--green); font-size: 14px; font-weight: 800; }
+    h1 { margin: 0; max-width: 1100px; font-size: 48px; line-height: 1.12; letter-spacing: 0; word-break: keep-all; text-wrap: balance; }
+    .hook { color: var(--amber); white-space: nowrap; }
+    .lead { max-width: 820px; margin: 18px 0 0; color: var(--muted); font-size: 20px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font-weight: 800; text-decoration: none; }
+    .button.primary { border-color: rgba(100, 230, 159, 0.6); background: #10251d; color: var(--green); }
+    .button.github { border-color: rgba(105, 210, 248, 0.58); background: #0b2030; color: var(--cyan); }
+    .hostline { margin-top: 14px; color: var(--muted); font-size: 14px; }
+    section { padding: 34px 0; }
+    h2 { margin: 0 0 10px; font-size: 28px; line-height: 1.2; letter-spacing: 0; }
+    .sub { margin: 0 0 18px; color: var(--muted); max-width: 860px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .metric { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .metric span { display: block; color: var(--muted); font-size: 13px; }
+    .metric strong { display: block; margin-top: 6px; color: var(--green); font-size: 27px; line-height: 1.15; }
+    .metric.warn strong { color: var(--amber); }
+    .whygrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .why { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    .why h3 { margin: 0 0 7px; font-size: 18px; line-height: 1.25; color: var(--green); }
+    .why p { margin: 0; color: var(--muted); font-size: 14px; }
+    .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+    table { width: 100%; min-width: 860px; border-collapse: collapse; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .recommended td { background: rgba(100, 230, 159, 0.07); }
+    .good { color: var(--green); }
+    code { color: var(--cyan); }
+    footer { padding: 26px 0 54px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+    @media (max-width: 820px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .hero { min-height: auto; }
+      .hero::after { display: none; }
+      h1 { font-size: 34px; text-wrap: auto; }
+      .hook { white-space: normal; }
+      .lead { font-size: 18px; }
+      .metrics, .whygrid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-  <p><a href="./jikji-value.html">Open Jikji value page</a></p>
+  <div class="wrap">
+    <header>
+      <div class="brand"><span class="mark">직</span><span>Jikji find</span></div>
+      <nav>
+        <a href="./jikji-benchmarks.html">Detailed benchmarks</a>
+        <a href="./jikji-value.html">Value page</a>
+        <a href="./agent-installation.md">Install</a>
+        <a href="https://github.com/NomaDamas/jikji">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-inner">
+          <p class="eyebrow">Raw Hermes vs the same Hermes with Jikji find attached</p>
+          <h1>파일 하나 찾을 때마다 <span id="rotating-hook" class="hook">38,650 토큰 쓰는 거</span> 실화냐?</h1>
+          <p class="lead">Jikji find는 로컬 파일 탐색마다 에이전트의 LLM 호출, 토큰, 시간을 10-30배 줄이는 스킬이다. 원본 파일은 그대로 두고, 메타데이터·파일 지도·파서 캐시·지식그래프 route를 한 번에 후보 slate로 합친다.</p>
+          <div class="actions">
+            <a class="button primary github" href="https://github.com/NomaDamas/jikji">GitHub에서 바로 보기</a>
+            <a class="button" href="./agent-installation.md#one-line-agent-install">CLI 에이전트 설치 한 줄</a>
+            <a class="button" href="./jikji-benchmarks.html#usage-ledger">호출/토큰/시간 장부 보기</a>
+            <a class="button" href="./jikji-benchmarks.html#examples">벤치마크 예시 보기</a>
+          </div>
+          <p class="hostline">공개 배포는 GitHub Pages 정적 호스팅 기준이다. 로컬 터널이 아니라 CDN 캐시로 누구나 동시에 접속해 볼 수 있다.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2>가장 큰 fullset 증거</h2>
+        <p class="sub">HippoCamp Fullset 551 cases. 공개 비교는 내부 실험명이 아니라 raw Hermes와 같은 Hermes에 Jikji find를 붙인 결과만 보여준다.</p>
+        <div class="metrics">
+          <div class="metric"><span>Hit@1</span><strong>0.6697 -> 0.7949</strong></div>
+          <div class="metric"><span>LLM calls</span><strong>6,420 -> 551</strong></div>
+          <div class="metric warn"><span>Total tokens</span><strong>21.30M -> 0.25M</strong></div>
+          <div class="metric"><span>Seconds</span><strong>31,231.9 -> 1,164.2</strong></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Jikji find가 하는 일</h2>
+        <p class="sub"><code>jikji find ROOT "query" --json</code>은 여러 쿼리와 검색 route의 top-k를 모아 중복 제거된 후보 slate를 만든다. 에이전트는 그 안에서 한 번 판단하고, 필요한 경우 상위 evidence만 읽는다.</p>
+        <div class="whygrid">
+          <div class="why"><h3>검색 때 파싱하지 않는다</h3><p>PDF, HWP/HWPX, Office, 텍스트, 자막, HTML, 아카이브, opt-in 미디어 OCR/ASR을 prepare 때 parser cache로 만든다.</p></div>
+          <div class="why"><h3>매번 경로를 헤매지 않는다</h3><p>folder profile, file card, duplicate hint, route row, agent map이 messy tree를 에이전트용 파일 지도로 바꾼다.</p></div>
+          <div class="why"><h3>의미 단서도 같이 본다</h3><p>본문, 경로, 메타데이터, deterministic semantic terms, LLM Wiki, knowledge graph route를 하나의 후보 slate로 합친다.</p></div>
+          <div class="why"><h3>LLM Wiki를 미리 만든다</h3><p>각 파일마다 grounded wiki source page를 만들어 큰 원본 대신 짧은 evidence를 먼저 읽게 한다.</p></div>
+          <div class="why"><h3>지식그래프로 라우팅한다</h3><p>source, folder, term, intent, duplicate node를 미리 만들고 graph_routes로 후보를 낮은 토큰으로 찾는다.</p></div>
+          <div class="why"><h3>RAG-style, not cloud RAG</h3><p>벡터DB나 클라우드 임베딩이 필수인 RAG가 아니라, 로컬 wiki/graph/context를 검색에 쓰는 retrieval layer다.</p></div>
+        </div>
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr><th>Mode</th><th>Hit@1</th><th>Hit@10</th><th>LLM calls</th><th>Input tokens</th><th>Output tokens</th><th>Total tokens</th><th>Seconds</th><th>Cost</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>raw Hermes</td><td>0.6697</td><td>0.7786</td><td>6,420</td><td>19,799,362</td><td>1,496,916</td><td>21,296,278</td><td>31,231.883</td><td>13,361원</td></tr>
+              <tr class="recommended"><td><strong>Jikji find</strong></td><td class="good">0.7949</td><td class="good">0.7949</td><td class="good">551</td><td class="good">228,684</td><td class="good">17,632</td><td class="good">246,316</td><td class="good">1,164.186</td><td class="good">156원</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      Detailed report: <a href="./jikji-benchmarks.html">jikji-benchmarks.html</a>. Public command: <code>jikji find ROOT "query" --json</code>.
+    </footer>
+  </div>
+  <script>
+    const hooks = [
+      "38,650 토큰 쓰는 거",
+      "57초 찾는 거",
+      "11.7번 LLM 호출하는 거",
+      "24원 쓰는 거"
+    ];
+    let hookIndex = 0;
+    const hookNode = document.getElementById("rotating-hook");
+    window.setInterval(() => {
+      hookIndex = (hookIndex + 1) % hooks.length;
+      hookNode.textContent = hooks[hookIndex];
+    }, 2400);
+  </script>
 </body>
 </html>

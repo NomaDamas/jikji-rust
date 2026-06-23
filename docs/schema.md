@@ -109,7 +109,7 @@ This follows the common raw-source → markdown wiki → graph/context-pack patt
 - `text_cache_path`: parser cache when available.
 - `preview`: bounded grounded evidence snippet.
 
-Agents should prefer `jikji brief ROOT "query" --compact --json`, which returns a tiny route sheet backed by these graph routes, before reading larger JSONL maps or source files.
+Agents should call `jikji find ROOT "query" --json` first for general discovery and follow its `handoff_action`. The returned candidates already include the lower-level route sheet backed by graph routes, maps, metadata, and parser caches.
 
 Minimal rich metadata envelope:
 

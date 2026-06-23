@@ -113,10 +113,9 @@ def root_status(root: Path) -> dict[str, Any]:
         "manifest": manifest,
         "graph_stats": graph_stats,
         "artifacts": artifacts,
-        "default_agent_command": "jikji discover ROOT \"query\" --top-k 20 --json",
+        "default_agent_command": "jikji find ROOT \"query\" --json",
         "capabilities": {
-            "discover": "query_type + confidence + adaptive candidate cascade",
-            "search": "ranked candidates",
+            "find": "multi-query candidate slate + confidence + handoff action",
             "graph": "LLM Wiki knowledge graph status",
         },
         "paths": {name: str(path) for name, path in required.items()},
@@ -177,11 +176,11 @@ small { color:var(--mut); }
 </section>
 
 <section class="panel">
-  <h2>Discover 검증</h2>
-  <div class="sub">현재 agent 기본 진입점은 <code>jikji discover ROOT "query" --top-k 20 --json</code>입니다. query type, confidence, recommended action, 후보 evidence를 사람이 확인합니다.</div>
+  <h2>Find 검증</h2>
+  <div class="sub">현재 agent 기본 진입점은 <code>jikji find ROOT "query" --json</code>입니다. query type, confidence, recommended action, 후보 evidence를 사람이 확인합니다.</div>
   <form class="row" id="form">
     <input id="q" autocomplete="off" placeholder="예: 작년 봄 ACME 계약서 PDF / invoice payment clause / 회의록" />
-    <button class="primary" type="submit">discover</button>
+    <button class="primary" type="submit">find</button>
   </form>
 </section>
 <div id="results"></div>
@@ -227,11 +226,11 @@ async function refreshRoot(){
   renderStatus(await api('/api/refresh' + suffix, {method:'POST'}));
 }
 async function openPath(path){ await api('/open?path=' + enc(path), {method:'POST'}); statusLine.textContent = '열기 요청: ' + path; }
-function renderDiscover(data){
+function renderFind(data){
   const items = data.candidates || [];
-  if(!items.length){ results.innerHTML = '<div class="empty">discover 결과가 없습니다.</div>'; return; }
+  if(!items.length){ results.innerHTML = '<div class="empty">find 결과가 없습니다.</div>'; return; }
   const factors = data.confidence_factors || {};
-  const header = `<section class="card"><div class="top"><div><div class="path">Discover: ${esc(data.query_type)} · ${esc(data.confidence)} · score ${esc(data.confidence_score)}</div><div class="meta">action=${esc(data.recommended_action)} · variants=${esc((data.query_variants||[]).join(' / '))}</div><div class="meta">factors: ${Object.entries(factors).map(([k,v]) => esc(k)+'='+esc(v)).join(' · ')}</div></div></div></section>`;
+  const header = `<section class="card"><div class="top"><div><div class="path">Find: ${esc(data.query_type)} · ${esc(data.confidence)} · score ${esc(data.confidence_score)}</div><div class="meta">action=${esc(data.recommended_action)} · variants=${esc((data.query_variants||[]).join(' / '))}</div><div class="meta">factors: ${Object.entries(factors).map(([k,v]) => esc(k)+'='+esc(v)).join(' · ')}</div></div></div></section>`;
   const cards = items.map((it, idx) => {
     const path = it.p || it.path || '';
     const ev = it.ev ? `<div class="evidence">${esc(it.ev)}</div>` : (it.evidence || []).slice(0,2).map(x => `<div class="evidence">${esc(x)}</div>`).join('');
@@ -244,10 +243,10 @@ function renderDiscover(data){
 }
 async function doSearch(){
   const query = q.value.trim(); if(!query){ q.focus(); return; }
-  statusLine.textContent = 'discover 중…'; results.innerHTML = '';
-  const data = await api('/api/discover?q=' + enc(query) + '&top_k=20');
+  statusLine.textContent = 'find 중…'; results.innerHTML = '';
+  const data = await api('/api/find?q=' + enc(query) + '&top_k=20');
   statusLine.innerHTML = `${esc((data.candidates||[]).length)}개 후보 · ${esc(data.query_type)} · ${esc(data.confidence)} · action ${esc(data.recommended_action)} · <small>${esc(data.root)}</small>`;
-  renderDiscover(data);
+  renderFind(data);
 }
 document.getElementById('switchBtn').addEventListener('click', () => switchRoot().catch(e => statusLine.innerHTML='<span class="err">'+esc(e.message)+'</span>'));
 document.getElementById('refreshBtn').addEventListener('click', () => refreshRoot().catch(e => statusLine.innerHTML='<span class="err">'+esc(e.message)+'</span>'));
@@ -319,8 +318,8 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, root_status(self.server.root))
             elif parsed.path == "/api/search":
                 self._handle_search()
-            elif parsed.path == "/api/discover":
-                self._handle_discover()
+            elif parsed.path in {"/api/find", "/api/discover"}:
+                self._handle_find()
             elif parsed.path == "/download":
                 self._handle_download()
             else:
@@ -373,7 +372,7 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
         ranked = search(self.server.root, query, top_k=top_k)
         self._send_json(HTTPStatus.OK, {"root": str(self.server.root), "query": query, "candidates": ranked})
 
-    def _handle_discover(self) -> None:
+    def _handle_find(self) -> None:
         query = self._query_value("q").strip()
         top_k_raw = self._query_value("top_k") or "20"
         top_k = max(1, min(100, int(top_k_raw) if top_k_raw.isdigit() else 20))
@@ -381,6 +380,8 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "missing q"})
             return
         payload = discover(self.server.root, query, top_k=top_k)
+        payload["mode"] = "find"
+        payload["command"] = "jikji find"
         self._send_json(HTTPStatus.OK, payload)
 
     def _handle_download(self) -> None:
