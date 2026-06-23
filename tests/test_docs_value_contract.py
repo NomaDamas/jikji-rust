@@ -54,9 +54,10 @@ def test_index_is_a_real_landing_page_not_only_redirect():
     assert "https://github.com/NomaDamas/jikji" in html
     assert "GitHub Pages 정적 호스팅" in html
     assert "href=\"#agent-install\"" in html
-    assert "에이전트 설치 명령어" in html
-    assert "git clone https://github.com/nomadamas/jikji.git" in html
-    assert "agent-skill-install --agent all --json" in html
+    assert "에이전트 설치 지시문" in html
+    assert "CLI 에이전트에게 아래 한 문장만 그대로 말하면 된다" in html
+    assert "GitHub 저장소 https://github.com/NomaDamas/jikji 에서 Jikji를 설치하고" in html
+    assert "mkdir -p ~/.local/share/jikji" not in html
     assert "href=\"./agent-installation.md\"" not in html
     assert "비교 실험 결과" in html
     assert "가장 큰 fullset 증거" not in html
@@ -100,8 +101,10 @@ def test_public_docs_expose_find_not_legacy_search_commands():
     assert "파일 하나 찾을 때마다 38,650 토큰" in readme
     assert "파일 하나당 447 토큰, 2.1초, 1회 호출" in readme
     assert "https://nomadamas.github.io/jikji/" in readme
+    assert "docs/jikji-readme-hero.svg" in readme
     assert "GitHub Pages" in readme
-    assert "One-line install for a CLI agent" in readme
+    assert "Tell your CLI agent this one sentence" in readme
+    assert "One-line install for a CLI agent" not in readme
     assert "agent-skill-install --agent all --json" in combined
     assert "파일 하나 찾는데 평균" not in readme
     assert "평균 447 토큰" not in readme

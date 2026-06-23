@@ -13,6 +13,12 @@
 </p>
 
 <p align="center">
+  <a href="https://nomadamas.github.io/jikji/">
+    <img src="docs/jikji-readme-hero.svg" alt="Jikji find - local file discovery for AI agents" width="100%" />
+  </a>
+</p>
+
+<p align="center">
   <a href="https://nomadamas.github.io/jikji/"><strong>Live intro</strong></a> ·
   <a href="https://github.com/NomaDamas/jikji"><strong>GitHub</strong></a> ·
   <a href="docs/jikji-benchmarks.html"><strong>Benchmarks</strong></a> ·
@@ -79,10 +85,10 @@ agent when it needs to choose from the returned candidate slate.
 
 ## Quick Start
 
-One-line install for a CLI agent:
+Tell your CLI agent this one sentence:
 
-```bash
-mkdir -p ~/.local/share/jikji && { [ -d ~/.local/share/jikji/repo/.git ] || git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo; } && git -C ~/.local/share/jikji/repo pull --ff-only && python3 -m venv ~/.local/share/jikji/repo/.venv && ~/.local/share/jikji/repo/.venv/bin/pip install -e ~/.local/share/jikji/repo && ~/.local/share/jikji/repo/.venv/bin/jikji agent-skill-install --agent all --json
+```text
+GitHub 저장소 https://github.com/NomaDamas/jikji 에서 Jikji를 설치하고, 내 CLI 에이전트들이 `jikji find`를 바로 쓰도록 Jikji skill까지 연결해줘.
 ```
 
 ```bash
