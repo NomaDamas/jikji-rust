@@ -25,11 +25,12 @@ def scan(
     root: Path,
     recursive: bool = False,
     ignore_patterns: Iterable[str] = (),
-    max_files: int = 5000,
+    max_files: int = 0,
 ) -> list[Path]:
     """Collect files under *root* respecting the flags.
 
-    Raises ScanTooLargeError if ``max_files`` exceeded. Never follows symlinks.
+    Raises ScanTooLargeError only if a positive ``max_files`` cap is exceeded.
+    Never follows symlinks.
     """
     root = Path(root).expanduser().resolve()
     if not root.is_dir():
@@ -53,7 +54,7 @@ def scan(
                         continue
                     if entry.is_file(follow_symlinks=False):
                         results.append(Path(entry.path))
-                        if len(results) > max_files:
+                        if max_files > 0 and len(results) > max_files:
                             raise ScanTooLargeError(len(results), max_files)
         except PermissionError as exc:
             log.warning("skip (permission): %s (%s)", current, exc)

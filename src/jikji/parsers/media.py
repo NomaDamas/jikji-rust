@@ -345,9 +345,18 @@ def _ocr_image(path: Path, max_chars: int) -> str:
     return _ocr_image_tesseract(path, max_chars)
 
 
+def _remaining_text_budget(parts: list[str], max_chars: int) -> int:
+    if max_chars <= 0:
+        return 0
+    if not parts:
+        return max_chars
+    return max(0, max_chars - len("\n".join(parts)) - 1)
+
+
 def parse_image(path: Path, max_chars: int) -> str:
     parts = _image_metadata(path)
-    ocr = _ocr_image(path, max_chars) if _image_ocr_enabled() else ""
+    ocr_budget = _remaining_text_budget(parts, max_chars)
+    ocr = _ocr_image(path, ocr_budget) if _image_ocr_enabled() and ocr_budget > 0 else ""
     if ocr:
         parts.append("# OCR text\n" + ocr)
     return "\n".join(parts)[:max_chars]
@@ -535,7 +544,8 @@ def _transcribe_audio(path: Path, max_chars: int) -> str:
 def parse_audio(path: Path, max_chars: int) -> str:
     parts: list[str] = [f"# Audio: {path.name}"]
     parts.extend(_ffprobe_metadata(path))
-    transcript = _transcribe_audio(path, max_chars)
+    transcript_budget = _remaining_text_budget(parts, max_chars)
+    transcript = _transcribe_audio(path, transcript_budget) if transcript_budget > 0 else ""
     if transcript:
         parts.append("# Transcript\n" + transcript)
     if len(parts) == 1:
@@ -631,10 +641,12 @@ def _video_keyframe_ocr(path: Path, max_chars: int) -> str:
 def parse_video(path: Path, max_chars: int) -> str:
     parts: list[str] = [f"# Video: {path.name}"]
     parts.extend(_ffprobe_metadata(path))
-    transcript = _transcribe_video(path, max_chars)
+    transcript_budget = _remaining_text_budget(parts, max_chars)
+    transcript = _transcribe_video(path, transcript_budget) if transcript_budget > 0 else ""
     if transcript:
         parts.append("# Transcript\n" + transcript)
-    on_screen = _video_keyframe_ocr(path, max_chars)
+    ocr_budget = _remaining_text_budget(parts, max_chars)
+    on_screen = _video_keyframe_ocr(path, ocr_budget) if ocr_budget > 0 else ""
     if on_screen:
         parts.append("# On-screen text\n" + on_screen)
     if len(parts) == 1:

@@ -55,6 +55,7 @@ from .holdout_eval import generate_holdout_eval_set
 from .improvement_loop import run_improvement_loop
 from .parsers.media import image_ocr_available, transcription_available
 from .publicdata_bench import build_publicdata_benchmark, run_publicdata_suite
+from .scanner import ScanTooLargeError
 from .search_index import instant_index_path
 from .version import __version__
 from .workspacebench import (
@@ -756,6 +757,26 @@ def _search_index_status(root: Path, args, *, stale_after_seconds: int, detect_c
     return "ready", False
 
 
+def _existing_media_prepare_policy(root: Path) -> tuple[bool, float | None]:
+    media = _read_manifest(root).get("media_index")
+    if not isinstance(media, dict) or media.get("enabled") is not True:
+        return False, None
+    raw_max_mb = media.get("max_mb")
+    if isinstance(raw_max_mb, int | float) and raw_max_mb > 0:
+        return True, float(raw_max_mb)
+    return True, None
+
+
+def _search_prepare_config(args, root: Path) -> Config:
+    cfg = _search_config_from_args(args)
+    media_enabled, media_max_mb = _existing_media_prepare_policy(root)
+    if media_enabled:
+        cfg.enable_media_index = True
+        if media_max_mb is not None:
+            cfg.media_index_max_mb = media_max_mb
+    return cfg
+
+
 def _prepare_args_for_search(args, root: Path) -> list[str]:
     cmd = [
         sys.executable,
@@ -777,6 +798,11 @@ def _prepare_args_for_search(args, root: Path) -> list[str]:
         cmd.append("--include-sensitive")
     for pattern in args.exclude or []:
         cmd.extend(["--exclude", pattern])
+    media_enabled, media_max_mb = _existing_media_prepare_policy(root)
+    if media_enabled:
+        cmd.append("--enable-media-index")
+        if media_max_mb is not None:
+            cmd.extend(["--media-index-max-mb", str(media_max_mb)])
     return cmd
 
 
@@ -807,7 +833,7 @@ def cmd_search(args) -> int:
     index_status, should_prepare = _search_index_status(root, args, stale_after_seconds=args.stale_after_seconds)
     foreground_prepared = False
     if args.fresh or (should_prepare and args.auto_prepare):
-        build_agent_index(root, _search_config_from_args(args))
+        build_agent_index(root, _search_prepare_config(args, root))
         index_status = "prepared_now" if should_prepare else "refreshed_now"
         foreground_prepared = True
     elif should_prepare and not args.auto_prepare:
@@ -847,7 +873,7 @@ def cmd_brief(args) -> int:
     index_status, should_prepare = _search_index_status(root, args, stale_after_seconds=args.stale_after_seconds)
     foreground_prepared = False
     if args.fresh or (should_prepare and args.auto_prepare):
-        build_agent_index(root, _search_config_from_args(args))
+        build_agent_index(root, _search_prepare_config(args, root))
         index_status = "prepared_now" if should_prepare else "refreshed_now"
         foreground_prepared = True
     elif should_prepare and not args.auto_prepare:
@@ -892,7 +918,7 @@ def cmd_find(args) -> int:
     root = Path(args.path).expanduser().resolve()
     index_status, should_prepare = _search_index_status(root, args, stale_after_seconds=args.stale_after_seconds)
     if args.fresh or index_status == "changed_using_previous_index" or (should_prepare and args.auto_prepare):
-        build_agent_index(root, _search_config_from_args(args))
+        build_agent_index(root, _search_prepare_config(args, root))
         index_status = "refreshed_now" if index_status == "changed_using_previous_index" else ("prepared_now" if should_prepare else "refreshed_now")
     elif should_prepare and not args.auto_prepare:
         print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
@@ -927,7 +953,7 @@ def cmd_discover(args) -> int:
     root = Path(args.path).expanduser().resolve()
     index_status, should_prepare = _search_index_status(root, args, stale_after_seconds=args.stale_after_seconds)
     if args.fresh or index_status == "changed_using_previous_index" or (should_prepare and args.auto_prepare):
-        build_agent_index(root, _search_config_from_args(args))
+        build_agent_index(root, _search_prepare_config(args, root))
         index_status = "refreshed_now" if index_status == "changed_using_previous_index" else ("prepared_now" if should_prepare else "refreshed_now")
     elif should_prepare and not args.auto_prepare:
         print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
@@ -1352,13 +1378,13 @@ def _prepare_after_skill_install(args) -> dict[str, object]:
             "mode": "foreground",
             "roots": _prepare_roots_foreground(
                 roots,
-                max_files=getattr(args, "max_files", 100_000),
+                max_files=getattr(args, "max_files", 0),
                 parse_timeout=getattr(args, "parse_timeout", 5.0),
             ),
         }
     return _start_background_post_install_prepare(
         roots,
-        max_files=getattr(args, "max_files", 100_000),
+        max_files=getattr(args, "max_files", 0),
         parse_timeout=getattr(args, "parse_timeout", 5.0),
     )
 
@@ -1940,7 +1966,7 @@ def main(argv: list[str] | None = None) -> int:
 
     def add_common(p):
         p.add_argument("path", nargs="?", default=".")
-        p.add_argument("--max-files", type=int, default=5000)
+        p.add_argument("--max-files", type=int, default=0, help="optional file-count safety cap; 0 disables it")
         p.add_argument("--include-hidden", action="store_true")
         p.add_argument("--include-sensitive", action="store_true", help="include safety-denied names such as .env or private keys")
         p.add_argument("--exclude", action="append", default=[], help="additional fnmatch pattern to exclude; repeatable")
@@ -2029,7 +2055,7 @@ def main(argv: list[str] | None = None) -> int:
     p_find.add_argument("--fresh", action="store_true", help="run a foreground refresh before finding")
     p_find.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false")
     p_find.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60)
-    p_find.add_argument("--max-files", type=int, default=100_000)
+    p_find.add_argument("--max-files", type=int, default=0, help=argparse.SUPPRESS)
     p_find.add_argument("--include-hidden", action="store_true")
     p_find.add_argument("--include-sensitive", action="store_true")
     p_find.add_argument("--exclude", action="append", default=[])
@@ -2048,7 +2074,7 @@ def main(argv: list[str] | None = None) -> int:
     p_discover.add_argument("--fresh", action="store_true", help="run a foreground refresh before discovery")
     p_discover.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false")
     p_discover.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60)
-    p_discover.add_argument("--max-files", type=int, default=100_000)
+    p_discover.add_argument("--max-files", type=int, default=0, help="optional auto-prepare file-count safety cap; 0 disables it")
     p_discover.add_argument("--include-hidden", action="store_true")
     p_discover.add_argument("--include-sensitive", action="store_true")
     p_discover.add_argument("--exclude", action="append", default=[])
@@ -2075,7 +2101,7 @@ def main(argv: list[str] | None = None) -> int:
     p_search.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false", help="do not auto-prepare when the instant index is missing")
     p_search.add_argument("--no-background-refresh", dest="background_refresh", action="store_false", help="do not launch background refresh for stale indexes")
     p_search.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60, help="mark an index stale after this age; negative disables staleness")
-    p_search.add_argument("--max-files", type=int, default=100_000, help="auto-prepare file safety limit")
+    p_search.add_argument("--max-files", type=int, default=0, help="optional auto-prepare file-count safety cap; 0 disables it")
     p_search.add_argument("--include-hidden", action="store_true")
     p_search.add_argument("--include-sensitive", action="store_true")
     p_search.add_argument("--exclude", action="append", default=[])
@@ -2096,7 +2122,7 @@ def main(argv: list[str] | None = None) -> int:
     p_brief.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false", help="do not auto-prepare when the instant index is missing")
     p_brief.add_argument("--no-background-refresh", dest="background_refresh", action="store_false", help="do not launch background refresh for stale indexes")
     p_brief.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60, help="mark an index stale after this age; negative disables staleness")
-    p_brief.add_argument("--max-files", type=int, default=100_000, help="auto-prepare file safety limit")
+    p_brief.add_argument("--max-files", type=int, default=0, help="optional auto-prepare file-count safety cap; 0 disables it")
     p_brief.add_argument("--include-hidden", action="store_true")
     p_brief.add_argument("--include-sensitive", action="store_true")
     p_brief.add_argument("--exclude", action="append", default=[])
@@ -2254,7 +2280,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_prep_bg = sub.add_parser("post-install-prepare", help=argparse.SUPPRESS)
     p_prep_bg.add_argument("roots", nargs="+")
-    p_prep_bg.add_argument("--max-files", type=int, default=100_000)
+    p_prep_bg.add_argument("--max-files", type=int, default=0, help="optional file-count safety cap; 0 disables it")
     p_prep_bg.add_argument("--parse-timeout", type=float, default=5.0)
     p_prep_bg.add_argument("--json", action="store_true")
     p_prep_bg.set_defaults(func=cmd_post_install_prepare)
@@ -2285,7 +2311,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_asi.add_argument("--no-prepare", action="store_true", help="install the skill without preparing any root")
     p_asi.add_argument("--foreground-prepare", action="store_true", help="wait for post-install prepare instead of running it in the background")
-    p_asi.add_argument("--max-files", type=int, default=100_000, help="post-install prepare safety limit")
+    p_asi.add_argument("--max-files", type=int, default=0, help="optional post-install prepare file-count safety cap; 0 disables it")
     p_asi.add_argument("--parse-timeout", type=float, default=5.0, help="parser timeout for post-install prepare")
     p_asi.add_argument("--force", action="store_true")
     p_asi.add_argument("--json", action="store_true")
@@ -2300,7 +2326,7 @@ def main(argv: list[str] | None = None) -> int:
         p_agent_alias.add_argument("--prepare-root", action="append", default=[])
         p_agent_alias.add_argument("--no-prepare", action="store_true")
         p_agent_alias.add_argument("--foreground-prepare", action="store_true")
-        p_agent_alias.add_argument("--max-files", type=int, default=100_000)
+        p_agent_alias.add_argument("--max-files", type=int, default=0, help="optional file-count safety cap; 0 disables it")
         p_agent_alias.add_argument("--parse-timeout", type=float, default=5.0)
         p_agent_alias.add_argument("--force", action="store_true")
         p_agent_alias.add_argument("--json", action="store_true")
@@ -2319,7 +2345,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_export.add_argument("--no-prepare", action="store_true", help="write --dest without preparing any root")
     p_export.add_argument("--foreground-prepare", action="store_true")
-    p_export.add_argument("--max-files", type=int, default=100_000)
+    p_export.add_argument("--max-files", type=int, default=0, help="optional file-count safety cap; 0 disables it")
     p_export.add_argument("--parse-timeout", type=float, default=5.0)
     p_export.add_argument("--force", action="store_true")
     p_export.add_argument("--json", action="store_true")
@@ -2486,7 +2512,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd is None:
         # Default to safe prepare for agent-skill ergonomics.
         args = parser.parse_args(["prepare", *(argv or [])])
-    return args.func(args)
+    try:
+        return args.func(args)
+    except ScanTooLargeError as exc:
+        print(
+            f"Jikji scan stopped after {exc.count} files because --max-files is {exc.limit}. "
+            "Use --max-files 0 to disable this optional cap.",
+            file=sys.stderr,
+        )
+        return 2
 
 
 if __name__ == "__main__":

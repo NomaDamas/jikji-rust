@@ -75,7 +75,7 @@ asked to find a file:
 - **Multi-route candidate slate:** `jikji find` generates query variants, gathers
   top-k candidates from metadata, file-map, wiki/cache, graph, and text routes,
   deduplicates by path, then returns one slate for bounded agent judgment.
-- **Freshness without daemon cost:** `find` checks a source-tree signature and
+- **Freshness without daemon cost:** Jikji find checks a source-tree signature and
   refreshes generated artifacts when files changed.
 
 This is **RAG-style retrieval context**, not a mandatory vector DB or cloud RAG
@@ -106,7 +106,7 @@ Korean example:
 jikji find ~/Documents "작년 봄 계약서 PDF" --json
 ```
 
-`find` auto-prepares a missing explicit root by default and refreshes when the
+Jikji find auto-prepares a missing explicit root by default and refreshes when the
 source tree signature changed. For setup and diagnostics:
 
 ```bash

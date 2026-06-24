@@ -37,7 +37,7 @@ class Config:
     )
     include_hidden: bool = False
     include_sensitive: bool = False
-    max_files: int = 5000
+    max_files: int = 0
     max_hash_bytes: int = 512 * 1024 * 1024
     parse_timeout_s: float = 5.0
     agent_doc_text_max_chars: int = 2_000_000

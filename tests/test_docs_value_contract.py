@@ -53,6 +53,7 @@ def test_index_is_a_real_landing_page_not_only_redirect():
     assert "GitHub에서 바로 보기" in html
     assert "https://github.com/NomaDamas/jikji" in html
     assert "GitHub Pages 정적 호스팅" in html
+    assert "jikji find ROOT \"query\" --json" in html
     assert "href=\"#agent-install\"" in html
     assert "에이전트 설치 지시문" in html
     assert "CLI 에이전트에게 아래 한 문장만 그대로 말하면 된다" in html

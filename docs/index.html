@@ -35,11 +35,12 @@
     .eyebrow { margin: 0 0 10px; color: var(--green); font-size: 14px; font-weight: 800; }
     h1 { margin: 0; max-width: 1100px; font-size: 48px; line-height: 1.12; letter-spacing: 0; word-break: keep-all; text-wrap: balance; }
     .hook { color: var(--amber); white-space: nowrap; }
-    .lead { max-width: 820px; margin: 18px 0 0; color: var(--muted); font-size: 20px; }
+    .lead { max-width: 820px; margin: 18px 0 0; color: var(--muted); font-size: 20px; word-break: keep-all; overflow-wrap: break-word; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
     .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font-weight: 800; text-decoration: none; }
     .button.primary { border-color: rgba(100, 230, 159, 0.6); background: #10251d; color: var(--green); }
     .button.github { border-color: rgba(105, 210, 248, 0.58); background: #0b2030; color: var(--cyan); }
+    .commandline { display: inline-flex; max-width: 100%; margin: 18px 0 0; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: #05080c; overflow-x: auto; font-weight: 800; }
     .hostline { margin-top: 14px; color: var(--muted); font-size: 14px; }
     section { padding: 34px 0; }
     h2 { margin: 0 0 10px; font-size: 28px; line-height: 1.2; letter-spacing: 0; }
@@ -93,6 +94,7 @@
           <p class="eyebrow">Raw Hermes vs the same Hermes with Jikji find attached</p>
           <h1>파일 하나 찾을 때마다 <span id="rotating-hook" class="hook">38,650 토큰 쓰는 거</span> 실화냐?</h1>
           <p class="lead">Jikji find는 로컬 파일 탐색마다 에이전트의 LLM 호출, 토큰, 시간을 10-30배 줄이는 스킬이다. 원본 파일은 그대로 두고, 메타데이터·파일 지도·파서 캐시·지식그래프 route를 한 번에 후보 slate로 합친다.</p>
+          <p class="commandline"><code>jikji find ROOT "query" --json</code></p>
           <div class="actions">
             <a class="button primary github" href="https://github.com/NomaDamas/jikji">GitHub에서 바로 보기</a>
             <a class="button" href="#agent-install">에이전트 설치 지시문</a>

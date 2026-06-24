@@ -438,7 +438,7 @@ def _scan_files_and_dirs(root: Path, config: Config) -> tuple[list[Path], list[P
         ignore.extend(getattr(config, "safety_ignore_patterns", []) or [])
     dirs: list[Path] = []
     files: list[Path] = []
-    limit = int(getattr(config, "max_files", 5000) or 5000)
+    limit = int(getattr(config, "max_files", 0) or 0)
     truncated = False
 
     def walk(cur: Path) -> None:
@@ -461,7 +461,7 @@ def _scan_files_and_dirs(root: Path, config: Config) -> tuple[list[Path], list[P
                             dirs.append(p)
                             walk(p)
                         elif entry.is_file(follow_symlinks=False):
-                            if len(files) >= limit:
+                            if limit > 0 and len(files) >= limit:
                                 # Degrade gracefully to partial indexing instead
                                 # of failing the whole scan on oversized roots.
                                 truncated = True

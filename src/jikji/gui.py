@@ -218,7 +218,12 @@ function renderStatus(s){
   artifacts.innerHTML = '<h3>Artifacts</h3>' + Object.entries(s.artifacts || {}).map(([k,v]) => `<div class="path">${v ? '✓' : '✗'} ${esc(k)} <small>${esc((s.paths||{})[k]||'')}</small></div>`).join('');
 }
 async function loadStatus(){ try { renderStatus(await api('/api/status')); } catch(e){ statusLine.innerHTML='<span class="err">'+esc(e.message)+'</span>'; } }
-async function switchRoot(){ statusLine.textContent='root 전환/prepare 중…'; renderStatus(await api('/api/root?path=' + enc(rootInput.value), {method:'POST'})); }
+async function switchRoot(){
+  if(mediaOpt.checked && !confirm('이미지/음성/영상 OCR·ASR은 CPU/RAM을 사용할 수 있습니다. 큰 미디어는 건너뛰고 bounded mode로 진행합니다. 계속할까요?')) return;
+  statusLine.textContent='root 전환/prepare 중…';
+  const suffix = mediaOpt.checked ? '&enable_media=1' : '';
+  renderStatus(await api('/api/root?path=' + enc(rootInput.value) + suffix, {method:'POST'}));
+}
 async function refreshRoot(){
   if(mediaOpt.checked && !confirm('이미지/음성/영상 OCR·ASR은 CPU/RAM을 사용할 수 있습니다. 큰 미디어는 건너뛰고 bounded mode로 진행합니다. 계속할까요?')) return;
   statusLine.textContent='prepare/refresh 중…';
@@ -264,7 +269,7 @@ class JikjiGuiServer(ThreadingHTTPServer):
         self._root = resolve_gui_root(str(root))
         self.manage_token = secrets.token_urlsafe(24)
         if auto_prepare and not instant_index_path(self._root).exists():
-            build_agent_index(self._root, Config(max_files=100_000))
+            build_agent_index(self._root, Config())
         super().__init__(server_address, JikjiGuiHandler)
 
     @property
@@ -274,12 +279,12 @@ class JikjiGuiServer(ThreadingHTTPServer):
 
     def prepare_current_root(self, *, enable_media_index: bool = False) -> None:
         root = self.root
-        build_agent_index(root, Config(max_files=100_000, enable_media_index=enable_media_index))
+        build_agent_index(root, Config(enable_media_index=enable_media_index))
 
-    def switch_root(self, path_value: str, *, prepare: bool = True) -> None:
+    def switch_root(self, path_value: str, *, prepare: bool = True, enable_media_index: bool = False) -> None:
         new_root = resolve_gui_root(path_value)
         if prepare:
-            build_agent_index(new_root, Config(max_files=100_000))
+            build_agent_index(new_root, Config(enable_media_index=enable_media_index))
         with self._root_lock:
             self._root = new_root
 
@@ -348,7 +353,8 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
                 self.server.prepare_current_root(enable_media_index=enable_media)
                 self._send_json(HTTPStatus.OK, root_status(self.server.root))
             elif parsed.path == "/api/root":
-                self.server.switch_root(self._query_value("path"), prepare=True)
+                enable_media = self._query_value("enable_media") in {"1", "true", "yes", "on"}
+                self.server.switch_root(self._query_value("path"), prepare=True, enable_media_index=enable_media)
                 self._send_json(HTTPStatus.OK, root_status(self.server.root))
             else:
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})

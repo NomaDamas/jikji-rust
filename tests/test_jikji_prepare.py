@@ -6,6 +6,8 @@ import os
 import shutil
 from pathlib import Path
 
+import pytest
+
 from jikji.agent_index import build_agent_index
 from jikji.config import Config
 
@@ -41,6 +43,51 @@ def test_prepare_is_non_destructive_and_writes_jikji_artifacts(tmp_path):
     assert not (tmp_path / "000_JIKJI_AGENT_MAP.md").exists()
     rows = _jsonl(tmp_path / ".jikji" / "file_index.jsonl")
     assert rows[0]["path"] == "기존/회의/회의록.txt"
+
+
+def test_prepare_default_has_no_5000_file_limit(tmp_path):
+    for idx in range(5001):
+        (tmp_path / f"bulk_{idx:04d}.bin").write_bytes(b"")
+
+    result = build_agent_index(tmp_path, Config())
+
+    assert result.files == 5001
+    manifest = json.loads((tmp_path / ".jikji" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["files"] == 5001
+
+
+def test_prepare_explicit_max_files_partially_indexes_without_failure(tmp_path):
+    for idx in range(4):
+        (tmp_path / f"bulk_{idx}.txt").write_text("x", encoding="utf-8")
+
+    result = build_agent_index(tmp_path, Config(max_files=3))
+
+    assert result.files == 3
+
+
+def test_prepare_cli_explicit_max_files_partially_indexes_without_traceback(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    for idx in range(4):
+        (tmp_path / f"bulk_{idx}.txt").write_text("x", encoding="utf-8")
+
+    assert main(["prepare", str(tmp_path), "--max-files", "3", "--json"]) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert payload["files"] == 3
+    assert "Traceback" not in captured.err
+
+
+def test_find_help_hides_max_files_compat_option(capsys):
+    from jikji.__main__ import main
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["find", "--help"])
+    output = capsys.readouterr().out
+
+    assert exc_info.value.code == 0
+    assert "--max-files" not in output
 
 
 def test_prepare_prunes_deleted_document_cache(tmp_path):
@@ -184,6 +231,24 @@ def test_find_refreshes_when_source_tree_changes(tmp_path, capsys):
     refreshed_signature = refreshed.get("source_tree_signature") or {}
     assert refreshed_signature.get("files") == 2
     assert refreshed_signature.get("digest") != signature.get("digest")
+
+
+def test_find_refresh_preserves_existing_media_opt_in_policy(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    image = tmp_path / "visual.png"
+    _write_minimal_png(image, width=7, height=9)
+    assert main(["prepare", str(tmp_path), "--enable-media-index", "--media-index-max-mb", "1", "--json"]) == 0
+    capsys.readouterr()
+
+    (tmp_path / "new_contract.txt").write_text("fresh renewal indemnity clause", encoding="utf-8")
+    assert main(["find", str(tmp_path), "fresh renewal indemnity", "--first"]) == 0
+    assert capsys.readouterr().out.strip() == "new_contract.txt"
+
+    refreshed = json.loads((tmp_path / ".jikji" / "manifest.json").read_text(encoding="utf-8"))
+    assert refreshed["media_index"]["enabled"] is True
+    assert refreshed["media_index"]["status"] == "enabled_bounded"
+    assert refreshed["media_index"]["max_mb"] == 1.0
 
 
 def test_find_cli_classifies_and_returns_candidates(tmp_path, capsys):
@@ -370,10 +435,11 @@ def test_gui_search_and_download_handlers(tmp_path):
             assert "HTTP Error 403" in str(exc)
         else:
             raise AssertionError("management actions require token")
-        with urllib.request.urlopen(base + "/api/root?path=" + urllib.parse.quote(str(other)) + "&token=" + token, data=b"", timeout=5) as resp:
+        with urllib.request.urlopen(base + "/api/root?path=" + urllib.parse.quote(str(other)) + "&enable_media=1&token=" + token, data=b"", timeout=5) as resp:
             switched = json.loads(resp.read().decode("utf-8"))
         assert switched["root"] == str(other.resolve())
         assert switched["prepared"] is True
+        assert switched["manifest"]["media_index"]["enabled"] is True
         with urllib.request.urlopen(base + "/api/refresh?token=" + token, data=b"", timeout=5) as resp:
             refreshed = json.loads(resp.read().decode("utf-8"))
         assert refreshed["root"] == str(other.resolve())
@@ -1684,7 +1750,38 @@ def test_image_ocr_uses_absolute_path_for_dash_prefixed_names(tmp_path, monkeypa
     assert "dash OCR token" in parsed
     first_arg = calls.read_text(encoding="utf-8").strip()
     assert first_arg == str(image.resolve())
-    assert not first_arg.startswith("-")
+
+
+def test_image_ocr_skips_when_metadata_fills_budget(tmp_path, monkeypatch):
+    from jikji.parsers import media
+
+    calls: list[int] = []
+    image = tmp_path / "diagram.png"
+    image.write_bytes(b"fake image")
+    monkeypatch.setenv("JIKJI_ENABLE_IMAGE_OCR", "1")
+    monkeypatch.setattr(media, "_image_metadata", lambda path: ["# Image: diagram.png", "Dimensions: " + ("x" * 80)])
+    monkeypatch.setattr(media, "_ocr_image", lambda path, max_chars: calls.append(max_chars) or "ocr text")
+
+    parsed = media.parse_image(image, 40)
+
+    assert calls == []
+    assert "# OCR text" not in parsed
+
+
+def test_video_ocr_skips_when_transcript_fills_budget(tmp_path, monkeypatch):
+    from jikji.parsers import media
+
+    calls: list[int] = []
+    video = tmp_path / "demo.mp4"
+    video.write_bytes(b"fake video")
+    monkeypatch.setattr(media, "_ffprobe_metadata", lambda path: [])
+    monkeypatch.setattr(media, "_transcribe_video", lambda path, max_chars: "spoken token " * 20)
+    monkeypatch.setattr(media, "_video_keyframe_ocr", lambda path, max_chars: calls.append(max_chars) or "screen text")
+
+    parsed = media.parse_video(video, 48)
+
+    assert calls == []
+    assert "# On-screen text" not in parsed
 
 
 def test_edith_suite_no_docs_is_metadata_only(tmp_path, monkeypatch):
