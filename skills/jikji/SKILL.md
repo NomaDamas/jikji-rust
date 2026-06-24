@@ -38,6 +38,12 @@ python3 -m venv .venv
 Then use `~/.local/share/jikji/repo/.venv/bin/jikji`, or add that venv's `bin`
 directory to PATH.
 
+`agent-skill-install` may queue a background prepare for common user material
+folders and document-heavy folders under the user's home directory. That initial
+prepare is separate from `jikji find`; it targets likely document locations and
+document extensions first so the first real lookup is usually served from an
+existing index.
+
 ## Absolute Rule: Jikji Find First
 
 When a bounded root is available, your first tool call for local file discovery
@@ -50,6 +56,19 @@ jikji find /explicit/root "natural language file clue" --json
 Do not start with `grep`, `rg`, `ls`, `find`, `fd`, `cat`, or `tree` to locate a
 file. Jikji has already built the local map, parser text cache, file cards,
 metadata routes, and graph routes needed for this step.
+
+`jikji find` searches existing indexes only. If it reports that the root is not
+prepared, do not retry with broad raw crawling and do not expect `find` to
+prepare the root. Tell the user the requested range is not indexed yet and ask
+before running:
+
+```bash
+jikji prepare /explicit/root --json
+```
+
+If the user asks for image, audio, or video content search, explain that
+multimedia OCR/ASR is intentionally opt-in because it can consume CPU/RAM. Ask
+before running prepare with media indexing enabled.
 
 Interpret the JSON contract:
 

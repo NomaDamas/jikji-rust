@@ -27,6 +27,10 @@ It builds a multi-query, multi-route candidate slate from:
 The agent then uses the returned top-k slate for bounded verification or one LLM
 judgment, instead of running repeated raw filesystem searches.
 
+`jikji find` does not build or refresh indexes. It searches prepared Jikji
+artifacts only. When the requested root is not prepared yet, agents should tell
+the user and ask before running `jikji prepare ROOT --json`.
+
 Jikji uses RAG-style local retrieval context, but it is not a mandatory
 embedding/vectorDB/cloud RAG stack. The default search path is local and
 deterministic; the agent may spend an LLM call only to judge the returned slate.
@@ -50,6 +54,10 @@ jikji doctor ROOT --json
 jikji map ROOT
 jikji clean ROOT --dry-run --json
 ```
+
+Agent skill installation may queue background prepare work for common user
+material folders and document-heavy folders under the user's home directory.
+That initial fast-start indexing is separate from `jikji find`.
 
 ## Reporting Standard
 

@@ -69,6 +69,56 @@ _WIKI_SOURCE_PAGE_RE = re.compile(r"^[0-9A-Za-z가-힣_-]+-[0-9a-f]{12}\.md$")
 _DOC_CACHE_FILE_RE = re.compile(r"^sha256_[0-9a-f]{64}\.txt$")
 _DOC_CACHE_DIR_RE = re.compile(r"^sha256_[0-9a-f]{64}$")
 _DOC_META_FILE_RE = re.compile(r"^sha256_[0-9a-f]{64}\.json$")
+_POST_INSTALL_DOCUMENT_EXTS = {
+    ".pdf",
+    ".hwp",
+    ".hwpx",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".rtf",
+    ".odt",
+    ".ods",
+    ".odp",
+}
+_POST_INSTALL_SKIP_DIRS = {
+    ".cache",
+    ".cargo",
+    ".git",
+    ".gradle",
+    ".local",
+    ".npm",
+    ".rustup",
+    ".venv",
+    "__pycache__",
+    "AppData",
+    "Library",
+    "node_modules",
+    "site-packages",
+    "venv",
+}
+_POST_INSTALL_COMMON_RELS = (
+    "Documents",
+    "Downloads",
+    "Desktop",
+    "문서",
+    "다운로드",
+    "바탕화면",
+    "데스크탑",
+    "OneDrive/Documents",
+    "OneDrive/문서",
+    "Google Drive",
+    "Dropbox",
+    "iCloud Drive",
+    "Downloads/Telegram Desktop",
+    "Downloads/KakaoTalk Downloads",
+    "Downloads/카카오톡 받은 파일",
+    "Documents/KakaoTalk Downloads",
+    "Documents/카카오톡 받은 파일",
+)
 
 
 def _config_from_args(args) -> Config:
@@ -90,6 +140,12 @@ def _config_from_args(args) -> Config:
 def cmd_prepare(args) -> int:
     root = Path(args.path).expanduser().resolve()
     cfg = _config_from_args(args)
+    if not cfg.enable_media_index:
+        media_enabled, media_max_mb = _existing_media_prepare_policy(root)
+        if media_enabled:
+            cfg.enable_media_index = True
+            if media_max_mb is not None:
+                cfg.media_index_max_mb = media_max_mb
     result = build_agent_index(root, cfg)
     if args.json:
         print(json.dumps({
@@ -917,10 +973,7 @@ def cmd_brief(args) -> int:
 def cmd_find(args) -> int:
     root = Path(args.path).expanduser().resolve()
     index_status, should_prepare = _search_index_status(root, args, stale_after_seconds=args.stale_after_seconds)
-    if args.fresh or index_status == "changed_using_previous_index" or (should_prepare and args.auto_prepare):
-        build_agent_index(root, _search_prepare_config(args, root))
-        index_status = "refreshed_now" if index_status == "changed_using_previous_index" else ("prepared_now" if should_prepare else "refreshed_now")
-    elif should_prepare and not args.auto_prepare:
+    if should_prepare:
         print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
         return 1
     payload = discover(
@@ -952,10 +1005,7 @@ def cmd_find(args) -> int:
 def cmd_discover(args) -> int:
     root = Path(args.path).expanduser().resolve()
     index_status, should_prepare = _search_index_status(root, args, stale_after_seconds=args.stale_after_seconds)
-    if args.fresh or index_status == "changed_using_previous_index" or (should_prepare and args.auto_prepare):
-        build_agent_index(root, _search_prepare_config(args, root))
-        index_status = "refreshed_now" if index_status == "changed_using_previous_index" else ("prepared_now" if should_prepare else "refreshed_now")
-    elif should_prepare and not args.auto_prepare:
+    if should_prepare:
         print(f"No Jikji search index found under {root}. Run: jikji prepare {root}", file=sys.stderr)
         return 1
     payload = discover(
@@ -1014,8 +1064,8 @@ def cmd_gui(args) -> int:
             str(child_port),
             "--no-open",
         ]
-        if args.no_prepare:
-            cmd.append("--no-prepare")
+        if args.prepare:
+            cmd.append("--prepare")
         log_path = root / ".jikji" / "gui_server.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log = log_path.open("wb")
@@ -1048,7 +1098,7 @@ def cmd_gui(args) -> int:
         root,
         host=args.host,
         port=args.port,
-        auto_prepare=not args.no_prepare,
+        auto_prepare=args.prepare,
         open_browser=not args.no_open,
         quiet=args.json,
     )
@@ -1369,10 +1419,12 @@ def _prepare_after_skill_install(args) -> dict[str, object]:
         return {"mode": "disabled", "roots": []}
     raw_roots = list(getattr(args, "prepare_root", None) or [])
     if not raw_roots:
-        return {"mode": "disabled", "roots": [], "reason": "explicit_prepare_root_required"}
-    roots = _select_post_install_roots(raw_roots)
+        roots, selection = _select_default_post_install_roots()
+    else:
+        roots = _select_post_install_roots(raw_roots)
+        selection = {"source": "explicit_prepare_root", "document_heavy_roots": [], "common_roots": [str(root) for root in roots]}
     if not roots:
-        return {"mode": "none", "roots": []}
+        return {"mode": "none", "roots": [], "selection": selection}
     if getattr(args, "foreground_prepare", False):
         return {
             "mode": "foreground",
@@ -1381,11 +1433,13 @@ def _prepare_after_skill_install(args) -> dict[str, object]:
                 max_files=getattr(args, "max_files", 0),
                 parse_timeout=getattr(args, "parse_timeout", 5.0),
             ),
+            "selection": selection,
         }
     return _start_background_post_install_prepare(
         roots,
         max_files=getattr(args, "max_files", 0),
         parse_timeout=getattr(args, "parse_timeout", 5.0),
+        selection=selection,
     )
 
 
@@ -1403,6 +1457,108 @@ def _select_post_install_roots(raw_roots: list[str]) -> list[Path]:
         seen.add(root)
         roots.append(root)
     return roots
+
+
+def _post_install_home() -> Path:
+    override = os.environ.get("JIKJI_POST_INSTALL_HOME")
+    if override:
+        return Path(override).expanduser().resolve()
+    return Path.home().resolve()
+
+
+def _select_default_post_install_roots() -> tuple[list[Path], dict[str, object]]:
+    policy = _post_install_load_policy()
+    max_roots = int(policy["max_default_roots"])
+    home = _post_install_home()
+    common_roots = _common_post_install_roots(home)
+    document_roots, scanned = _document_heavy_post_install_roots(home, common_roots, max_roots=max(0, max_roots - len(common_roots)))
+    roots = _dedupe_roots([*common_roots, *document_roots])[:max_roots]
+    selection = {
+        "source": "auto_common_and_document_roots",
+        "home": str(home),
+        "common_roots": [str(root) for root in common_roots],
+        "document_heavy_roots": [str(root) for root in document_roots],
+        "document_extensions": sorted(_POST_INSTALL_DOCUMENT_EXTS),
+        "scanned": scanned,
+    }
+    return roots, selection
+
+
+def _common_post_install_roots(home: Path) -> list[Path]:
+    candidates = [home / rel for rel in _POST_INSTALL_COMMON_RELS]
+    return _dedupe_roots([path for path in candidates if path.is_dir()])
+
+
+def _dedupe_roots(candidates: list[Path]) -> list[Path]:
+    roots: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        try:
+            root = candidate.expanduser().resolve()
+        except (OSError, RuntimeError):
+            continue
+        if root in seen or not root.is_dir():
+            continue
+        if any(root == existing or _is_relative_to(root, existing) for existing in roots):
+            continue
+        seen.add(root)
+        roots.append(root)
+    return roots
+
+
+def _is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+    except ValueError:
+        return False
+    return True
+
+
+def _document_heavy_post_install_roots(
+    home: Path,
+    covered_roots: list[Path],
+    *,
+    max_roots: int,
+) -> tuple[list[Path], dict[str, int]]:
+    if max_roots <= 0 or not home.is_dir():
+        return [], {"dirs_seen": 0, "files_seen": 0, "document_files": 0}
+    scores: dict[Path, int] = {}
+    dirs_seen = 0
+    files_seen = 0
+    document_files = 0
+    max_dirs_seen = 4_000
+    max_files_seen = 60_000
+    for dirpath, dirnames, filenames in os.walk(home):
+        current = Path(dirpath)
+        dirs_seen += 1
+        dirnames[:] = [
+            name for name in dirnames
+            if name not in _POST_INSTALL_SKIP_DIRS and not name.startswith(".") and name != AGENT_DIR_NAME
+        ]
+        if _is_under_any(current, covered_roots):
+            dirnames[:] = []
+            continue
+        if dirs_seen > max_dirs_seen or files_seen > max_files_seen:
+            dirnames[:] = []
+            continue
+        count = 0
+        for filename in filenames:
+            files_seen += 1
+            if Path(filename).suffix.lower() in _POST_INSTALL_DOCUMENT_EXTS:
+                count += 1
+                document_files += 1
+        if count >= 3:
+            scores[current] = count
+    ranked = sorted(scores.items(), key=lambda item: (-item[1], len(item[0].parts), str(item[0])))[:max_roots]
+    roots = _dedupe_roots([path for path, _count in ranked])
+    return roots, {"dirs_seen": dirs_seen, "files_seen": files_seen, "document_files": document_files}
+
+
+def _is_under_any(path: Path, roots: list[Path]) -> bool:
+    for root in roots:
+        if path == root or _is_relative_to(path, root):
+            return True
+    return False
 
 
 def _prepare_roots_foreground(
@@ -1443,8 +1599,9 @@ def _start_background_post_install_prepare(
     *,
     max_files: int,
     parse_timeout: float,
+    selection: dict[str, object],
 ) -> dict[str, object]:
-    log_dir = Path.home() / ".local" / "share" / "jikji" / "post_install"
+    log_dir = _post_install_home() / ".local" / "share" / "jikji" / "post_install"
     try:
         log_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -1479,6 +1636,7 @@ def _start_background_post_install_prepare(
             "log": str(log_path),
             "roots": [{"root": str(root), "status": "queued"} for root in roots],
             "policy": _post_install_load_policy(),
+            "selection": selection,
         }
     except OSError as exc:
         return {
@@ -1487,6 +1645,7 @@ def _start_background_post_install_prepare(
             "error": str(exc),
             "roots": [{"root": str(root), "status": "not_started"} for root in roots],
             "policy": _post_install_load_policy(),
+            "selection": selection,
         }
 
 
@@ -2052,8 +2211,9 @@ def main(argv: list[str] | None = None) -> int:
     p_find.add_argument("query")
     p_find.add_argument("--top-k", type=int, default=20)
     p_find.add_argument("--first", action="store_true", help="print/return only the top path")
-    p_find.add_argument("--fresh", action="store_true", help="run a foreground refresh before finding")
-    p_find.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false")
+    p_find.add_argument("--fresh", action="store_true", help=argparse.SUPPRESS)
+    p_find.add_argument("--auto-prepare", dest="auto_prepare", action="store_true", help=argparse.SUPPRESS)
+    p_find.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false", help=argparse.SUPPRESS)
     p_find.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60)
     p_find.add_argument("--max-files", type=int, default=0, help=argparse.SUPPRESS)
     p_find.add_argument("--include-hidden", action="store_true")
@@ -2064,15 +2224,16 @@ def main(argv: list[str] | None = None) -> int:
     p_find.add_argument("--after-jikji-retry", action="store_true", help=argparse.SUPPRESS)
     p_find.add_argument("--retry-proof", default="", help=argparse.SUPPRESS)
     p_find.add_argument("--json", action="store_true")
-    p_find.set_defaults(auto_prepare=True, background_refresh=False)
+    p_find.set_defaults(auto_prepare=False, background_refresh=False)
     p_find.set_defaults(func=cmd_find)
 
     p_discover = sub.add_parser("discover", help=argparse.SUPPRESS)
     p_discover.add_argument("path")
     p_discover.add_argument("query")
     p_discover.add_argument("--top-k", type=int, default=20)
-    p_discover.add_argument("--fresh", action="store_true", help="run a foreground refresh before discovery")
-    p_discover.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false")
+    p_discover.add_argument("--fresh", action="store_true", help=argparse.SUPPRESS)
+    p_discover.add_argument("--auto-prepare", dest="auto_prepare", action="store_true", help=argparse.SUPPRESS)
+    p_discover.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false", help=argparse.SUPPRESS)
     p_discover.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60)
     p_discover.add_argument("--max-files", type=int, default=0, help="optional auto-prepare file-count safety cap; 0 disables it")
     p_discover.add_argument("--include-hidden", action="store_true")
@@ -2090,7 +2251,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_discover.add_argument("--retry-proof", default="", help="retry proof emitted by the previous low-confidence discover payload")
     p_discover.add_argument("--json", action="store_true")
-    p_discover.set_defaults(auto_prepare=True, background_refresh=False)
+    p_discover.set_defaults(auto_prepare=False, background_refresh=False)
     p_discover.set_defaults(func=cmd_discover)
 
     p_search = sub.add_parser("search", help=argparse.SUPPRESS)
@@ -2098,6 +2259,7 @@ def main(argv: list[str] | None = None) -> int:
     p_search.add_argument("query")
     p_search.add_argument("--top-k", type=int, default=20)
     p_search.add_argument("--fresh", action="store_true", help="run a foreground refresh before searching")
+    p_search.add_argument("--auto-prepare", dest="auto_prepare", action="store_true", help="prepare when the instant index is missing")
     p_search.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false", help="do not auto-prepare when the instant index is missing")
     p_search.add_argument("--no-background-refresh", dest="background_refresh", action="store_false", help="do not launch background refresh for stale indexes")
     p_search.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60, help="mark an index stale after this age; negative disables staleness")
@@ -2108,7 +2270,7 @@ def main(argv: list[str] | None = None) -> int:
     p_search.add_argument("--max-hash-bytes", type=int, default=512 * 1024 * 1024)
     p_search.add_argument("--parse-timeout", type=float, default=5.0)
     p_search.add_argument("--json", action="store_true")
-    p_search.set_defaults(auto_prepare=True, background_refresh=True)
+    p_search.set_defaults(auto_prepare=False, background_refresh=True)
     p_search.set_defaults(func=cmd_search)
 
     p_brief = sub.add_parser(
@@ -2119,6 +2281,7 @@ def main(argv: list[str] | None = None) -> int:
     p_brief.add_argument("query")
     p_brief.add_argument("--top-k", type=int, default=10)
     p_brief.add_argument("--fresh", action="store_true", help="run a foreground refresh before briefing")
+    p_brief.add_argument("--auto-prepare", dest="auto_prepare", action="store_true", help="prepare when the instant index is missing")
     p_brief.add_argument("--no-auto-prepare", dest="auto_prepare", action="store_false", help="do not auto-prepare when the instant index is missing")
     p_brief.add_argument("--no-background-refresh", dest="background_refresh", action="store_false", help="do not launch background refresh for stale indexes")
     p_brief.add_argument("--stale-after-seconds", type=int, default=24 * 60 * 60, help="mark an index stale after this age; negative disables staleness")
@@ -2130,7 +2293,7 @@ def main(argv: list[str] | None = None) -> int:
     p_brief.add_argument("--parse-timeout", type=float, default=5.0)
     p_brief.add_argument("--compact", action="store_true", help="emit token-minimal graph-route JSON for agents")
     p_brief.add_argument("--json", action="store_true")
-    p_brief.set_defaults(auto_prepare=True, background_refresh=True)
+    p_brief.set_defaults(auto_prepare=False, background_refresh=True)
     p_brief.set_defaults(func=cmd_brief)
 
     p_hf = sub.add_parser("hippocamp-fetch", help="download a bounded HippoCamp subset from Hugging Face")
@@ -2273,9 +2436,11 @@ def main(argv: list[str] | None = None) -> int:
     p_gui.add_argument("--host", default="127.0.0.1", help="bind host; default is loopback only")
     p_gui.add_argument("--port", type=int, default=8765, help="bind port; use 0 for a random free port")
     p_gui.add_argument("--no-open", action="store_true", help="do not open the browser automatically")
-    p_gui.add_argument("--no-prepare", action="store_true", help="do not auto-prepare when search index is missing")
+    p_gui.add_argument("--prepare", dest="prepare", action="store_true", help="prepare the root before serving the GUI")
+    p_gui.add_argument("--no-prepare", dest="prepare", action="store_false", help=argparse.SUPPRESS)
     p_gui.add_argument("--background", action="store_true", help="start GUI in the background and print a clickable local URL")
     p_gui.add_argument("--json", action="store_true")
+    p_gui.set_defaults(prepare=False)
     p_gui.set_defaults(func=cmd_gui)
 
     p_prep_bg = sub.add_parser("post-install-prepare", help=argparse.SUPPRESS)
@@ -2307,7 +2472,7 @@ def main(argv: list[str] | None = None) -> int:
         "--prepare-root",
         action="append",
         default=[],
-        help="queue this explicit root for post-install prepare; repeatable; no root is prepared by default",
+        help="queue this explicit root for post-install prepare; repeatable; defaults to common/document-heavy roots",
     )
     p_asi.add_argument("--no-prepare", action="store_true", help="install the skill without preparing any root")
     p_asi.add_argument("--foreground-prepare", action="store_true", help="wait for post-install prepare instead of running it in the background")
@@ -2341,7 +2506,7 @@ def main(argv: list[str] | None = None) -> int:
         "--prepare-root",
         action="append",
         default=[],
-        help="queue this explicit root for post-install prepare after writing --dest; repeatable; no root is prepared by default",
+        help="queue this explicit root for post-install prepare after writing --dest; repeatable; defaults to common/document-heavy roots",
     )
     p_export.add_argument("--no-prepare", action="store_true", help="write --dest without preparing any root")
     p_export.add_argument("--foreground-prepare", action="store_true")

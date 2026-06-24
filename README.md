@@ -75,8 +75,9 @@ asked to find a file:
 - **Multi-route candidate slate:** `jikji find` generates query variants, gathers
   top-k candidates from metadata, file-map, wiki/cache, graph, and text routes,
   deduplicates by path, then returns one slate for bounded agent judgment.
-- **Freshness without daemon cost:** Jikji find checks a source-tree signature and
-  refreshes generated artifacts when files changed.
+- **Freshness without search-time prepare:** Jikji find checks a source-tree
+  signature and reports when it is using the previous index. Refreshing is done
+  through `jikji prepare` / `jikji refresh`, not by surprise work inside `find`.
 
 This is **RAG-style retrieval context**, not a mandatory vector DB or cloud RAG
 stack. Jikji's default index is local and deterministic: no embeddings, cloud
@@ -97,6 +98,8 @@ cd jikji
 python3 -m venv .venv
 .venv/bin/pip install -e .
 
+.venv/bin/jikji agent-skill-install --agent all --json
+.venv/bin/jikji prepare ~/Documents --json
 .venv/bin/jikji find ~/Documents "contract pdf from last spring" --json
 ```
 
@@ -106,8 +109,12 @@ Korean example:
 jikji find ~/Documents "작년 봄 계약서 PDF" --json
 ```
 
-Jikji find auto-prepares a missing explicit root by default and refreshes when the
-source tree signature changed. For setup and diagnostics:
+`agent-skill-install` queues a low-impact post-install prepare for common user
+material folders and document-heavy folders it can safely discover under the
+user home directory. That initial prepare focuses on document extensions such as
+PDF, HWP/HWPX, Word, Excel, PowerPoint, and RTF. `jikji find` itself does not
+prepare unindexed roots; it searches only existing Jikji indexes. For setup and
+diagnostics:
 
 ```bash
 jikji prepare ROOT --json

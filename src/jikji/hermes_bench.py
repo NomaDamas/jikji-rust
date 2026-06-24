@@ -385,8 +385,8 @@ def _inventory(root: Path) -> dict[str, tuple[int, int]]:
         if not path.is_file() or path.is_symlink():
             continue
         rel = path.relative_to(root).as_posix()
-        # Jikji's own generated artifacts are not user-corpus mutations. The
-        # jikji skill auto-prepares/refreshes the index on first search, which
+        # Jikji's own generated artifacts are not user-corpus mutations.
+        # Benchmarks may run explicit prepare/refresh before search, which
         # legitimately (re)writes .jikji/ and the hidden root map. Excluding
         # them keeps the no-mutation guard focused on the original files.
         if rel == AGENT_DIR_NAME or rel.startswith(AGENT_DIR_NAME + "/") or rel in VISIBLE_MAP_NAMES:

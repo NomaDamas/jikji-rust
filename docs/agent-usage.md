@@ -14,6 +14,18 @@ This is the public agent interface. It combines Jikji metadata, file maps, parse
 caches, graph routes, and local search routes into one candidate slate so the
 agent can verify top evidence instead of crawling blindly.
 
+`jikji find` is read-only with respect to indexing. It searches prepared indexes
+only. If it reports that no Jikji search index exists for the requested root,
+tell the user that this range is not prepared yet and ask before running:
+
+```bash
+jikji prepare /path/to/folder --json
+```
+
+After agent skill installation, Jikji may queue a background prepare for common
+user material folders and document-heavy folders under the user's home
+directory. That is the expected fast-start path; it is separate from `find`.
+
 ## JSON Contract
 
 - `answer_paths[]`: primary ordered answer paths.

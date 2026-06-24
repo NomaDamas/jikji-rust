@@ -220,7 +220,7 @@ function renderStatus(s){
 async function loadStatus(){ try { renderStatus(await api('/api/status')); } catch(e){ statusLine.innerHTML='<span class="err">'+esc(e.message)+'</span>'; } }
 async function switchRoot(){
   if(mediaOpt.checked && !confirm('이미지/음성/영상 OCR·ASR은 CPU/RAM을 사용할 수 있습니다. 큰 미디어는 건너뛰고 bounded mode로 진행합니다. 계속할까요?')) return;
-  statusLine.textContent='root 전환/prepare 중…';
+  statusLine.textContent='root 전환 중…';
   const suffix = mediaOpt.checked ? '&enable_media=1' : '';
   renderStatus(await api('/api/root?path=' + enc(rootInput.value) + suffix, {method:'POST'}));
 }
@@ -264,7 +264,7 @@ loadStatus();
 
 
 class JikjiGuiServer(ThreadingHTTPServer):
-    def __init__(self, server_address: tuple[str, int], root: Path, *, auto_prepare: bool = True):
+    def __init__(self, server_address: tuple[str, int], root: Path, *, auto_prepare: bool = False):
         self._root_lock = threading.RLock()
         self._root = resolve_gui_root(str(root))
         self.manage_token = secrets.token_urlsafe(24)
@@ -281,7 +281,7 @@ class JikjiGuiServer(ThreadingHTTPServer):
         root = self.root
         build_agent_index(root, Config(enable_media_index=enable_media_index))
 
-    def switch_root(self, path_value: str, *, prepare: bool = True, enable_media_index: bool = False) -> None:
+    def switch_root(self, path_value: str, *, prepare: bool = False, enable_media_index: bool = False) -> None:
         new_root = resolve_gui_root(path_value)
         if prepare:
             build_agent_index(new_root, Config(enable_media_index=enable_media_index))
@@ -354,7 +354,8 @@ class JikjiGuiHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, root_status(self.server.root))
             elif parsed.path == "/api/root":
                 enable_media = self._query_value("enable_media") in {"1", "true", "yes", "on"}
-                self.server.switch_root(self._query_value("path"), prepare=True, enable_media_index=enable_media)
+                prepare = self._query_value("prepare") in {"1", "true", "yes", "on"}
+                self.server.switch_root(self._query_value("path"), prepare=prepare, enable_media_index=enable_media)
                 self._send_json(HTTPStatus.OK, root_status(self.server.root))
             else:
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "not found"})
@@ -422,7 +423,7 @@ def serve_gui(
     *,
     host: str = "127.0.0.1",
     port: int = 8765,
-    auto_prepare: bool = True,
+    auto_prepare: bool = False,
     open_browser: bool = True,
     quiet: bool = False,
 ) -> str:

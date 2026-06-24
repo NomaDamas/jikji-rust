@@ -211,7 +211,22 @@ def test_find_cli_returns_minimal_paths(tmp_path, capsys):
     assert payload["paths"] == ["contracts/ACME.txt"]
 
 
-def test_find_refreshes_when_source_tree_changes(tmp_path, capsys):
+def test_find_missing_index_does_not_auto_prepare_by_default(tmp_path, capsys):
+    from jikji.__main__ import main
+
+    (tmp_path / "contracts").mkdir()
+    (tmp_path / "contracts" / "ACME.txt").write_text("ACME payment clause", encoding="utf-8")
+
+    assert main(["find", str(tmp_path), "ACME payment", "--first"]) == 1
+    captured = capsys.readouterr()
+
+    assert captured.out == ""
+    assert "No Jikji search index found" in captured.err
+    assert "jikji prepare" in captured.err
+    assert not (tmp_path / ".jikji").exists()
+
+
+def test_find_uses_existing_index_when_source_tree_changes(tmp_path, capsys):
     from jikji.__main__ import main
 
     (tmp_path / "old.txt").write_text("old searchable marker", encoding="utf-8")
@@ -224,16 +239,18 @@ def test_find_refreshes_when_source_tree_changes(tmp_path, capsys):
     assert signature.get("files") == 1
 
     (tmp_path / "new_contract.txt").write_text("fresh renewal indemnity clause", encoding="utf-8")
-    assert main(["find", str(tmp_path), "fresh renewal indemnity", "--first"]) == 0
-    assert capsys.readouterr().out.strip() == "new_contract.txt"
+    assert main(["find", str(tmp_path), "fresh renewal indemnity", "--first", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["index_status"] == "changed_using_previous_index"
+    assert "new_contract.txt" not in payload["paths"]
 
     refreshed = json.loads((tmp_path / ".jikji" / "manifest.json").read_text(encoding="utf-8"))
     refreshed_signature = refreshed.get("source_tree_signature") or {}
-    assert refreshed_signature.get("files") == 2
-    assert refreshed_signature.get("digest") != signature.get("digest")
+    assert refreshed_signature.get("files") == 1
+    assert refreshed_signature.get("digest") == signature.get("digest")
 
 
-def test_find_refresh_preserves_existing_media_opt_in_policy(tmp_path, capsys):
+def test_refresh_then_find_preserves_existing_media_opt_in_policy(tmp_path, capsys):
     from jikji.__main__ import main
 
     image = tmp_path / "visual.png"
@@ -242,6 +259,8 @@ def test_find_refresh_preserves_existing_media_opt_in_policy(tmp_path, capsys):
     capsys.readouterr()
 
     (tmp_path / "new_contract.txt").write_text("fresh renewal indemnity clause", encoding="utf-8")
+    assert main(["prepare", str(tmp_path), "--json"]) == 0
+    capsys.readouterr()
     assert main(["find", str(tmp_path), "fresh renewal indemnity", "--first"]) == 0
     assert capsys.readouterr().out.strip() == "new_contract.txt"
 
@@ -435,7 +454,7 @@ def test_gui_search_and_download_handlers(tmp_path):
             assert "HTTP Error 403" in str(exc)
         else:
             raise AssertionError("management actions require token")
-        with urllib.request.urlopen(base + "/api/root?path=" + urllib.parse.quote(str(other)) + "&enable_media=1&token=" + token, data=b"", timeout=5) as resp:
+        with urllib.request.urlopen(base + "/api/root?path=" + urllib.parse.quote(str(other)) + "&enable_media=1&prepare=1&token=" + token, data=b"", timeout=5) as resp:
             switched = json.loads(resp.read().decode("utf-8"))
         assert switched["root"] == str(other.resolve())
         assert switched["prepared"] is True
@@ -1091,12 +1110,17 @@ def test_edith_ground_truth_paths_are_flattened_and_mapped():
     assert selected_docs == set(paths)
 
 
-def test_search_auto_prepares_missing_index(tmp_path, capsys):
+def test_search_requires_explicit_auto_prepare_for_missing_index(tmp_path, capsys):
     from jikji.__main__ import main
 
     (tmp_path / "notes.txt").write_text("automatic prepare uniqueanchor", encoding="utf-8")
 
-    assert main(["search", str(tmp_path), "uniqueanchor", "--json"]) == 0
+    assert main(["search", str(tmp_path), "uniqueanchor", "--json"]) == 1
+    captured = capsys.readouterr()
+    assert "No Jikji search index found" in captured.err
+    assert not (tmp_path / ".jikji" / "search_index.sqlite").exists()
+
+    assert main(["search", str(tmp_path), "uniqueanchor", "--auto-prepare", "--json"]) == 0
     report = json.loads(capsys.readouterr().out)
 
     assert report["index_status"] == "prepared_now"
@@ -1409,7 +1433,7 @@ def test_agent_skill_install_queues_background_prepare_for_explicit_root(tmp_pat
     assert "post-install-prepare" in calls[0][0]
 
 
-def test_agent_skill_install_does_not_prepare_default_roots(tmp_path, capsys, monkeypatch):
+def test_agent_skill_install_queues_common_and_document_heavy_roots(tmp_path, capsys, monkeypatch):
     from jikji import __main__ as cli
 
     calls = []
@@ -1419,9 +1443,28 @@ def test_agent_skill_install_does_not_prepare_default_roots(tmp_path, capsys, mo
 
         def __init__(self, cmd, **kwargs):
             calls.append((cmd, kwargs))
+            stdout = kwargs.get("stdout")
+            if stdout:
+                stdout.close()
 
+    home = tmp_path / "home"
+    documents = home / "Documents"
+    documents.mkdir(parents=True)
+    (documents / "brief.pdf").write_text("common documents root", encoding="utf-8")
+    outside = home / "Projects" / "ClientDocs"
+    outside.mkdir(parents=True)
+    for name in ("a.pdf", "b.hwpx", "c.xlsx"):
+        (outside / name).write_text("document-heavy folder", encoding="utf-8")
     dest = tmp_path / "agent" / "SKILL.md"
+    monkeypatch.setenv("JIKJI_POST_INSTALL_HOME", str(home))
     monkeypatch.setattr(cli.subprocess, "Popen", FakePopen)
+    monkeypatch.setattr(cli, "_post_install_load_policy", lambda: {
+        "cpu_count": 8,
+        "memory_gib": 16,
+        "max_default_roots": 5,
+        "concurrency": 1,
+        "note": "test policy",
+    })
 
     assert cli.main([
         "agent-skill-install",
@@ -1431,10 +1474,12 @@ def test_agent_skill_install_does_not_prepare_default_roots(tmp_path, capsys, mo
     ]) == 0
     payload = json.loads(capsys.readouterr().out)
 
-    assert payload["post_install_prepare"]["mode"] == "disabled"
-    assert payload["post_install_prepare"]["reason"] == "explicit_prepare_root_required"
-    assert payload["post_install_prepare"]["roots"] == []
-    assert calls == []
+    assert payload["post_install_prepare"]["mode"] == "background"
+    queued = {item["root"] for item in payload["post_install_prepare"]["roots"]}
+    assert str(documents.resolve()) in queued
+    assert str(outside.resolve()) in queued
+    assert payload["post_install_prepare"]["selection"]["source"] == "auto_common_and_document_roots"
+    assert calls
 
 
 def test_agent_skill_install_foreground_prepare_for_explicit_root(tmp_path, capsys):
