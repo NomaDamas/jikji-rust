@@ -7,8 +7,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NomaDamas/jikji/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-65f2ad.svg"></a>
-  <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-7dd9ff.svg">
+  <a href="https://github.com/NomaDamas/jikji-rust/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-65f2ad.svg"></a>
+  <img alt="Rust CLI" src="https://img.shields.io/badge/Rust-CLI-7dd9ff.svg">
   <img alt="Safety: non destructive" src="https://img.shields.io/badge/Safety-Non--destructive-64e69f.svg">
 </p>
 
@@ -20,7 +20,7 @@
 
 <p align="center">
   <a href="https://nomadamas.github.io/jikji/"><strong>Live intro</strong></a> ·
-  <a href="https://github.com/NomaDamas/jikji"><strong>GitHub</strong></a> ·
+  <a href="https://github.com/NomaDamas/jikji-rust"><strong>GitHub</strong></a> ·
   <a href="docs/jikji-benchmarks.html"><strong>Benchmarks</strong></a> ·
   <a href="docs/agent-installation.md"><strong>Agent install guide</strong></a> ·
   <a href="skills/jikji/SKILL.md"><strong>Skill file</strong></a>
@@ -89,19 +89,24 @@ agent when it needs to choose from the returned candidate slate.
 Tell your CLI agent this one sentence:
 
 ```text
-GitHub 저장소 https://github.com/NomaDamas/jikji 에서 Jikji를 설치하고, 내 CLI 에이전트들이 `jikji find`를 바로 쓰도록 Jikji skill까지 연결해줘.
+GitHub 저장소 https://github.com/NomaDamas/jikji-rust 에서 Jikji를 설치하고, 내 CLI 에이전트들이 `jikji find`를 바로 쓰도록 Jikji skill까지 연결해줘.
 ```
 
 ```bash
-git clone https://github.com/nomadamas/jikji.git
-cd jikji
-python3 -m venv .venv
-.venv/bin/pip install -e .
+git clone https://github.com/nomadamas/jikji-rust.git
+cd jikji-rust
+cargo install --path crates/jikji-cli
 
-.venv/bin/jikji agent-skill-install --agent all --json
-.venv/bin/jikji prepare ~/Documents --json
-.venv/bin/jikji find ~/Documents "contract pdf from last spring" --json
+jikji agent-skill-install --agent all --json
+jikji prepare ~/Documents --json
+jikji find ~/Documents "contract pdf from last spring" --json
 ```
+
+You can also install a published binary from the GitHub Releases page and place
+the `jikji` executable on `PATH`. crates.io publishing is intended to use
+trusted publishing from the release workflow; token-based publishing is only a
+manual fallback for maintainers. Release and crates.io maintainer setup is
+documented in `docs/release-publishing.md`.
 
 Korean example:
 
@@ -123,6 +128,10 @@ jikji doctor ROOT --json
 jikji map ROOT
 jikji clean ROOT --dry-run --json
 ```
+
+`prepare` writes the Jikji routing block in `AGENTS.md`, `CLAUDE.md`, and
+`.cursorrules` by default. Use `jikji prepare ROOT --no-agent-rules` to skip
+those block updates for a root.
 
 ## Why Agents Need It
 
@@ -214,15 +223,31 @@ block in `AGENTS.md` / `CLAUDE.md` / `.cursorrules` is updated in place on each
 prepare and can be skipped with `jikji prepare ROOT --no-agent-rules`; `jikji
 clean` removes the block while preserving any user-authored content.
 
+The Rust CLI command surface includes `prepare`, `refresh`, `clean`, `map`,
+`doctor`, `find`, `search`, `brief`, `discover`, `graph`, `gui`,
+`agent-skill-install`, agent-specific skill installers, `skill-export`, eval and
+benchmark fixture commands, `hippocamp-fetch`, and the hidden
+`post-install-prepare` worker command. `hermes-bench` is a Python-only Hermes
+benchmark compatibility command, `hermes-compare` is a Python-only Hermes report
+comparison compatibility command, and `benchmark-value-report` is a Python-only
+benchmark value report compatibility command. They are present as explicit
+compatibility commands that report Python-only status for external Hermes
+artifact workflows.
+
 ## Media Text
 
 PDF, HWP/HWPX, Office, text, subtitles, HTML, JSON/YAML, and archives are indexed
 within size and timeout limits. Image, audio, and video content OCR/ASR is opt-in
+through the Python media bridge so the default Rust binary remains lightweight
+and Python-free for normal prepare/search/find. The split Rust crates can also be
+reused directly: `jikji-parser` for deterministic parsers, `jikji-index` for
+sidecar artifact generation, `jikji-search` for local search/discovery, and
+`jikji-agent` / `jikji-bench` for integrations and local benchmark helpers.
 because it can use CPU/RAM:
 
 ```bash
 pip install "jikji[media]"
-jikji prepare ROOT --enable-media-index --media-index-max-mb 25 --parse-timeout 600
+jikji prepare ROOT --enable-media-index --media-index-max-mb 25
 ```
 
 ## Development

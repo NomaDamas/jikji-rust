@@ -18,7 +18,7 @@ Jikji is a separate project from Folder1004.
 
 ## Generated artifact ownership
 
-Jikji may regenerate only its documented artifacts: `.jikji/manifest.json`, `.jikji/*.jsonl`, `.jikji/search_index.sqlite`, `.jikji/agent_map.md`, `.jikji/agent_routes.md`, `.jikji/agent_skill_context.md`, `.jikji/human_guide.md`, `.jikji/autorag_manifest.json`, `.jikji/corpus_profile.json`, `.jikji/intent_taxonomy.json`, `.jikji/knowledge_graph.json`, `.jikji/llm_wiki_schema.md`, `.jikji/wiki/`, `.jikji/doc_text/`, `.jikji/doc_meta/`, `.jikji/eval/`, `.jikji/.lock`, and root `.jikji_agent_map.md` (legacy `000_JIKJI_AGENT_MAP.md`). Retired generated artifacts listed in `manifest.json` under `retired_cleanup_paths` may be removed during prepare. Do not delete arbitrary user-created files under `.jikji/`.
+Jikji may regenerate only its documented artifacts: `.jikji/manifest.json`, `.jikji/*.jsonl`, `.jikji/search_index.sqlite`, `.jikji/agent_map.md`, `.jikji/agent_routes.md`, `.jikji/agent_skill_context.md`, `.jikji/human_guide.md`, `.jikji/autorag_manifest.json`, `.jikji/corpus_profile.json`, `.jikji/intent_taxonomy.json`, `.jikji/knowledge_graph.json`, `.jikji/llm_wiki_schema.md`, `.jikji/wiki/`, `.jikji/wiki/sources/`, `.jikji/doc_text/`, `.jikji/doc_meta/`, `.jikji/eval/`, `.jikji/.lock`, root `.jikji_agent_map.md` (legacy `000_JIKJI_AGENT_MAP.md`), and Jikji routing blocks inside `AGENTS.md`, `CLAUDE.md`, and `.cursorrules`. Retired generated artifacts listed in `manifest.json` under `retired_cleanup_paths` may be removed during prepare. Do not delete arbitrary user-created files under `.jikji/`.
 
 Local-agent standard docs live in `docs/local-agent-search-standard.md`, `docs/schema.md`, and `docs/agent-usage.md`.
 
@@ -26,9 +26,12 @@ Local-agent standard docs live in `docs/local-agent-search-standard.md`, `docs/s
 
 ```bash
 jikji prepare /path/to/folder   # create/update .jikji and root map
+jikji prepare /path/to/folder --no-agent-rules  # skip routing block updates
 jikji refresh /path/to/folder   # alias for prepare
 jikji map /path/to/folder       # print generated map
 jikji doctor /path/to/folder    # verify expected artifacts
+jikji find /path/to/folder "query" --json
+jikji agent-skill-install --agent all --json
 ```
 
 Local dev:

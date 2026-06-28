@@ -6,24 +6,49 @@ does not move, rename, delete, or reorganize user files.
 
 ## Install From GitHub
 
+### Cargo install
+
+```bash
+cargo install --git https://github.com/nomadamas/jikji-rust jikji-cli
+jikji --help
+```
+
+For local development from a checkout:
+
+```bash
+git clone https://github.com/nomadamas/jikji-rust.git ~/.local/share/jikji/repo
+cd ~/.local/share/jikji/repo
+cargo install --path crates/jikji-cli
+jikji --help
+```
+
+### GitHub release binary
+
+Download the release archive for your OS from GitHub Releases, verify the
+published SHA-256 checksum, and place the `jikji` executable on `PATH`.
+
+Maintainer releases build OS binaries and publish crates through the trusted
+publishing workflow. A crates.io token-secret publish path is only a documented
+fallback, not the normal release path. See `docs/release-publishing.md` for the
+required crates.io trusted-publisher repository configuration.
+
 ### One-sentence agent install
 
 CLI 에이전트에게 가장 쉽게 시킬 한 문장:
 
 ```text
-GitHub 저장소 https://github.com/NomaDamas/jikji 에서 Jikji를 설치하고, 내 CLI 에이전트들이 `jikji find`를 바로 쓰도록 Jikji skill까지 연결해줘.
+GitHub 저장소 https://github.com/NomaDamas/jikji-rust 에서 Jikji를 설치하고, 내 CLI 에이전트들이 `jikji find`를 바로 쓰도록 Jikji skill까지 연결해줘.
 ```
 
 ```bash
 mkdir -p ~/.local/share/jikji
 if [ ! -d ~/.local/share/jikji/repo/.git ]; then
-  git clone https://github.com/nomadamas/jikji.git ~/.local/share/jikji/repo
+  git clone https://github.com/nomadamas/jikji-rust.git ~/.local/share/jikji/repo
 fi
 cd ~/.local/share/jikji/repo
 git pull --ff-only
-python3 -m venv .venv
-.venv/bin/pip install -e .
-.venv/bin/jikji --help
+cargo install --path crates/jikji-cli
+jikji --help
 ```
 
 ## Install The Skill
@@ -61,24 +86,48 @@ The agent follows `handoff_action`:
 Do not start by crawling with `ls`, `find`, `rg`, `grep`, `tree`, or broad
 document opening.
 
-## Optional Root Preparation
+## Root Preparation
 
-Jikji never silently scans Documents, Downloads, Desktop, or cloud-sync folders.
-Prepare explicit roots only:
+`jikji prepare ROOT` writes `.jikji/` artifacts and a bounded routing block in
+`AGENTS.md`, `CLAUDE.md`, and `.cursorrules` by default. Use
+`--no-agent-rules` when a root should not receive those agent-routing blocks.
 
 ```bash
 jikji prepare /mnt/work-drive --json
+jikji prepare /mnt/work-drive --no-agent-rules --json
 jikji refresh /mnt/work-drive --json
 jikji doctor /mnt/work-drive --json
 ```
 
-Skill install can queue or run preparation when the user provides a root:
+Skill install queues a low-impact prepare contract for common user material
+folders and document-heavy folders under the user home directory. It does not
+move, rename, delete, or reorganize user files. Provide explicit roots or disable
+the post-install prepare when needed:
 
 ```bash
 jikji agent-skill-install --agent all --prepare-root /mnt/work-drive --json
 jikji agent-skill-install --agent all --prepare-root /mnt/work-drive --foreground-prepare --json
 jikji agent-skill-install --agent all --no-prepare --json
 ```
+
+The hidden compatibility command `jikji post-install-prepare ROOT --json` runs
+queued roots in the foreground.
+
+## Runtime Notes
+
+The default Rust CLI does not require Python for `prepare`, `find`, `search`,
+`doctor`, `map`, GUI status/search, eval generation, public benchmark fixture
+commands, or local benchmark smoke helpers. `hippocamp-fetch` is implemented as
+the Rust bounded fixture-materialization command. `hermes-bench` is a
+Python-only Hermes benchmark compatibility command, `hermes-compare` is a
+Python-only Hermes report comparison compatibility command, and
+`benchmark-value-report` is a Python-only benchmark value report compatibility
+command. They report Python-only status because they automate external Hermes
+artifacts rather than local Jikji indexing. Image/audio/video OCR-ASR remains an
+explicit opt-in through the Python media bridge.
+
+Downstream tools can reuse split crates directly instead of shelling out:
+`jikji-parser`, `jikji-index`, `jikji-search`, `jikji-agent`, and `jikji-bench`.
 
 ## Benchmark Language
 
