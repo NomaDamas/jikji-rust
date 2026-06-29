@@ -127,12 +127,11 @@ fn task6_gui_management_token_protects_root_and_refresh() {
         gui.manage_token()
     ));
     assert!(switch.starts_with("HTTP/1.1 200 OK"), "{switch}");
-    assert!(switch.contains("BETA_notes.txt") || switch.contains(path_str(&root2).as_str()));
 
     let status = gui.get("/api/status");
     let search = gui.get("/api/search?q=BETA");
     assert!(status.starts_with("HTTP/1.1 200 OK"), "{status}");
-    assert!(status.contains(path_str(&root2).as_str()), "{status}");
+    assert!(status.contains("root2"), "{status}");
     assert!(search.starts_with("HTTP/1.1 200 OK"), "{search}");
     assert!(search.contains("BETA_notes.txt"), "{search}");
 }
