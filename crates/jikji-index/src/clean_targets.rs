@@ -28,7 +28,7 @@ pub(crate) fn clean_targets(root: &Path) -> Result<Vec<PathBuf>> {
 pub(crate) fn safe_rel_path(raw_path: &str) -> Option<&str> {
     let rel = raw_path.strip_suffix('/').unwrap_or(raw_path);
     let path = Path::new(rel);
-    if path.is_absolute()
+    if path.has_root()
         || path
             .components()
             .any(|component| matches!(component, Component::ParentDir))
@@ -183,5 +183,12 @@ mod tests {
         assert_eq!(safe_rel_path("../outside"), None);
         assert_eq!(safe_rel_path("/tmp/outside"), None);
         assert_eq!(safe_rel_path(ROOT_AGENT_MAP), Some(ROOT_AGENT_MAP));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn safe_rel_path_rejects_windows_rooted_paths_when_cleaning() {
+        assert_eq!(safe_rel_path(r"\tmp\outside"), None);
+        assert_eq!(safe_rel_path(r"C:\tmp\outside"), None);
     }
 }
