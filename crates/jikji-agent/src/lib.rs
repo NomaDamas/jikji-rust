@@ -133,10 +133,20 @@ fn absolute_path(path: &Path) -> Result<PathBuf> {
 }
 
 fn home_dir() -> Result<PathBuf> {
-    env::var_os("JIKJI_AGENT_HOME")
-        .or_else(|| env::var_os("HOME"))
-        .map(PathBuf::from)
-        .ok_or_else(|| invalid_input("HOME is not set"))
+    home_dir_from_vars(
+        env::var_os("JIKJI_AGENT_HOME").map(PathBuf::from),
+        env::var_os("HOME").map(PathBuf::from),
+        env::var_os("USERPROFILE").map(PathBuf::from),
+    )
+    .ok_or_else(|| invalid_input("HOME or USERPROFILE is not set"))
+}
+
+fn home_dir_from_vars(
+    agent_home: Option<PathBuf>,
+    home: Option<PathBuf>,
+    user_profile: Option<PathBuf>,
+) -> Option<PathBuf> {
+    agent_home.or(home).or(user_profile)
 }
 
 fn invalid_input(message: impl Into<String>) -> jikji_core::JikjiError {
@@ -152,7 +162,8 @@ mod tests {
 
     use super::{
         AGENT_RULES_BEGIN, AGENT_RULES_END, default_agent_routes, expand_agent_selection,
-        install_agent_skill, remove_routing_block, skill_markdown, write_routing_block,
+        home_dir_from_vars, install_agent_skill, remove_routing_block, skill_markdown,
+        write_routing_block,
     };
 
     #[test]
@@ -190,6 +201,13 @@ mod tests {
             expand_agent_selection("open-clo").expect("alias"),
             ["openclo"]
         );
+    }
+
+    #[test]
+    fn home_dir_uses_userprofile_when_home_is_absent() {
+        let home = home_dir_from_vars(None, None, Some("C:/Users/runneradmin".into()));
+
+        assert_eq!(home, Some("C:/Users/runneradmin".into()));
     }
 
     #[test]

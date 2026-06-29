@@ -128,6 +128,7 @@ fn post_install_home() -> PathBuf {
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("JIKJI_AGENT_HOME").map(PathBuf::from))
         .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
+        .or_else(|| std::env::var_os("USERPROFILE").map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
