@@ -50,8 +50,20 @@ impl GuiChild {
 
 impl Drop for GuiChild {
     fn drop(&mut self) {
-        let _ = Command::new("kill").arg(&self.pid).status();
+        let _ = terminate_process(&self.pid);
     }
+}
+
+#[cfg(windows)]
+fn terminate_process(pid: &str) -> std::io::Result<std::process::ExitStatus> {
+    Command::new("taskkill")
+        .args(["/PID", pid, "/F", "/T"])
+        .status()
+}
+
+#[cfg(not(windows))]
+fn terminate_process(pid: &str) -> std::io::Result<std::process::ExitStatus> {
+    Command::new("kill").arg(pid).status()
 }
 
 pub(crate) fn run_ok<I, S>(args: I) -> Output

@@ -94,7 +94,7 @@ fn spawn_background(args: GuiArgs) -> jikji_core::Result<ExitCode> {
         "root": args.root,
         "background": true,
         "manage_token": token.as_str(),
-        "cleanup": format!("kill {}", child.id()),
+        "cleanup": cleanup_command(child.id()),
     });
     if args.json {
         print_json(&payload)?;
@@ -102,6 +102,16 @@ fn spawn_background(args: GuiArgs) -> jikji_core::Result<ExitCode> {
         println!("{url}");
     }
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(windows)]
+fn cleanup_command(pid: u32) -> String {
+    format!("taskkill /PID {pid} /F /T")
+}
+
+#[cfg(not(windows))]
+fn cleanup_command(pid: u32) -> String {
+    format!("kill {pid}")
 }
 
 fn serve_loop(listener: TcpListener, state: GuiState) -> jikji_core::Result<ExitCode> {
