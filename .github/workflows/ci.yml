@@ -58,13 +58,13 @@ jobs:
         run: cargo doc --workspace --all-features --no-deps
 
       - name: Cross-OS command smoke
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          root="$(mktemp -d)"
-          mkdir -p "$root/docs"
-          printf 'ACME release smoke marker\n' > "$root/docs/acme.txt"
-          cargo run -p jikji-cli --bin jikji -- --help >/dev/null
-          cargo run -p jikji-cli --bin jikji -- prepare "$root" --json
-          cargo run -p jikji-cli --bin jikji -- doctor "$root" --json
-          cargo run -p jikji-cli --bin jikji -- find "$root" "ACME release smoke marker" --json
+          $ErrorActionPreference = "Stop"
+          $root = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString("N"))
+          New-Item -ItemType Directory -Path (Join-Path $root "docs") | Out-Null
+          Set-Content -Path (Join-Path $root "docs/acme.txt") -Value "ACME release smoke marker"
+          cargo run -p jikji-cli --bin jikji -- --help | Out-Null
+          cargo run -p jikji-cli --bin jikji -- prepare $root --json
+          cargo run -p jikji-cli --bin jikji -- doctor $root --json
+          cargo run -p jikji-cli --bin jikji -- find $root "ACME release smoke marker" --json

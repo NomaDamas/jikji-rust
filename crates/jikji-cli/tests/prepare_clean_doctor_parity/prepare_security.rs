@@ -1,12 +1,13 @@
-use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs as unix_fs;
-
-use super::{json_cmd, json_file, root_str, temp_root};
 
 #[cfg(unix)]
 #[test]
 fn prepare_replaces_symlinked_doc_cache_leaf_files_without_touching_targets() {
+    use std::fs;
+
+    use super::{json_cmd, json_file, root_str, temp_root};
+
     let root = temp_root("doc-cache-leaf-symlink");
     fs::write(root.join("probe.pdf"), "probe document\n").expect("write probe");
     fs::create_dir_all(root.join(".jikji/doc_text")).expect("create doc text");
