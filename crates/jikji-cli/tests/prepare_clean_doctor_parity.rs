@@ -82,10 +82,7 @@ fn prepare_clean_doctor_and_map_match_task_three_contract() {
             .as_array()
             .expect("would remove")
             .iter()
-            .any(|path| path
-                .as_str()
-                .expect("path")
-                .ends_with(".jikji/manifest.json"))
+            .any(|path| is_jikji_manifest_path(path.as_str().expect("path")))
     );
     assert!(
         !dry["would_remove"]
@@ -102,6 +99,15 @@ fn prepare_clean_doctor_and_map_match_task_three_contract() {
     assert!(root.join(".jikji/user-created-note.txt").exists());
     assert!(!root.join(".jikji/manifest.json").exists());
     assert!(root.join("docs/meeting.txt").exists());
+}
+
+fn is_jikji_manifest_path(path: &str) -> bool {
+    let path = Path::new(path);
+    path.file_name().is_some_and(|name| name == "manifest.json")
+        && path
+            .parent()
+            .and_then(Path::file_name)
+            .is_some_and(|name| name == ".jikji")
 }
 
 #[test]
