@@ -1,37 +1,50 @@
 use std::ffi::OsStr;
 use std::io::{Read, Write};
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::{Child, Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
 pub(crate) struct GuiChild {
     url: String,
-    pid: String,
+    child: Child,
     manage_token: String,
 }
 
 impl GuiChild {
     pub(crate) fn start(root: &Path) -> Self {
-        let gui = json_cmd([
-            "gui",
-            path_str(root).as_str(),
-            "--host",
-            "127.0.0.1",
-            "--port",
-            "0",
-            "--background",
-            "--json",
-        ]);
+        let port = reserve_loopback_port();
+        let manage_token = format!("test-token-{port}");
+        let mut child = Command::new(env!("CARGO_BIN_EXE_jikji"))
+            .args([
+                "gui",
+                path_str(root).as_str(),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                &port.to_string(),
+                "--no-open",
+                "--serve-child",
+                "--manage-token",
+                manage_token.as_str(),
+            ])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("spawn GUI child");
+        let url = format!("http://127.0.0.1:{port}");
+        if let Err(error) = wait_until_ready(port) {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!("connect GUI: {error}");
+        }
         Self {
-            url: gui["url"].as_str().expect("url").to_owned(),
-            pid: gui["pid"].as_u64().expect("pid").to_string(),
-            manage_token: gui["manage_token"]
-                .as_str()
-                .expect("manage_token")
-                .to_owned(),
+            url,
+            child,
+            manage_token,
         }
     }
 
@@ -50,20 +63,9 @@ impl GuiChild {
 
 impl Drop for GuiChild {
     fn drop(&mut self) {
-        let _ = terminate_process(&self.pid);
+        let _ = self.child.kill();
+        let _ = self.child.wait();
     }
-}
-
-#[cfg(windows)]
-fn terminate_process(pid: &str) -> std::io::Result<std::process::ExitStatus> {
-    Command::new("taskkill")
-        .args(["/PID", pid, "/F", "/T"])
-        .status()
-}
-
-#[cfg(not(windows))]
-fn terminate_process(pid: &str) -> std::io::Result<std::process::ExitStatus> {
-    Command::new("kill").arg(pid).status()
 }
 
 pub(crate) fn run_ok<I, S>(args: I) -> Output
@@ -128,6 +130,27 @@ fn http_request(method: &str, base_url: &str, path: &str) -> String {
                 std::thread::sleep(Duration::from_millis(25));
             }
             Err(error) => panic!("connect GUI: {error}"),
+        }
+    }
+}
+
+fn reserve_loopback_port() -> u16 {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).expect("reserve port");
+    let port = listener.local_addr().expect("reserved address").port();
+    drop(listener);
+    port
+}
+
+fn wait_until_ready(port: u16) -> std::io::Result<()> {
+    let started = Instant::now();
+    loop {
+        match TcpStream::connect(("127.0.0.1", port)) {
+            Ok(_) => return Ok(()),
+            Err(error) if started.elapsed() < Duration::from_secs(5) => {
+                let _ = error;
+                std::thread::sleep(Duration::from_millis(25));
+            }
+            Err(error) => return Err(error),
         }
     }
 }
