@@ -7,7 +7,8 @@ use helpers::{
     assert_file_index_contract, assert_manifest_contract, assert_path_list_contains,
     assert_path_list_excludes, assert_prepare_core_fields,
     assert_task3_artifacts_match_python_names, golden_artifact_paths, golden_command, json_cmd,
-    json_file, minimal_png, root_arg, run, run_ok, temp_root, write_ascii_cjk_fixture,
+    json_file, minimal_png, path_string_ends_with, root_arg, run, run_ok, temp_root,
+    write_ascii_cjk_fixture,
 };
 
 #[test]
@@ -26,12 +27,10 @@ fn prepare_refresh_doctor_and_map_match_python_task_three_contract_fields() {
             .expect("index_dir")
             .ends_with(".jikji")
     );
-    assert!(
-        prepared["agent_map"]
-            .as_str()
-            .expect("agent_map")
-            .ends_with(".jikji/agent_map.md")
-    );
+    assert!(path_string_ends_with(
+        prepared["agent_map"].as_str().expect("agent_map"),
+        ".jikji/agent_map.md"
+    ));
     assert_task3_artifacts_match_python_names(&root, "ascii_cjk_paths");
     assert_manifest_contract(&root);
     assert_file_index_contract(&root);

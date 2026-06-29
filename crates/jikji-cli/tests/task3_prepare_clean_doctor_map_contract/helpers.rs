@@ -91,7 +91,7 @@ pub(crate) fn assert_path_list_contains(value: &Value, suffix: &str) {
             .as_array()
             .expect("path list")
             .iter()
-            .any(|path| path.as_str().expect("path").ends_with(suffix)),
+            .any(|path| path_string_ends_with(path.as_str().expect("path"), suffix)),
         "missing path suffix {suffix}"
     );
 }
@@ -102,9 +102,13 @@ pub(crate) fn assert_path_list_excludes(value: &Value, suffix: &str) {
             .as_array()
             .expect("path list")
             .iter()
-            .all(|path| !path.as_str().expect("path").ends_with(suffix)),
+            .all(|path| !path_string_ends_with(path.as_str().expect("path"), suffix)),
         "unexpected path suffix {suffix}"
     );
+}
+
+pub(crate) fn path_string_ends_with(path: &str, suffix: &str) -> bool {
+    path.replace('\\', "/").ends_with(suffix)
 }
 
 pub(crate) fn write_ascii_cjk_fixture(root: &Path) {
