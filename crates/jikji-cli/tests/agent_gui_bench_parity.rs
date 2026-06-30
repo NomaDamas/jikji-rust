@@ -3,7 +3,7 @@ mod helpers;
 
 use std::fs;
 
-use helpers::{GuiChild, assert_rejected, json_cmd, path_str, run_ok};
+use helpers::{GuiChild, assert_rejected, json_cmd, path_str, run_fail, run_ok};
 
 #[test]
 fn task6_public_agent_and_benchmark_commands_match_contract() {
@@ -55,51 +55,36 @@ fn task6_public_agent_and_benchmark_commands_match_contract() {
     );
 
     json_cmd(["prepare", path_str(&root).as_str(), "--json"]);
-    let generated = json_cmd([
-        "eval-generate",
-        path_str(&root).as_str(),
-        "--cases",
-        "3",
-        "--json",
-    ]);
-    let eval_set = generated["eval_set"].as_str().expect("eval_set");
-    let evaluated = json_cmd([
-        "eval",
-        path_str(&root).as_str(),
-        "--eval-set",
-        eval_set,
-        "--json",
-    ]);
-    assert!(
-        evaluated["report"]
-            .as_str()
-            .expect("report")
-            .ends_with(".json")
-    );
-
-    let analyzed = json_cmd(["bench-analyze", path_str(&root).as_str(), "--json"]);
-    assert_eq!(analyzed["cases"], 1);
-    let bench = json_cmd([
-        "bench-run",
-        path_str(&root).as_str(),
-        "--eval-set",
-        eval_set,
-        "--json",
-    ]);
-    assert!(
-        bench["metrics"]
-            .as_object()
-            .expect("metrics")
-            .contains_key("jikji")
-    );
-    let beir = json_cmd([
-        "beir-import",
-        path_str(&temp.path().join("beir")).as_str(),
-        "--cases",
-        "1",
-        "--json",
-    ]);
-    assert_eq!(beir["network"], "not_used");
+    for args in [
+        vec![
+            "eval-generate".to_owned(),
+            path_str(&root),
+            "--cases".to_owned(),
+            "3".to_owned(),
+            "--json".to_owned(),
+        ],
+        vec!["eval".to_owned(), path_str(&root), "--json".to_owned()],
+        vec![
+            "bench-analyze".to_owned(),
+            path_str(&root),
+            "--json".to_owned(),
+        ],
+        vec!["bench-run".to_owned(), path_str(&root), "--json".to_owned()],
+        vec![
+            "beir-import".to_owned(),
+            path_str(&temp.path().join("beir")),
+            "--cases".to_owned(),
+            "1".to_owned(),
+            "--json".to_owned(),
+        ],
+    ] {
+        let output = run_fail(args);
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("Python-only"),
+            "stderr={}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 #[test]

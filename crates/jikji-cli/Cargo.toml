@@ -15,7 +15,6 @@ path = "src/main.rs"
 clap.workspace = true
 getrandom.workspace = true
 jikji-agent.workspace = true
-jikji-bench.workspace = true
 jikji-core.workspace = true
 jikji-index.workspace = true
 jikji-search.workspace = true

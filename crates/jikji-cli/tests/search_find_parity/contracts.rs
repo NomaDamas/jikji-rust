@@ -43,6 +43,34 @@ fn search_brief_graph_and_find_return_python_contract_fields() {
     assert_find_contract(&root_arg);
 }
 
+#[test]
+fn search_ignores_english_stopwords_as_filename_anchors() {
+    let root = temp_root("english-stopword-anchor");
+    fs::write(
+        root.join("Meta_Q2_2025_Earnings_Call.mp3"),
+        "earnings conference call transcript with platform revenue",
+    )
+    .expect("write meta");
+    fs::write(
+        root.join("weekly_health_records.txt"),
+        "health week records running sleep dental appointment recovery",
+    )
+    .expect("write health");
+    let root_arg = root_arg(&root);
+    json_cmd(&["prepare", &root_arg, "--json"]);
+
+    let search = json_cmd(&[
+        "search",
+        &root_arg,
+        "What do I usually do in a week for my health records?",
+        "--top-k",
+        "3",
+        "--json",
+    ]);
+
+    assert_eq!(search["candidates"][0]["path"], "weekly_health_records.txt");
+}
+
 fn assert_search_contract(root_arg: &str) {
     let search = json_cmd(&[
         "search",

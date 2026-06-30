@@ -16,39 +16,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, Sequence, TypeAlias
 
+from scope_contract import PYTHON_BENCHMARK_COMPAT_RATIONALE, REQUIRED_CRATES, REQUIRED_RUST_COMMANDS
+
 Json: TypeAlias = str | int | float | bool | None | list["Json"] | dict[str, "Json"]
 
-REQUIRED_CRATES: Final = (
-    "jikji-core",
-    "jikji-parser",
-    "jikji-index",
-    "jikji-search",
-    "jikji-agent",
-    "jikji-bench",
-    "jikji-media-bridge",
-    "jikji-cli",
-)
-REQUIRED_RUST_COMMANDS: Final = (
-    "prepare", "refresh", "clean", "map", "doctor", "find", "search", "brief",
-    "discover", "graph", "gui", "agent-skill-install", "hermes-skill-install",
-    "codex-skill-install", "omx-skill-install", "claude-skill-install",
-    "opencode-skill-install", "openclo-skill-install", "nanoclo-skill-install",
-    "skill-export", "eval-generate", "eval-generate-realistic",
-    "eval-generate-holdout", "eval", "bench-analyze", "hippocamp-import",
-    "bench-run", "bench-iterate", "hippocamp-fetch", "beir-import",
-    "beir-suite", "edith-summary", "edith-import", "edith-suite",
-    "publicdata-build", "publicdata-suite", "workspacebench-build",
-    "workspacebench-suite", "hardbench-build", "hardbench-suite",
-    "hippocamp-suite", "hermes-bench", "hermes-compare",
-    "benchmark-value-report",
-)
 HIDDEN_RUST_COMMANDS: Final = ("post-install-prepare",)
 NESTED_GRAPH_COMMANDS: Final = ("status", "query", "explain")
-PYTHON_EXTERNAL_COMPAT_RATIONALE: Final = {
-    "hermes-bench": "Python-only Hermes benchmark compatibility command",
-    "hermes-compare": "Python-only Hermes report comparison compatibility command",
-    "benchmark-value-report": "Python-only benchmark value report compatibility command",
-}
+PYTHON_EXTERNAL_COMPAT_RATIONALE: Final = PYTHON_BENCHMARK_COMPAT_RATIONALE
 DOC_PATHS: Final = (
     "README.md", "docs/schema.md", "docs/agent-usage.md", "docs/agent-installation.md",
     "docs/local-agent-search-standard.md", "docs/release-publishing.md",
@@ -291,7 +265,7 @@ def check_benchmark_evidence(root: Path, issues: list[str]) -> bool:
         return False
     text = evidence.read_text(encoding="utf-8", errors="replace")
     report_text = report.read_text(encoding="utf-8") if report.is_file() else ""
-    markers = ("Prepare/Search/Find Timings", "Bench/Report Smoke", "Contract failures: none")
+    markers = ("Prepare/Search/Find Timings", "Shared Python Evaluator Benchmark Path", "Contract failures: none")
     missing = [marker for marker in markers if marker not in text and marker not in report_text]
     for marker in missing:
         issues.append(f"benchmark evidence missing marker: {marker}")

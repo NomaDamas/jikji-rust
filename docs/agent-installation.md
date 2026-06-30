@@ -116,18 +116,17 @@ queued roots in the foreground.
 ## Runtime Notes
 
 The default Rust CLI does not require Python for `prepare`, `find`, `search`,
-`doctor`, `map`, GUI status/search, eval generation, public benchmark fixture
-commands, or local benchmark smoke helpers. `hippocamp-fetch` is implemented as
-the Rust bounded fixture-materialization command. `hermes-bench` is a
-Python-only Hermes benchmark compatibility command, `hermes-compare` is a
-Python-only Hermes report comparison compatibility command, and
-`benchmark-value-report` is a Python-only benchmark value report compatibility
-command. They report Python-only status because they automate external Hermes
-artifacts rather than local Jikji indexing. Image/audio/video OCR-ASR remains an
-explicit opt-in through the Python media bridge.
+`doctor`, `map`, or GUI status/search. Eval generation, public benchmark
+fixture commands, local benchmark smoke helpers, `hippocamp-fetch`,
+`hermes-bench`, `hermes-compare`, and `benchmark-value-report` are Python-only
+benchmark compatibility surfaces. They report Python-only status because
+benchmark parity must use the same Python evaluator for both Python Jikji and
+Rust Jikji. Image/audio/video OCR-ASR remains an explicit opt-in through the
+Python media bridge.
 
 Downstream tools can reuse split crates directly instead of shelling out:
-`jikji-parser`, `jikji-index`, `jikji-search`, `jikji-agent`, and `jikji-bench`.
+`jikji-parser`, `jikji-index`, `jikji-search`, and `jikji-agent`. The
+`jikji-bench` crate is internal and is not published.
 
 ## Benchmark Language
 

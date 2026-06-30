@@ -1,19 +1,7 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-const STOP_TERMS: &[&str] = &[
-    "file",
-    "folder",
-    "document",
-    "문서",
-    "파일",
-    "폴더",
-    "관련",
-    "내용",
-    "있는",
-    "찾기",
-    "찾아줘",
-];
+use crate::stopwords::STOP_TERMS;
 
 const KOREAN_PARTICLE_SUFFIXES: &[&str] = &[
     "이라고",

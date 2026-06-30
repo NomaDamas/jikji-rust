@@ -35,7 +35,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Package verification
-        run: cargo package --workspace --exclude jikji-parity
+        run: cargo package --workspace --exclude jikji-parity --exclude jikji-bench
 
       - name: Authenticate with crates.io trusted publishing
         id: auth
@@ -55,7 +55,6 @@ jobs:
             jikji-search
             jikji-agent
             jikji-index
-            jikji-bench
             jikji-cli
           )
           publish_crate() {

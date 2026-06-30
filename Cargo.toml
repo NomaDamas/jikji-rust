@@ -29,7 +29,6 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 thiserror = "2.0.17"
 tempfile = "3"
 jikji-agent = { path = "crates/jikji-agent", version = "0.1.0" }
-jikji-bench = { path = "crates/jikji-bench", version = "0.1.0" }
 jikji-core = { path = "crates/jikji-core", version = "0.1.0" }
 jikji-index = { path = "crates/jikji-index", version = "0.1.0" }
 jikji-media-bridge = { path = "crates/jikji-media-bridge", version = "0.1.0" }

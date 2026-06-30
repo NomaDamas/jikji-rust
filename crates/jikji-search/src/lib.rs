@@ -11,10 +11,13 @@ mod graph_artifacts;
 mod index_rows;
 mod indexer;
 mod io;
+mod map_query;
+mod map_rescore;
 mod scoring;
 mod searcher;
 mod sqlite_index;
 mod status;
+mod stopwords;
 mod tokenizer;
 
 pub use artifacts::{SearchArtifactStats, build_search_artifacts};

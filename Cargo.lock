@@ -449,7 +449,6 @@ dependencies = [
  "clap",
  "getrandom",
  "jikji-agent",
- "jikji-bench",
  "jikji-core",
  "jikji-index",
  "jikji-search",

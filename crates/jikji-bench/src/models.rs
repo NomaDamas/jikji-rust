@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use jikji_core::WorkspaceRoot;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
 pub(crate) const EVAL_DIR: &str = ".jikji/eval";
@@ -25,8 +25,31 @@ pub struct BenchmarkReport {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EvalCase {
     pub query: String,
-    pub expected_path: String,
+    #[serde(
+        default,
+        alias = "expected_path",
+        deserialize_with = "deserialize_expected_paths"
+    )]
+    pub expected_paths: Vec<String>,
+    #[serde(default)]
     pub scenario: String,
+}
+
+fn deserialize_expected_paths<'de, D>(deserializer: D) -> std::result::Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Value::deserialize(deserializer)?;
+    if let Some(path) = value.as_str() {
+        return Ok(vec![path.to_owned()]);
+    }
+    if let Some(paths) = value.as_array() {
+        return Ok(paths
+            .iter()
+            .filter_map(|path| path.as_str().map(str::to_owned))
+            .collect());
+    }
+    Ok(Vec::new())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

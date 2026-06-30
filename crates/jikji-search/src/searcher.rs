@@ -8,7 +8,8 @@ use serde_json::Value;
 
 use crate::SEARCH_INDEX_SCHEMA_VERSION;
 use crate::io::sqlite_error;
-use crate::scoring::{TermMap, score_field_hits, score_filename_hits};
+use crate::map_rescore;
+use crate::scoring::{ScoreMap, TermMap, score_field_hits, score_filename_hits};
 use crate::tokenizer::{query_terms, tokens};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +56,7 @@ pub fn search(root: &Path, query: &str, options: SearchOptions) -> Result<Vec<Se
     let mut reasons = TermMap::new();
     score_filename_hits(&con, &terms, &mut scores, &mut matched, &mut reasons)?;
     score_field_hits(&con, &terms, &mut scores, &mut matched, &mut reasons)?;
-    let mut out = candidates_from_scores(&con, scores, matched, reasons)?;
+    let mut out = candidates_from_scores(&con, query, scores, matched, reasons)?;
     if out.is_empty() {
         out = fallback_scan_docs(&con, query)?;
     }
@@ -83,31 +84,30 @@ fn schema_matches(con: &Connection) -> Result<bool> {
 
 fn candidates_from_scores(
     con: &Connection,
-    scores: BTreeMap<i64, f64>,
+    query: &str,
+    scores: ScoreMap,
     mut matched: TermMap,
     mut reasons: TermMap,
 ) -> Result<Vec<SearchCandidate>> {
     let mut out = Vec::new();
-    for (doc_id, score) in scores {
-        if score <= 0.0 {
+    for (doc_id, base_score) in scores {
+        if base_score <= 0.0 {
             continue;
         }
         let doc = load_doc(con, doc_id)?;
+        let (map_score, map_reasons, map_terms) =
+            map_rescore::rescore(query, &doc.row_json, base_score);
+        let score = base_score + map_score;
+        let mut doc_reasons = reasons.remove(&doc_id).unwrap_or_default();
+        doc_reasons.extend(map_reasons);
+        let mut doc_matched = matched.remove(&doc_id).unwrap_or_default();
+        doc_matched.extend(map_terms);
         out.push(SearchCandidate {
             path: doc.path,
             name: doc.name,
             score: round3(score),
-            reasons: reasons
-                .remove(&doc_id)
-                .unwrap_or_default()
-                .into_iter()
-                .collect(),
-            matched_terms: matched
-                .remove(&doc_id)
-                .unwrap_or_default()
-                .into_iter()
-                .take(16)
-                .collect(),
+            reasons: doc_reasons.into_iter().collect(),
+            matched_terms: doc_matched.into_iter().take(16).collect(),
             matched_intents: Vec::new(),
             duplicate_group_id: doc.duplicate_group_id,
             evidence: doc.evidence,
@@ -124,6 +124,7 @@ struct DocRecord {
     name: String,
     duplicate_group_id: String,
     evidence: Vec<String>,
+    row_json: Value,
 }
 
 fn load_doc(con: &Connection, doc_id: i64) -> Result<DocRecord> {
@@ -146,6 +147,7 @@ fn load_doc(con: &Connection, doc_id: i64) -> Result<DocRecord> {
                 name: row.get(1)?,
                 duplicate_group_id: row.get(2)?,
                 evidence,
+                row_json: value,
             })
         },
     )

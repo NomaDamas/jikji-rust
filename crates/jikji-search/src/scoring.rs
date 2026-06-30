@@ -22,10 +22,21 @@ pub(crate) fn score_filename_hits(
         let mut keys = filename_lookup_keys(term);
         keys.push(term.clone());
         for key in keys {
+            if !is_filename_anchor_key(&key) {
+                continue;
+            }
             score_filename_key(con, term, &key, scores, matched, reasons)?;
         }
     }
     Ok(())
+}
+
+fn is_filename_anchor_key(key: &str) -> bool {
+    let chars = key.chars().collect::<Vec<_>>();
+    if chars.len() >= 3 {
+        return true;
+    }
+    chars.iter().any(|ch| !ch.is_ascii_alphabetic())
 }
 
 fn score_filename_key(
@@ -48,7 +59,7 @@ fn score_filename_key(
     for row in rows {
         let (doc_id, hit_key) =
             row.map_err(|source| sqlite_error(Path::new("search_index.sqlite"), source))?;
-        let boost = if hit_key == key { 20_000.0 } else { 12_000.0 };
+        let boost = if hit_key == key { 140.0 } else { 80.0 };
         *scores.entry(doc_id).or_insert(0.0) += boost + key.len() as f64;
         matched.entry(doc_id).or_default().insert(term.to_owned());
         reasons

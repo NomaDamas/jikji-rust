@@ -225,14 +225,12 @@ clean` removes the block while preserving any user-authored content.
 
 The Rust CLI command surface includes `prepare`, `refresh`, `clean`, `map`,
 `doctor`, `find`, `search`, `brief`, `discover`, `graph`, `gui`,
-`agent-skill-install`, agent-specific skill installers, `skill-export`, eval and
-benchmark fixture commands, `hippocamp-fetch`, and the hidden
-`post-install-prepare` worker command. `hermes-bench` is a Python-only Hermes
-benchmark compatibility command, `hermes-compare` is a Python-only Hermes report
-comparison compatibility command, and `benchmark-value-report` is a Python-only
-benchmark value report compatibility command. They are present as explicit
-compatibility commands that report Python-only status for external Hermes
-artifact workflows.
+`agent-skill-install`, agent-specific skill installers, `skill-export`, and the
+hidden `post-install-prepare` worker command. Eval and benchmark fixture
+commands, `hippocamp-fetch`, `hermes-bench`, `hermes-compare`, and
+`benchmark-value-report` are Python-only benchmark compatibility commands.
+They are present as explicit compatibility commands because benchmark parity
+must use the same Python evaluator for Python Jikji and Rust Jikji.
 
 ## Media Text
 
@@ -242,7 +240,8 @@ through the Python media bridge so the default Rust binary remains lightweight
 and Python-free for normal prepare/search/find. The split Rust crates can also be
 reused directly: `jikji-parser` for deterministic parsers, `jikji-index` for
 sidecar artifact generation, `jikji-search` for local search/discovery, and
-`jikji-agent` / `jikji-bench` for integrations and local benchmark helpers.
+`jikji-agent` for local-agent integrations. `jikji-bench` is internal and is not
+published.
 because it can use CPU/RAM:
 
 ```bash

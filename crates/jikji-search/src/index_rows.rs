@@ -66,6 +66,13 @@ fn row_from_card(
     let text_cache_path = value_str(card, "text_cache_path").unwrap_or_default();
     let summary = value_str(card, "summary").unwrap_or_default();
     let body = body_for(root, &path, &ext, &text_cache_path, chunks_by_path);
+    let chunks = chunks_by_path
+        .get(&path)
+        .into_iter()
+        .flatten()
+        .take(48)
+        .map(|chunk| (*chunk).clone())
+        .collect::<Vec<_>>();
     let mut filename_keys = filename_lookup_keys(&path);
     filename_keys.extend(filename_lookup_keys(&name));
     filename_keys.sort();
@@ -76,10 +83,22 @@ fn row_from_card(
         "ext": ext,
         "duplicate_group_id": value_str(card, "duplicate_group_id").unwrap_or_default(),
         "filename_lookup_keys": filename_keys,
-        "keywords": array_text(card, "content_terms"),
-        "semantic_hints": array_text(card, "semantic_hints"),
+        "content_terms": array_values(card, "content_terms"),
+        "rare_terms": array_values(card, "rare_terms"),
+        "phrase_signatures": array_values(card, "phrase_signatures"),
+        "intent_tags": array_values(card, "intent_tags"),
+        "format_hints": array_values(card, "format_hints"),
+        "folder_terms": array_values(card, "folder_terms"),
+        "folder_roles": array_values(card, "folder_roles"),
+        "path_terms": array_values(card, "path_terms"),
+        "name_terms": array_values(card, "name_terms"),
+        "keywords": array_values(card, "content_terms"),
+        "semantic_hints": array_values(card, "semantic_hints"),
         "summary": summary,
         "text_cache_path": text_cache_path,
+        "body_text": body,
+        "map_chunks": chunks,
+        "evidence_previews": array_values(card, "evidence_previews"),
         "evidence": evidence_for(&body, &summary, &name),
     });
     Some(IndexRow {
@@ -185,13 +204,17 @@ fn value_str(row: &Value, key: &str) -> Option<String> {
 }
 
 fn array_text(row: &Value, key: &str) -> String {
+    array_values(row, key).join(" ")
+}
+
+fn array_values(row: &Value, key: &str) -> Vec<String> {
     row.get(key)
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
         .filter_map(Value::as_str)
-        .collect::<Vec<_>>()
-        .join(" ")
+        .map(str::to_owned)
+        .collect()
 }
 
 fn read_cache_text(root: &Path, cache_path: &str, limit: usize) -> String {

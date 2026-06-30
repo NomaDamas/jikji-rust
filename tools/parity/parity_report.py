@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from golden_fixtures import CliStep
 from parity_artifacts import Json, _ranked_paths
-from parity_commands import TIMEOUT_S, Runtime, _run_cli
+from parity_commands import Runtime, _run_cli
 from parity_scenarios import _build_scenario, _copy_tree, _generated_temp_scenario
 
 if TYPE_CHECKING:
@@ -54,35 +53,13 @@ def _benchmark_prepare_search_find(args: ParityArgs, root: Path) -> dict[str, Js
 
 
 def _run_bench_smoke(rust_bin: Path, root: Path) -> dict[str, Json]:
-    corpus = root / "corpus"
-    corpus.mkdir(parents=True)
-    (corpus / "ACME_contract.txt").write_text("ACME payment clause", encoding="utf-8")
-    commands = (
-        ("eval-generate", str(corpus), "--cases", "2", "--json"),
-        ("prepare", str(corpus), "--json"),
-        ("bench-run", str(corpus), "--modes", "raw,jikji", "--json"),
-        ("bench-analyze", str(corpus), "--json"),
-    )
-    records: list[dict[str, Json]] = []
-    ok = True
-    for command in commands:
-        completed = subprocess.run(
-            (str(rust_bin), *command),
-            text=True,
-            capture_output=True,
-            timeout=TIMEOUT_S,
-            check=False,
-        )
-        records.append(
-            {
-                "command": ["jikji", *command],
-                "exit_code": completed.returncode,
-                "stdout_head": completed.stdout[:500],
-                "stderr_head": completed.stderr[:500],
-            }
-        )
-        ok = ok and completed.returncode == 0
-    return {"ok": ok, "records": records}
+    return {
+        "ok": True,
+        "rust_bin": str(rust_bin),
+        "scratch_root": str(root),
+        "status": "rust_bench_removed",
+        "replacement": "tools/parity/compare_victoria_python_eval.py",
+    }
 
 
 def _render_report(
@@ -123,7 +100,7 @@ def _render_report(
             "## Prepare/Search/Find Timings",
             json.dumps(bench, ensure_ascii=False, indent=2),
             "",
-            "## Bench/Report Smoke",
+            "## Shared Python Evaluator Benchmark Path",
             json.dumps(smoke, ensure_ascii=False, indent=2),
             "",
             "## Contract Failures",

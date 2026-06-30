@@ -13,8 +13,7 @@ The final parity harness compares the Python reference at
 - checked-in golden fixture scenarios under `tests/golden`
 - one generated temporary corpus
 - `prepare`, `search`, and `find` wall-clock timings
-- Rust benchmark/report command smoke for `eval-generate`, `bench-run`, and
-  `bench-analyze`
+- shared Python evaluator benchmark path for Python-vs-Rust recall checks
 - mutation failure proof for a changed golden JSON candidate order/key
 
 ## Result
@@ -22,7 +21,7 @@ The final parity harness compares the Python reference at
 The final parity harness result is **PASS**. Contract-sensitive CLI outcomes,
 required generated artifact presence, required schema fields, search ranking,
 find behavior, doctor behavior, clean JSON keys, clean safety, mutation failure
-proof, and benchmark/report command smoke all passed.
+proof, and shared evaluator benchmark path checks all passed.
 
 The run recorded wall-clock timings for `prepare`, `search`, and `find` only as
 bounded local measurements from that invocation. They are not a claimed

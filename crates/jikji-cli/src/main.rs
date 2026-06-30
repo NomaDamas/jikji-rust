@@ -81,7 +81,7 @@ fn run(cli: Cli) -> jikji_core::Result<ExitCode> {
         Command::HippocampSuite(args) => run_public_suite("hippocamp", args),
         Command::PostInstallPrepare(args) => post_install_commands::run_post_install_prepare(args),
         Command::HermesBench(_) => Err(jikji_core::JikjiError::UnimplementedCommand(
-            "hermes-bench is Python-only in the Rust port; use bench-run for deterministic local parity or the Python Jikji CLI for external Hermes automation",
+            "hermes-bench is Python-only in the Rust port; use the Python Jikji CLI for external Hermes automation",
         )),
         Command::HermesCompare(_) => Err(jikji_core::JikjiError::UnimplementedCommand(
             "hermes-compare is Python-only in the Rust port because it gates external Hermes report artifacts",

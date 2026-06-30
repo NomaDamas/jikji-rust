@@ -95,6 +95,23 @@ where
     serde_json::from_slice(&output.stdout).expect("json stdout")
 }
 
+pub(crate) fn run_fail<I, S>(args: I) -> Output
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let output = Command::new(env!("CARGO_BIN_EXE_jikji"))
+        .args(args)
+        .output()
+        .expect("run jikji");
+    assert!(
+        !output.status.success(),
+        "expected failure stdout={}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    output
+}
+
 pub(crate) fn path_str(path: &Path) -> String {
     path.display().to_string()
 }

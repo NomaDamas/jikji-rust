@@ -23,7 +23,7 @@ pub fn generate_eval_set(
         .take(limit)
         .map(|relative| EvalCase {
             query: query_for_path(&relative),
-            expected_path: relative,
+            expected_paths: vec![relative],
             scenario: "filename".to_owned(),
         })
         .collect::<Vec<_>>();

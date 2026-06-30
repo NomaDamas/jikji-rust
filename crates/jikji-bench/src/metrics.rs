@@ -26,10 +26,10 @@ pub(crate) fn metrics(cases: usize, ranks: &[Option<usize>]) -> Value {
     })
 }
 
-pub(crate) fn rank_of(paths: &[String], expected: &str) -> Option<usize> {
+pub(crate) fn rank_of_any(paths: &[String], expected: &[String]) -> Option<usize> {
     paths
         .iter()
-        .position(|path| path == expected)
+        .position(|path| expected.iter().any(|expected_path| path == expected_path))
         .map(|idx| idx + 1)
 }
 

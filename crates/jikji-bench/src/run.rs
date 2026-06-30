@@ -7,7 +7,7 @@ use jikji_search::{SearchOptions, search};
 use serde_json::{Value, json};
 
 use crate::io::{assert_no_leak, canonical_dir, corpus_files, read_eval_cases, write_json};
-use crate::metrics::{metrics, rank_of, round3};
+use crate::metrics::{metrics, rank_of_any, round3};
 use crate::models::{
     EVAL_DIR, EVAL_REPORT_NAME, EVAL_SET_NAME, EvalCase, EvalRunResult, RunOptions,
 };
@@ -68,7 +68,7 @@ fn run_raw_mode(root: &Path, cases: &[EvalCase], top_k: usize) -> Result<Value> 
             ranked = files.clone();
         }
         ranked.truncate(top_k.max(1));
-        ranks.push(rank_of(&ranked, &case.expected_path));
+        ranks.push(rank_of_any(&ranked, &case.expected_paths));
     }
     Ok(metrics(cases.len(), &ranks))
 }
@@ -86,7 +86,7 @@ fn run_jikji_mode(root: &Path, cases: &[EvalCase], top_k: usize) -> Result<Value
         .into_iter()
         .map(|candidate| candidate.path)
         .collect::<Vec<_>>();
-        ranks.push(rank_of(&ranked, &case.expected_path));
+        ranks.push(rank_of_any(&ranked, &case.expected_paths));
     }
     Ok(metrics(cases.len(), &ranks))
 }
