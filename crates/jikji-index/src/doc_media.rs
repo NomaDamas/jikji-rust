@@ -1,4 +1,6 @@
 use std::path::Path;
+use std::sync::mpsc;
+use std::thread;
 use std::time::Duration;
 
 use jikji_core::PrepareOptions;
@@ -13,7 +15,6 @@ pub(crate) const MEDIA_EXTENSIONS: &[&str] = &[
 ];
 
 pub(crate) struct DocumentCacheRuntime {
-    registry: ParserRegistry,
     bridge: BridgeRuntime,
 }
 
@@ -31,7 +32,6 @@ pub(crate) struct SourceDocument<'a> {
 impl DocumentCacheRuntime {
     pub(crate) fn new() -> Self {
         Self {
-            registry: ParserRegistry::with_defaults(),
             bridge: BridgeRuntime::new(MediaBridgeConfig::enabled_from_env(Duration::from_secs(
                 30,
             ))),
@@ -43,9 +43,30 @@ impl DocumentCacheRuntime {
         source: SourceDocument<'_>,
         options: &PrepareOptions,
     ) -> CacheEntry {
-        let parsed = self.registry.parse_path(source.path, 100_000);
+        let parsed = self.parse_with_timeout(&source, options);
         let bridge = self.media_bridge_outcome(&source, options);
         CacheEntry { parsed, bridge }
+    }
+
+    fn parse_with_timeout(
+        &self,
+        source: &SourceDocument<'_>,
+        options: &PrepareOptions,
+    ) -> ParsedDocument {
+        if !options.parse_timeout_seconds.is_finite() || options.parse_timeout_seconds <= 0.0 {
+            return ParsedDocument::failed("timeout");
+        }
+        let path = source.path.to_path_buf();
+        let max_chars = options.doc_text_max_chars;
+        let timeout = Duration::from_secs_f64(options.parse_timeout_seconds);
+        let (sender, receiver) = mpsc::channel();
+        thread::spawn(move || {
+            let parsed = ParserRegistry::with_defaults().parse_path(&path, max_chars);
+            let _ = sender.send(parsed);
+        });
+        receiver
+            .recv_timeout(timeout)
+            .unwrap_or_else(|_| ParsedDocument::failed("timeout"))
     }
 
     fn media_bridge_outcome(

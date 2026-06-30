@@ -9,7 +9,11 @@ use jikji_parser::ParseStatus;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+use crate::doc_chunks::chunk_rows;
 use crate::doc_media::{CacheEntry, DocumentCacheRuntime, SourceDocument};
+use crate::doc_text_cache::{
+    text_cache_path_for, write_doc_text_cache, write_generated_cache_file,
+};
 use crate::file_io::{dotted_ext, extension};
 use crate::scan::{ScanResult, rel_path};
 
@@ -25,6 +29,8 @@ pub(crate) struct DocumentBuild {
     pub(crate) rows: Vec<Value>,
     pub(crate) chunk_rows: Vec<Value>,
     pub(crate) live_digests: BTreeSet<String>,
+    pub(crate) parsed: usize,
+    pub(crate) failed: usize,
 }
 
 pub(crate) struct CacheDirs<'a> {
@@ -37,6 +43,7 @@ struct DocumentRecord<'a> {
     digest: &'a str,
     rel: &'a str,
     entry: &'a CacheEntry,
+    text_cache_path: String,
 }
 
 pub(crate) fn document_rows(
@@ -48,50 +55,64 @@ pub(crate) fn document_rows(
     let mut rows = Vec::new();
     let mut chunks = Vec::new();
     let mut live_digests = BTreeSet::new();
+    let mut parsed = 0usize;
+    let mut failed = 0usize;
     for path in &scan.files {
         let ext = extension(path);
         if !DOCUMENT_EXTENSIONS.contains(&ext.as_str()) {
             continue;
         }
-        let digest = sha256_file(path)?;
-        live_digests.insert(digest.clone());
         let rel = rel_path(&scan.root, path);
         let metadata = fs::metadata(path).map_err(|source| io_error(path, source))?;
+        if hash_oversize(metadata.len(), options.max_hash_bytes) {
+            rows.push(hash_oversize_document_row(&rel, ext.as_str()));
+            failed += 1;
+            continue;
+        }
+        let digest = sha256_file(path)?;
+        live_digests.insert(digest.clone());
         let source = SourceDocument {
             path,
             ext: ext.as_str(),
             byte_len: metadata.len(),
         };
         let entry = runtime.cache_entry(source, options);
+        let body_text = bounded_body_text(&entry, options.doc_text_max_chars);
         let record = DocumentRecord {
             ext: ext.as_str(),
             digest: digest.as_str(),
             rel: rel.as_str(),
             entry: &entry,
+            text_cache_path: text_cache_path_for(
+                digest.as_str(),
+                &body_text,
+                options.doc_text_chunk_chars,
+            ),
         };
         let row = document_row(&record);
-        write_generated_cache_file(
-            &dirs.text.join(format!("sha256_{digest}.txt")),
-            cache_text_for(&record).as_bytes(),
+        write_doc_text_cache(
+            dirs.text,
+            record.rel,
+            record.digest,
+            &body_text,
+            options.doc_text_chunk_chars,
         )?;
         write_doc_meta(dirs.meta, &record)?;
-        chunks.push(json!({"path": row["path"], "chunk_id": "chunk_0000", "text_cache_path": row["text_cache_path"]}));
+        chunks.extend(chunk_rows(&row, record.digest, &body_text));
+        if entry.parsed.status == ParseStatus::Failed {
+            failed += 1;
+        } else {
+            parsed += 1;
+        }
         rows.push(row);
     }
     Ok(DocumentBuild {
         rows,
         chunk_rows: chunks,
         live_digests,
+        parsed,
+        failed,
     })
-}
-
-pub(crate) fn prune_doc_caches(
-    doc_text_dir: &Path,
-    doc_meta_dir: &Path,
-    live_digests: &BTreeSet<String>,
-) -> Result<()> {
-    remove_stale_matching(doc_text_dir, live_digests, ".txt")?;
-    remove_stale_matching(doc_meta_dir, live_digests, ".json")
 }
 
 fn document_row(record: &DocumentRecord<'_>) -> Value {
@@ -105,9 +126,25 @@ fn document_row(record: &DocumentRecord<'_>) -> Value {
         "parse_status": parse_status(record.entry.parsed.status),
         "parser": record.entry.parsed.parser_name,
         "media_bridge_status": record.entry.bridge.as_ref().map(|outcome| media_bridge_status(outcome.status)),
-        "text_cache_path": format!(".jikji/doc_text/sha256_{}.txt", record.digest),
+        "text_cache_path": record.text_cache_path,
         "doc_meta_path": format!(".jikji/doc_meta/sha256_{}.json", record.digest),
         "summary": summary
+    })
+}
+
+fn hash_oversize_document_row(rel: &str, ext: &str) -> Value {
+    json!({
+        "path": rel,
+        "file_id": "",
+        "name": Path::new(rel).file_name().and_then(|name| name.to_str()).unwrap_or(""),
+        "ext": dotted_ext(ext),
+        "sha256": "",
+        "parse_status": "hash_oversize",
+        "parser": "",
+        "media_bridge_status": null,
+        "text_cache_path": "",
+        "doc_meta_path": "",
+        "summary": ""
     })
 }
 
@@ -127,37 +164,6 @@ fn write_doc_meta(doc_meta_dir: &Path, record: &DocumentRecord<'_>) -> Result<()
     write_generated_cache_file(&path, text.as_bytes())
 }
 
-fn write_generated_cache_file(path: &Path, contents: &[u8]) -> Result<()> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_symlink() => {
-            fs::remove_file(path).map_err(|source| io_error(path, source))?;
-        }
-        Ok(_) => {}
-        Err(source) if source.kind() == std::io::ErrorKind::NotFound => {}
-        Err(source) => return Err(io_error(path, source)),
-    }
-    fs::write(path, contents).map_err(|source| io_error(path, source))
-}
-
-fn remove_stale_matching(dir: &Path, live_digests: &BTreeSet<String>, suffix: &str) -> Result<()> {
-    let entries = match fs::read_dir(dir) {
-        Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(source) => return Err(io_error(dir, source)),
-    };
-    for entry in entries {
-        let entry = entry.map_err(|source| io_error(dir, source))?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let digest = name
-            .strip_prefix("sha256_")
-            .and_then(|value| value.strip_suffix(suffix));
-        if digest.is_some_and(|digest| !live_digests.contains(digest)) {
-            fs::remove_file(entry.path()).map_err(|source| io_error(entry.path(), source))?;
-        }
-    }
-    Ok(())
-}
-
 fn sha256_file(path: &Path) -> Result<String> {
     let mut file = File::open(path).map_err(|source| io_error(path, source))?;
     let mut hasher = Sha256::new();
@@ -174,6 +180,10 @@ fn sha256_file(path: &Path) -> Result<String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+fn hash_oversize(byte_len: u64, max_hash_bytes: u64) -> bool {
+    max_hash_bytes > 0 && byte_len > max_hash_bytes
+}
+
 fn text_for_cache(entry: &CacheEntry) -> &str {
     if let Some(outcome) = &entry.bridge {
         if outcome.status == MediaBridgeStatus::Success && !outcome.text.is_empty() {
@@ -183,13 +193,11 @@ fn text_for_cache(entry: &CacheEntry) -> &str {
     entry.parsed.text.as_str()
 }
 
-fn cache_text_for(record: &DocumentRecord<'_>) -> String {
-    format!(
-        "# Source: {}\n# File ID: sha256:{}\n# Parsed by: Jikji\n\n{}",
-        record.rel,
-        record.digest,
-        text_for_cache(record.entry)
-    )
+fn bounded_body_text(entry: &CacheEntry, max_source_chars: usize) -> String {
+    text_for_cache(entry)
+        .chars()
+        .take(max_source_chars.max(1))
+        .collect()
 }
 
 fn summary_for(entry: &CacheEntry) -> String {

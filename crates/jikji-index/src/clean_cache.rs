@@ -51,7 +51,7 @@ fn verified_row_cache_paths(root: &Path, row: &Value) -> Result<Vec<String>> {
 
     let mut paths = Vec::new();
     if let Some(text_rel) = row.get("text_cache_path").and_then(Value::as_str) {
-        if digest_from_cache_path(text_rel, ".jikji/doc_text/", ".txt") == Some(row_digest) {
+        if digest_from_doc_text_path(text_rel) == Some(row_digest) {
             paths.push(text_rel.to_owned());
         }
     }
@@ -87,6 +87,18 @@ fn digest_from_cache_path<'a>(rel: &'a str, prefix: &str, suffix: &str) -> Optio
     safe_rel_path(rel)?;
     let digest = rel.strip_prefix(prefix)?.strip_suffix(suffix)?;
     let digest = digest.strip_prefix("sha256_")?;
+    if is_sha256_digest(digest) {
+        Some(digest)
+    } else {
+        None
+    }
+}
+
+fn digest_from_doc_text_path(rel: &str) -> Option<&str> {
+    safe_rel_path(rel)?;
+    let digest = rel.strip_prefix(".jikji/doc_text/")?;
+    let digest = digest.strip_prefix("sha256_")?;
+    let digest = digest.strip_suffix(".txt").unwrap_or(digest);
     if is_sha256_digest(digest) {
         Some(digest)
     } else {

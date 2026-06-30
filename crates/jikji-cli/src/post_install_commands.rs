@@ -8,6 +8,8 @@ use serde_json::{Value, json};
 
 use crate::args::PostInstallPrepareArgs;
 use crate::output::print_json;
+use crate::post_install_background::start_background_post_install_prepare;
+use crate::prepare_commands::normalize_max_files;
 
 const COMMON_RELS: &[&str] = &[
     "Documents",
@@ -45,7 +47,7 @@ pub(crate) fn prepare_after_skill_install(
     let (selected_roots, selection) = if request.roots.is_empty() {
         select_default_roots()
     } else {
-        let selected = dedupe_roots(request.roots);
+        let selected = dedupe_roots(request.roots.iter().cloned());
         (
             selected.clone(),
             json!({"source": "explicit_prepare_root", "common_roots": selected, "document_heavy_roots": []}),
@@ -55,20 +57,19 @@ pub(crate) fn prepare_after_skill_install(
         return Ok(json!({"mode": "none", "roots": [], "selection": selection}));
     }
     if !request.foreground {
-        return Ok(json!({
-            "mode": "queued_contract",
-            "roots": selected_roots,
-            "parse_timeout": request.parse_timeout,
-            "selection": selection,
-            "note": "Rust CLI records low-impact post-install prepare roots; use --foreground-prepare to run prepare synchronously.",
-        }));
+        return Ok(start_background_post_install_prepare(
+            &request,
+            &selected_roots,
+            selection,
+        ));
     }
     let mut prepared = Vec::new();
     for root in selected_roots {
         let result = prepare(
             &root,
             &PrepareOptions {
-                max_files: request.max_files,
+                max_files: normalize_max_files(request.max_files),
+                parse_timeout_seconds: request.parse_timeout,
                 ..PrepareOptions::default()
             },
         )?;
@@ -123,7 +124,7 @@ fn select_default_roots() -> (Vec<PathBuf>, Value) {
     )
 }
 
-fn post_install_home() -> PathBuf {
+pub(crate) fn post_install_home() -> PathBuf {
     std::env::var_os("JIKJI_POST_INSTALL_HOME")
         .map(PathBuf::from)
         .or_else(|| std::env::var_os("JIKJI_AGENT_HOME").map(PathBuf::from))

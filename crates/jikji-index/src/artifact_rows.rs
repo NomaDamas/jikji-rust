@@ -3,14 +3,14 @@ use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use jikji_core::{Result, io_error};
+use jikji_core::{PrepareOptions, Result, io_error};
 use serde_json::{Value, json};
 
 use crate::doc_cache::DOCUMENT_EXTENSIONS;
 use crate::file_io::{dotted_ext, extension, unix_seconds_now};
 use crate::scan::{ScanResult, metadata_mtime_ns, rel_path};
 
-pub(crate) fn file_rows(scan: &ScanResult) -> Result<Vec<Value>> {
+pub(crate) fn file_rows(scan: &ScanResult, options: &PrepareOptions) -> Result<Vec<Value>> {
     scan.files
         .iter()
         .map(|path| {
@@ -33,7 +33,7 @@ pub(crate) fn file_rows(scan: &ScanResult) -> Result<Vec<Value>> {
                 "mtime_ns": metadata_mtime_ns(&metadata),
                 "created": created,
                 "modified": modified,
-                "sha256": sha256_file(path)?,
+                "sha256": sha256_file_if_allowed(path, metadata.len(), options.max_hash_bytes)?,
                 "parser_required": false,
                 "parse_status": parse_status_for(&ext),
                 "text_cache_path": "",
@@ -215,6 +215,13 @@ fn parse_status_for(ext: &str) -> &'static str {
     } else {
         "not_required"
     }
+}
+
+fn sha256_file_if_allowed(path: &Path, byte_len: u64, max_hash_bytes: u64) -> Result<String> {
+    if max_hash_bytes > 0 && byte_len > max_hash_bytes {
+        return Ok(String::new());
+    }
+    sha256_file(path)
 }
 
 fn mime_for(ext: &str) -> &'static str {

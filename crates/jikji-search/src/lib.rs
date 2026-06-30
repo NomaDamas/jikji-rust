@@ -3,6 +3,7 @@
 mod answer_pack;
 mod artifacts;
 mod brief;
+mod cache_text;
 mod discover;
 mod discover_contract;
 mod discover_query;

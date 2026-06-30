@@ -8,7 +8,8 @@ use serde_json::Value;
 
 use crate::artifact_rows::{deleted_rows, file_rows, folder_rows, merge_document_fields};
 use crate::artifact_writer::write_static_artifacts;
-use crate::doc_cache::{CacheDirs, document_rows, prune_doc_caches};
+use crate::doc_cache::{CacheDirs, document_rows};
+use crate::doc_prune::prune_doc_caches;
 use crate::file_io::{read_jsonl, write_jsonl};
 use crate::lock::LockGuard;
 use crate::scan::{ScanResult, rel_path, scan_root};
@@ -48,7 +49,7 @@ fn build_artifacts(scan: ScanResult, options: &PrepareOptions) -> Result<Prepare
         .map(|path| rel_path(&scan.root, path))
         .collect::<BTreeSet<_>>();
     let mut deleted_rows = deleted_rows(&previous, &current_paths);
-    let mut file_rows = file_rows(&scan)?;
+    let mut file_rows = file_rows(&scan, options)?;
     let folder_rows = folder_rows(&scan);
     let docs = document_rows(
         &scan,
@@ -81,9 +82,9 @@ fn build_artifacts(scan: ScanResult, options: &PrepareOptions) -> Result<Prepare
         index_dir,
         files: scan.signature.files,
         folders: scan.dirs.len(),
-        docs_parsed: docs.rows.len(),
+        docs_parsed: docs.parsed,
         docs_reused: 0,
-        docs_failed: 0,
+        docs_failed: docs.failed,
         deleted: file_rows
             .iter()
             .filter(|row| row.get("status").and_then(Value::as_str) == Some("deleted"))

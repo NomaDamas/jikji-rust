@@ -144,6 +144,11 @@ impl ScanState {
 
     fn skip_name(&self, name: &str) -> bool {
         name == JIKJI_DIR
+            || self
+                .options
+                .exclude_patterns
+                .iter()
+                .any(|pattern| glob_match(pattern, name))
             || DEFAULT_IGNORE_PATTERNS
                 .iter()
                 .any(|pattern| glob_match(pattern, name))

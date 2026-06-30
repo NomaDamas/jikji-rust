@@ -12,16 +12,21 @@ use crate::bench_commands::{
 };
 use crate::output::print_json;
 use crate::prepare_commands::{run_clean, run_prepare};
-use crate::search_commands::{run_brief, run_discover, run_find, run_graph, run_search};
+use crate::search_commands::{run_brief, run_discover, run_find, run_search};
+use crate::search_graph::run_graph;
 
 mod agent_commands;
 mod args;
 mod bench_commands;
 mod gui_commands;
 mod output;
+mod post_install_background;
 mod post_install_commands;
 mod prepare_commands;
 mod search_commands;
+mod search_graph;
+mod search_prepare_options;
+mod search_refresh;
 
 fn main() -> ExitCode {
     match run(Cli::parse()) {
@@ -37,8 +42,8 @@ fn run(cli: Cli) -> jikji_core::Result<ExitCode> {
     match cli.command {
         Command::Prepare(args) | Command::Refresh(args) => run_prepare(args),
         Command::Clean(args) => run_clean(args),
-        Command::Map { root } => {
-            println!("{}", read_map(&root)?);
+        Command::Map(args) => {
+            print!("{}", truncate_chars(&read_map(&args.root)?, args.max_chars));
             Ok(ExitCode::SUCCESS)
         }
         Command::Doctor { root, json } => run_doctor(&root, json),
@@ -90,6 +95,13 @@ fn run(cli: Cli) -> jikji_core::Result<ExitCode> {
             "benchmark-value-report is Python-only in the Rust port because it aggregates historical Hermes cost artifacts",
         )),
     }
+}
+
+fn truncate_chars(text: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    text.chars().take(max_chars).collect()
 }
 
 fn run_doctor(root: &std::path::Path, json: bool) -> jikji_core::Result<ExitCode> {

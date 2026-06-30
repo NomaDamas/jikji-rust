@@ -5,12 +5,15 @@ use jikji_core::PrepareOptions;
 use jikji_index::prepare;
 use jikji_search::{
     BriefOptions, DiscoverOptions, IndexStatus, SearchOptions, brief_payload,
-    compact_brief_payload, discover, explain_source, graph_query, graph_status, search,
-    search_index_status,
+    compact_brief_payload, discover, search, search_index_status,
 };
 
-use crate::args::{BriefArgs, FindArgs, GraphArgs, GraphCommand, SearchArgs};
+use crate::args::{BriefArgs, FindArgs, SearchArgs};
 use crate::output::{print_json, print_json_compact};
+use crate::search_prepare_options::{
+    brief_prepare_options, find_prepare_options, search_prepare_options,
+};
+use crate::search_refresh::start_background_refresh;
 
 pub(crate) fn run_search(args: SearchArgs) -> jikji_core::Result<ExitCode> {
     let prepared = maybe_prepare_for_search(
@@ -18,6 +21,8 @@ pub(crate) fn run_search(args: SearchArgs) -> jikji_core::Result<ExitCode> {
         args.fresh,
         args.auto_prepare && !args.no_auto_prepare,
         args.stale_after_seconds,
+        search_prepare_options(&args),
+        !args.no_background_refresh,
     )?;
     if prepared.status == IndexStatus::Missing {
         print_missing_index(&args.root);
@@ -30,7 +35,7 @@ pub(crate) fn run_search(args: SearchArgs) -> jikji_core::Result<ExitCode> {
         "top_k": args.top_k,
         "index_status": prepared.status.as_str(),
         "foreground_prepared": prepared.foreground_prepared,
-        "background_refresh_started": false,
+        "background_refresh_started": prepared.background_refresh_started,
         "candidates": candidates,
     });
     if args.json {
@@ -47,6 +52,8 @@ pub(crate) fn run_brief(args: BriefArgs) -> jikji_core::Result<ExitCode> {
         args.fresh,
         args.auto_prepare && !args.no_auto_prepare,
         args.stale_after_seconds,
+        brief_prepare_options(&args),
+        !args.no_background_refresh,
     )?;
     if prepared.status == IndexStatus::Missing {
         print_missing_index(&args.root);
@@ -56,7 +63,7 @@ pub(crate) fn run_brief(args: BriefArgs) -> jikji_core::Result<ExitCode> {
     let options = BriefOptions {
         top_k: args.top_k,
         foreground_prepared: prepared.foreground_prepared,
-        background_refresh_started: false,
+        background_refresh_started: prepared.background_refresh_started,
     };
     let payload = if args.compact {
         compact_brief_payload(
@@ -91,6 +98,8 @@ pub(crate) fn run_find(args: FindArgs) -> jikji_core::Result<ExitCode> {
         args.fresh,
         args.auto_prepare && !args.no_auto_prepare,
         args.stale_after_seconds,
+        find_prepare_options(&args),
+        false,
     )?;
     if prepared.status == IndexStatus::Missing {
         print_missing_index(&args.root);
@@ -121,6 +130,8 @@ pub(crate) fn run_discover(args: FindArgs) -> jikji_core::Result<ExitCode> {
         args.fresh,
         args.auto_prepare && !args.no_auto_prepare,
         args.stale_after_seconds,
+        find_prepare_options(&args),
+        false,
     )?;
     if prepared.status == IndexStatus::Missing {
         print_missing_index(&args.root);
@@ -132,40 +143,6 @@ pub(crate) fn run_discover(args: FindArgs) -> jikji_core::Result<ExitCode> {
         print_json_compact(&payload)?;
     } else {
         println!("{}", payload);
-    }
-    Ok(ExitCode::SUCCESS)
-}
-
-pub(crate) fn run_graph(args: GraphArgs) -> jikji_core::Result<ExitCode> {
-    match args.command {
-        GraphCommand::Status { json } => {
-            let payload = graph_status(&args.root);
-            if json {
-                print_json(&payload)?;
-            } else {
-                println!("{payload}");
-            }
-        }
-        GraphCommand::Query { query, top_k, json } => {
-            let payload = serde_json::json!({
-                "root": args.root.display().to_string(),
-                "query": query,
-                "candidates": graph_query(&args.root, &query, top_k)?,
-            });
-            if json {
-                print_json(&payload)?;
-            } else {
-                println!("{payload}");
-            }
-        }
-        GraphCommand::Explain { source_path, json } => {
-            let payload = explain_source(&args.root, &source_path);
-            if json {
-                print_json(&payload)?;
-            } else {
-                println!("{payload}");
-            }
-        }
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -185,6 +162,7 @@ fn discover_payload(args: &FindArgs) -> jikji_core::Result<serde_json::Value> {
 struct PreparedSearchStatus {
     status: IndexStatus,
     foreground_prepared: bool,
+    background_refresh_started: bool,
 }
 
 fn maybe_prepare_for_search(
@@ -192,10 +170,12 @@ fn maybe_prepare_for_search(
     fresh: bool,
     auto_prepare: bool,
     stale_after_seconds: i64,
+    options: PrepareOptions,
+    background_refresh: bool,
 ) -> jikji_core::Result<PreparedSearchStatus> {
     let status = search_index_status(root, stale_after_seconds);
     if fresh || (status.should_prepare && auto_prepare) {
-        prepare(root, &PrepareOptions::default())?;
+        prepare(root, &options)?;
         let next = search_index_status(root, stale_after_seconds);
         return Ok(PreparedSearchStatus {
             status: if status.should_prepare {
@@ -204,11 +184,19 @@ fn maybe_prepare_for_search(
                 next.status
             },
             foreground_prepared: true,
+            background_refresh_started: false,
         });
     }
+    let background_refresh_started = matches!(
+        status.status,
+        IndexStatus::ChangedUsingPreviousIndex | IndexStatus::StaleUsingPreviousIndex
+    ) && !fresh
+        && background_refresh
+        && start_background_refresh(root, &options);
     Ok(PreparedSearchStatus {
         status: status.status,
         foreground_prepared: false,
+        background_refresh_started,
     })
 }
 

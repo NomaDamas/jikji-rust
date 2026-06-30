@@ -1,9 +1,9 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde_json::{Value, json};
 
+use crate::cache_text::{read_cache_text, read_source_text};
 use crate::tokenizer::{filename_lookup_keys, query_terms, token_counts};
 
 const FIELD_WEIGHTS: &[(&str, f64)] = &[
@@ -215,28 +215,6 @@ fn array_values(row: &Value, key: &str) -> Vec<String> {
         .filter_map(Value::as_str)
         .map(str::to_owned)
         .collect()
-}
-
-fn read_cache_text(root: &Path, cache_path: &str, limit: usize) -> String {
-    if cache_path.is_empty() {
-        return String::new();
-    }
-    let path = root.join(cache_path);
-    if path.is_file() {
-        return read_source_text(path, limit);
-    }
-    String::new()
-}
-
-fn read_source_text(path: PathBuf, limit: usize) -> String {
-    let raw = match fs::read(&path) {
-        Ok(raw) => raw,
-        Err(_) => return String::new(),
-    };
-    String::from_utf8_lossy(&raw)
-        .chars()
-        .take(limit)
-        .collect::<String>()
 }
 
 fn is_native_text_ext(ext: &str) -> bool {

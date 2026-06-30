@@ -95,6 +95,11 @@ pub struct PrepareOptions {
     pub include_hidden: bool,
     pub include_sensitive: bool,
     pub max_files: Option<usize>,
+    pub exclude_patterns: Vec<String>,
+    pub max_hash_bytes: u64,
+    pub parse_timeout_seconds: f64,
+    pub doc_text_max_chars: usize,
+    pub doc_text_chunk_chars: usize,
     pub enable_media_index: bool,
     pub media_index_max_mb: f64,
 }
@@ -105,6 +110,11 @@ impl Default for PrepareOptions {
             include_hidden: false,
             include_sensitive: false,
             max_files: None,
+            exclude_patterns: Vec::new(),
+            max_hash_bytes: 512 * 1024 * 1024,
+            parse_timeout_seconds: 5.0,
+            doc_text_max_chars: 2_000_000,
+            doc_text_chunk_chars: 1_000_000,
             enable_media_index: false,
             media_index_max_mb: 25.0,
         }

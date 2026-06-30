@@ -11,6 +11,10 @@ use serde_json::Value;
 mod clean_security;
 #[path = "prepare_clean_doctor_parity/prepare_security.rs"]
 mod prepare_security;
+#[path = "prepare_clean_doctor_parity/python_options.rs"]
+mod python_options;
+#[path = "prepare_clean_doctor_parity/safety_misc.rs"]
+mod safety_misc;
 
 #[test]
 fn prepare_clean_doctor_and_map_match_task_three_contract() {
@@ -132,48 +136,19 @@ fn prepare_has_no_default_cap_and_explicit_max_files_is_partial() {
     ]);
     assert_eq!(partial["files"], 3);
     assert_eq!(json_file(capped.join(".jikji/manifest.json"))["files"], 3);
-}
 
-#[test]
-fn stale_lock_media_policy_and_clean_safety_classes_are_covered() {
-    let root = temp_root("safety");
-    fs::write(root.join("photo.png"), minimal_png()).expect("write png");
-    fs::create_dir_all(root.join(".jikji")).expect("create sidecar");
-    fs::write(
-        root.join(".jikji/.lock"),
-        r#"{"pid":1,"started_at_unix":1}"#,
-    )
-    .expect("stale lock");
-    let prepared = json_cmd([
+    let zero_disabled = temp_root("zero-cap-disabled");
+    for idx in 0..3 {
+        fs::write(zero_disabled.join(format!("bulk_{idx}.txt")), "x").expect("write zero cap");
+    }
+    let disabled = json_cmd([
         "prepare",
-        root_str(&root).as_str(),
-        "--enable-media-index",
+        root_str(&zero_disabled).as_str(),
+        "--max-files",
+        "0",
         "--json",
     ]);
-    assert_eq!(prepared["files"], 1);
-    let manifest = json_file(root.join(".jikji/manifest.json"));
-    assert_eq!(manifest["media_index"]["enabled"], true);
-    assert_eq!(manifest["media_index"]["status"], "enabled_bounded");
-    assert!(!root.join(".jikji/.lock").exists());
-
-    let outside = temp_root("outside");
-    fs::write(outside.join("outside.txt"), "outside").expect("write outside");
-    replace_manifest_root(&root, &outside);
-    let refused = run(["clean", root_str(&root).as_str(), "--json"]);
-    assert!(!refused.status.success());
-    assert!(outside.join("outside.txt").exists());
-}
-
-#[test]
-fn clean_preserves_user_only_jikji_dir_without_verified_manifest() {
-    let root = temp_root("user-only");
-    fs::create_dir(root.join(".jikji")).expect("create sidecar");
-    fs::write(root.join(".jikji/user-created-note.txt"), "user").expect("write note");
-
-    let output = run(["clean", root_str(&root).as_str(), "--json"]);
-
-    assert!(!output.status.success());
-    assert!(root.join(".jikji/user-created-note.txt").exists());
+    assert_eq!(disabled["files"], 3);
 }
 
 pub(crate) fn run<const N: usize>(args: [&str; N]) -> Output {
@@ -183,7 +158,7 @@ pub(crate) fn run<const N: usize>(args: [&str; N]) -> Output {
         .expect("run jikji")
 }
 
-fn run_ok<const N: usize>(args: [&str; N]) -> Output {
+pub(crate) fn run_ok<const N: usize>(args: [&str; N]) -> Output {
     let output = run(args);
     assert!(
         output.status.success(),
@@ -202,24 +177,13 @@ pub(crate) fn json_file(path: PathBuf) -> Value {
     serde_json::from_str(&fs::read_to_string(path).expect("read json")).expect("parse json")
 }
 
-fn jsonl(path: PathBuf) -> Vec<Value> {
+pub(crate) fn jsonl(path: PathBuf) -> Vec<Value> {
     fs::read_to_string(path)
         .expect("read jsonl")
         .lines()
         .filter(|line| !line.trim().is_empty())
         .map(|line| serde_json::from_str(line).expect("jsonl row"))
         .collect()
-}
-
-fn replace_manifest_root(root: &Path, outside: &Path) {
-    let path = root.join(".jikji/manifest.json");
-    let mut manifest = json_file(path.clone());
-    manifest["root"] = Value::String(outside.display().to_string());
-    fs::write(
-        path,
-        serde_json::to_string_pretty(&manifest).expect("serialize"),
-    )
-    .expect("write manifest");
 }
 
 pub(crate) fn root_str(root: &Path) -> String {
@@ -264,8 +228,4 @@ pub(crate) fn temp_root(label: &str) -> TempRoot {
     let root = std::env::temp_dir().join(format!("jikji-{label}-{}-{nonce}", std::process::id()));
     fs::create_dir_all(&root).expect("create temp root");
     TempRoot { path: root }
-}
-
-fn minimal_png() -> &'static [u8] {
-    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00IEND\xaeB`\x82"
 }

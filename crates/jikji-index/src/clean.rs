@@ -76,7 +76,7 @@ pub fn clean(root: &Path, options: CleanOptions) -> Result<CleanResult> {
     let mut removed = Vec::new();
     for target in targets {
         if target.is_dir() {
-            fs::remove_dir(&target).map_err(|source| io_error(&target, source))?;
+            fs::remove_dir_all(&target).map_err(|source| io_error(&target, source))?;
         } else {
             fs::remove_file(&target).map_err(|source| io_error(&target, source))?;
         }

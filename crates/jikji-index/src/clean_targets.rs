@@ -62,7 +62,7 @@ fn add_relative_file(root: &Path, rel: &str, targets: &mut BTreeSet<PathBuf>) ->
     if !path.exists() || !path_under_root(&path, root) {
         return Ok(());
     }
-    if path.is_file() || path.is_symlink() {
+    if path.is_file() || path.is_dir() || path.is_symlink() {
         targets.insert(path);
     }
     Ok(())
