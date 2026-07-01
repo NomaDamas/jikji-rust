@@ -103,10 +103,10 @@ jikji find ~/Documents "contract pdf from last spring" --json
 ```
 
 You can also install a published binary from the GitHub Releases page and place
-the `jikji` executable on `PATH`. crates.io publishing is intended to use
-trusted publishing from the release workflow; token-based publishing is only a
-manual fallback for maintainers. Release and crates.io maintainer setup is
-documented in `docs/release-publishing.md`.
+the `jikji` executable on `PATH`. crates.io publishing uses trusted publishing
+from the `main` publish workflow; token-based publishing is only a manual
+fallback for maintainers. Release and crates.io maintainer setup is documented
+in `docs/release-publishing.md`.
 
 Korean example:
 

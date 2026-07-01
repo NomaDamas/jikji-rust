@@ -27,10 +27,11 @@ jikji --help
 Download the release archive for your OS from GitHub Releases, verify the
 published SHA-256 checksum, and place the `jikji` executable on `PATH`.
 
-Maintainer releases build OS binaries and publish crates through the trusted
-publishing workflow. A crates.io token-secret publish path is only a documented
-fallback, not the normal release path. See `docs/release-publishing.md` for the
-required crates.io trusted-publisher repository configuration.
+Maintainer releases build OS binaries through the release workflow. Rust crates
+publish automatically from the trusted `main` publishing workflow, and a
+crates.io token-secret publish path is only a documented fallback, not the
+normal release path. See `docs/release-publishing.md` for the required
+crates.io trusted-publisher repository configuration.
 
 ### One-sentence agent install
 

@@ -31,12 +31,18 @@ bash scripts/release/build-artifacts.sh --dry-run
 
 ## crates.io Trusted Publishing
 
-`.github/workflows/publish.yml` is the primary crates.io publish path. It grants
-`id-token: write`, uses `rust-lang/crates-io-auth-action@v1`, and passes the
-temporary trusted-publishing token to `cargo publish`. The workflow verifies the
-workspace package tarballs with real `cargo package` verification before
+`.github/workflows/publish.yml` is the primary crates.io publish path. It runs
+automatically after pushes to `main`, and it also supports GitHub Release
+publishing plus manual package verification through `workflow_dispatch`. It
+grants `id-token: write`, uses `rust-lang/crates-io-auth-action@v1`, and passes
+the temporary trusted-publishing token to `cargo publish`. The workflow verifies
+the workspace package tarballs with real `cargo package` verification before
 publishing. Release publishing must run from a clean checkout; `--allow-dirty`
 is only for local package-shape inspection while a change is still under review.
+
+Before publishing, the workflow checks crates.io for each package/version pair.
+Versions that already exist are skipped so ordinary `main` pushes after a
+release do not fail by attempting to republish immutable crate versions.
 
 Before the first publish, configure every publishable crate on crates.io with a
 trusted publisher entry for this repository:
@@ -53,8 +59,8 @@ scripts under `tools/parity/`, not by a published Rust benchmark crate.
 
 ## Local Publish Dry Runs Before First Release
 
-`cargo package --workspace --exclude jikji-parity --exclude jikji-bench` is the local package-shape
-gate and should pass before release. For publish dry-runs before the first
+`cargo package --workspace --exclude jikji-parity --exclude jikji-bench` is the
+local package-shape gate and should pass before release. For publish dry-runs before the first
 crates.io release, only the first dependency crate can be fully proven against
 the live registry:
 
