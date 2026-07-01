@@ -22,6 +22,13 @@ Jikji may regenerate only its documented artifacts: `.jikji/manifest.json`, `.ji
 
 Local-agent standard docs live in `docs/local-agent-search-standard.md`, `docs/schema.md`, and `docs/agent-usage.md`.
 
+## Repository layout
+
+- `crates/` contains the Rust workspace and shipped CLI.
+- `python/jikji/` contains the Python package for reference behavior, benchmarks, golden capture, and optional media support.
+- `tests/parity/`, `tests/golden/`, and `tools/parity/` are cross-stack parity assets shared by Rust and Python.
+- Root `pyproject.toml` is workspace/tooling configuration; Python package metadata lives in `python/jikji/pyproject.toml`.
+
 ## Current commands
 
 ```bash
@@ -38,11 +45,11 @@ Local dev:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e .
+.venv/bin/pip install -e python/jikji
 .venv/bin/pip install pytest ruff
-.venv/bin/ruff check src tests
-.venv/bin/pytest -q
-.venv/bin/python -m compileall -q src tests
+.venv/bin/ruff check python/jikji/src python/jikji/tests tests/parity tools/parity
+.venv/bin/pytest python/jikji/tests tests/parity -q
+.venv/bin/python -m compileall -q python/jikji/src python/jikji/tests tests/parity tools/parity
 ```
 
 ## Resume context

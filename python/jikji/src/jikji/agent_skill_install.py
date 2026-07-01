@@ -44,10 +44,17 @@ CUSTOM_AGENT_NAMES = ("custom", "universal", "any")
 
 
 def repo_skill_path() -> Path:
-    path = Path(__file__).resolve().parents[2] / "skills" / "jikji" / "SKILL.md"
+    path = _repo_root() / "skills" / "jikji" / "SKILL.md"
     if not path.exists():
         raise FileNotFoundError(f"Cannot find repo skill file: {path}")
     return path
+
+
+def _repo_root() -> Path:
+    for candidate in Path(__file__).resolve().parents:
+        if (candidate / "Cargo.toml").is_file() and (candidate / "skills" / "jikji" / "SKILL.md").is_file():
+            return candidate
+    return Path(__file__).resolve().parents[2]
 
 
 def normalize_agent_name(agent: str) -> str:

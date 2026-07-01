@@ -44,7 +44,7 @@ class CompareArgs:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
-    sys.path.insert(0, str(args.python_repo / "src"))
+    sys.path.insert(0, str(_python_source_root(args.python_repo)))
     from jikji import hippocamp  # noqa: PLC0415
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -77,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
             prepare=False,
         )
         original_search = hippocamp.search
-        setattr(hippocamp, "search", _rust_search(args.rust_bin))
+        hippocamp.search = _rust_search(args.rust_bin)
         try:
             rust_result = hippocamp.run_benchmark(
                 rust_root,
@@ -87,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
                 prepare=False,
             )
         finally:
-            setattr(hippocamp, "search", original_search)
+            hippocamp.search = original_search
         python_report_path = args.out.with_name(f"{args.out.stem}.python-report.json")
         rust_report_path = args.out.with_name(f"{args.out.stem}.rust-report.json")
         shutil.copy2(python_result.report_path, python_report_path)
@@ -125,7 +125,7 @@ def _parse_args(argv: list[str]) -> CompareArgs:
     rust_bin = Path(values["--rust-bin"]).expanduser().resolve()
     dataset = Path(values["--dataset"]).expanduser().resolve()
     annotation = Path(values["--annotation"]).expanduser().resolve()
-    if not (python_repo / "src" / "jikji" / "hippocamp.py").exists():
+    if not (_python_source_root(python_repo) / "jikji" / "hippocamp.py").exists():
         raise SystemExit(f"not a Python Jikji repo: {python_repo}")
     if not rust_bin.exists():
         raise SystemExit(f"missing Rust binary: {rust_bin}")
@@ -148,7 +148,7 @@ def _copy_dataset(source: Path, target: Path) -> None:
 
 
 def _run_python_prepare(args: CompareArgs, root: Path) -> None:
-    env = {**os.environ, "PYTHONPATH": str(args.python_repo / "src")}
+    env = {**os.environ, "PYTHONPATH": str(_python_source_root(args.python_repo))}
     subprocess.run(
         (sys.executable, "-m", "jikji.__main__", "prepare", str(root), "--json"),
         cwd=args.python_repo,
@@ -158,6 +158,13 @@ def _run_python_prepare(args: CompareArgs, root: Path) -> None:
         timeout=TIMEOUT_S,
         check=True,
     )
+
+
+def _python_source_root(python_repo: Path) -> Path:
+    monorepo_source = python_repo / "python" / "jikji" / "src"
+    if (monorepo_source / "jikji" / "hippocamp.py").exists():
+        return monorepo_source
+    return python_repo / "src"
 
 
 def _run_rust_prepare(args: CompareArgs, root: Path) -> None:

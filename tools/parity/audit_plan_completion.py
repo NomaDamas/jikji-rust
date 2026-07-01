@@ -10,9 +10,10 @@ from __future__ import annotations
 import json
 import re
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Sequence, TypeAlias
+from typing import Final, TypeAlias
 
 Json: TypeAlias = str | int | float | bool | None | list["Json"] | dict[str, "Json"]
 

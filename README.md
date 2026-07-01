@@ -218,6 +218,24 @@ AGENTS.md / CLAUDE.md / .cursorrules  routing block pointing agents to `jikji fi
 .jikji/graph_routes.jsonl   low-token route rows
 ```
 
+## Repository Layout
+
+This repository is intentionally structured as a Rust/Python monorepo:
+
+```text
+crates/                    Rust workspace crates and the shipped CLI
+python/jikji/              Python reference, benchmark, and media package
+tests/parity/              Cross-stack contract tests
+tests/golden/              Checked-in Python golden fixtures for Rust parity
+tools/parity/              Python-vs-Rust parity and benchmark harnesses
+skills/                    Local-agent skill assets
+docs/                      Product, release, and benchmark documentation
+```
+
+The Rust CLI is the product distribution surface. The Python package remains a
+first-class workspace member for reference behavior, benchmark compatibility,
+golden fixture capture, and optional media/OCR-ASR support.
+
 Generated artifacts can be regenerated or removed with `jikji clean`. The routing
 block in `AGENTS.md` / `CLAUDE.md` / `.cursorrules` is updated in place on each
 prepare and can be skipped with `jikji prepare ROOT --no-agent-rules`; `jikji
@@ -253,11 +271,11 @@ jikji prepare ROOT --enable-media-index --media-index-max-mb 25
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -e .
+.venv/bin/pip install -e python/jikji
 .venv/bin/pip install pytest ruff
-.venv/bin/ruff check src tests
-.venv/bin/pytest -q
-.venv/bin/python -m compileall -q src tests
+.venv/bin/ruff check python/jikji/src python/jikji/tests tests/parity tools/parity
+.venv/bin/pytest python/jikji/tests tests/parity -q
+.venv/bin/python -m compileall -q python/jikji/src python/jikji/tests tests/parity tools/parity
 ```
 
 ## License

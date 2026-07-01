@@ -40,7 +40,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install Python reference package
-        run: python -m pip install -e . pytest
+        run: python -m pip install -e python/jikji pytest
 
       - name: Format
         run: cargo fmt --all -- --check
@@ -52,7 +52,7 @@ jobs:
         run: cargo test --workspace --all-features
 
       - name: Python parity contract tests
-        run: python -m pytest tests/parity -q
+        run: python -m pytest python/jikji/tests tests/parity -q
 
       - name: Documentation smoke
         run: cargo doc --workspace --all-features --no-deps

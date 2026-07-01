@@ -101,7 +101,7 @@ def _parse_args(argv: list[str]) -> ParityArgs:
     python_repo = Path(values["--python-repo"]).expanduser().resolve()
     rust_bin = Path(values["--rust-bin"]).expanduser().resolve()
     fixtures = Path(values["--fixtures"]).expanduser().resolve()
-    if not (python_repo / "src" / "jikji" / "__main__.py").exists():
+    if not (_python_source_root(python_repo) / "jikji" / "__main__.py").exists():
         raise SystemExit(f"not a Jikji Python repo: {python_repo}")
     if not rust_bin.exists():
         raise SystemExit(f"missing Rust binary: {rust_bin}")
@@ -141,7 +141,7 @@ def _run_scenarios(
             executable=(sys.executable, "-m", "jikji.__main__"),
             cwd=args.python_repo,
             root=python_root,
-            env={**os.environ, "PYTHONPATH": str(args.python_repo / "src")},
+            env={**os.environ, "PYTHONPATH": str(_python_source_root(args.python_repo))},
         )
         rust_runtime = Runtime(
             label="rust",
@@ -169,6 +169,13 @@ def _run_scenarios(
             )
         )
     return tuple(results)
+
+
+def _python_source_root(python_repo: Path) -> Path:
+    monorepo_source = python_repo / "python" / "jikji" / "src"
+    if (monorepo_source / "jikji" / "__main__.py").exists():
+        return monorepo_source
+    return python_repo / "src"
 
 
 def _run_command_pairs(

@@ -75,7 +75,7 @@ def _parse_args(argv: list[str]) -> CaptureArgs:
     if set(values) != {"--python-repo", "--out"} or len(argv) != 4:
         raise SystemExit("usage: capture_python_golden.py --python-repo PATH --out PATH")
     python_repo = Path(values["--python-repo"]).expanduser().resolve()
-    if not (python_repo / "src" / "jikji" / "__main__.py").exists():
+    if not (_python_source_root(python_repo) / "jikji" / "__main__.py").exists():
         raise SystemExit(f"not a Jikji Python repo: {python_repo}")
     return CaptureArgs(python_repo=python_repo, out=Path(values["--out"]).resolve())
 
@@ -140,7 +140,7 @@ def _run_cli(runtime: Runtime, step: CliStep) -> CommandRecord:
         str(runtime.root) if item == "{root}" else runtime.retry_proof if item == "{retry_proof}" else item
         for item in step.args
     )
-    env = {**os.environ, "PYTHONPATH": str(runtime.python_repo / "src")}
+    env = {**os.environ, "PYTHONPATH": str(_python_source_root(runtime.python_repo))}
     completed = subprocess.run(
         (sys.executable, "-m", "jikji.__main__", *command),
         cwd=runtime.python_repo,
@@ -165,6 +165,13 @@ def _run_cli(runtime: Runtime, step: CliStep) -> CommandRecord:
         parsed,
         actual_retry_proof,
     )
+
+
+def _python_source_root(python_repo: Path) -> Path:
+    monorepo_source = python_repo / "python" / "jikji" / "src"
+    if (monorepo_source / "jikji" / "__main__.py").exists():
+        return monorepo_source
+    return python_repo / "src"
 
 
 def _extract_retry_proof(stdout: str) -> str:

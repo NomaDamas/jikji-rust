@@ -6,8 +6,13 @@ from pathlib import Path
 TOOLS_PARITY = Path(__file__).resolve().parents[2] / "tools" / "parity"
 sys.path.insert(0, str(TOOLS_PARITY))
 
-from run_rust_vs_python import Json, _artifact_diff_summary, _command_failures  # noqa: E402
-from run_rust_vs_python import CommandPair, CommandRun  # noqa: E402
+from run_rust_vs_python import (  # noqa: E402  # noqa: E402
+    CommandPair,
+    CommandRun,
+    Json,
+    _artifact_diff_summary,
+    _command_failures,
+)
 
 
 def _artifact(path: str, digest: str = "same") -> dict[str, str | int]:

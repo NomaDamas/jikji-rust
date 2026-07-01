@@ -12,11 +12,16 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Sequence, TypeAlias
+from typing import Final, TypeAlias
 
-from scope_contract import PYTHON_BENCHMARK_COMPAT_RATIONALE, REQUIRED_CRATES, REQUIRED_RUST_COMMANDS
+from scope_contract import (
+    PYTHON_BENCHMARK_COMPAT_RATIONALE,
+    REQUIRED_CRATES,
+    REQUIRED_RUST_COMMANDS,
+)
 
 Json: TypeAlias = str | int | float | bool | None | list["Json"] | dict[str, "Json"]
 
@@ -109,7 +114,7 @@ def parse_args(argv: Sequence[str]) -> ScopeArgs:
 
 
 def python_cli_commands(python_repo: Path, issues: list[str]) -> set[str]:
-    source = python_repo / "src/jikji/__main__.py"
+    source = python_cli_source(python_repo)
     if not source.is_file():
         issues.append(f"missing Python reference CLI: {source}")
         return set()
@@ -123,6 +128,13 @@ def python_cli_commands(python_repo: Path, issues: list[str]) -> set[str]:
         if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
             commands.add(node.args[0].value)
     return commands
+
+
+def python_cli_source(python_repo: Path) -> Path:
+    monorepo_source = python_repo / "python/jikji/src/jikji/__main__.py"
+    if monorepo_source.is_file():
+        return monorepo_source
+    return python_repo / "src/jikji/__main__.py"
 
 
 def rust_help_commands(rust_workspace: Path, issues: list[str]) -> set[str]:

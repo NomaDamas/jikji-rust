@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from golden_fixtures import CliStep
 from parity_artifacts import Json, _ranked_paths
-from parity_commands import Runtime, _run_cli
+from parity_commands import Runtime, _python_source_root, _run_cli
 from parity_scenarios import _build_scenario, _copy_tree, _generated_temp_scenario
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ def _benchmark_prepare_search_find(args: ParityArgs, root: Path) -> dict[str, Js
         executable=(sys.executable, "-m", "jikji.__main__"),
         cwd=args.python_repo,
         root=python_root,
-        env={**os.environ, "PYTHONPATH": str(args.python_repo / "src")},
+        env={**os.environ, "PYTHONPATH": str(_python_source_root(args.python_repo))},
     )
     rust_runtime = Runtime(
         label="rust",

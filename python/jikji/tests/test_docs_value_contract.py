@@ -3,7 +3,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+
+def _repo_root() -> Path:
+    for candidate in Path(__file__).resolve().parents:
+        if (candidate / "Cargo.toml").is_file() and (candidate / "README.md").is_file():
+            return candidate
+    raise RuntimeError("Cannot locate repository root")
+
+
+ROOT = _repo_root()
 
 
 def _read(path: str) -> str:
@@ -57,7 +65,7 @@ def test_index_is_a_real_landing_page_not_only_redirect():
     assert "href=\"#agent-install\"" in html
     assert "에이전트 설치 지시문" in html
     assert "CLI 에이전트에게 아래 한 문장만 그대로 말하면 된다" in html
-    assert "GitHub 저장소 https://github.com/NomaDamas/jikji 에서 Jikji를 설치하고" in html
+    assert "GitHub 저장소 https://github.com/NomaDamas/jikji-rust 에서 Jikji를 설치하고" in html
     assert "mkdir -p ~/.local/share/jikji" not in html
     assert "href=\"./agent-installation.md\"" not in html
     assert "비교 실험 결과" in html

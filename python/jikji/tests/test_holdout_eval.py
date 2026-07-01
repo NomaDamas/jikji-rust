@@ -4,7 +4,7 @@ from jikji.holdout_eval import generate_holdout_eval_set
 
 
 def test_holdout_generator_is_scorer_blind_by_import_text():
-    source = Path("src/jikji/holdout_eval.py").read_text(encoding="utf-8")
+    source = Path("python/jikji/src/jikji/holdout_eval.py").read_text(encoding="utf-8")
     assert "from .eval" not in source
     assert "import jikji.eval" not in source
     for forbidden in (
