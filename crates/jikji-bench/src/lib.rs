@@ -93,11 +93,12 @@ mod tests {
     #[test]
     fn bench_run_accepts_python_style_expected_paths() {
         let dir = tempfile::tempdir().expect("tempdir");
+        let eval_dir = tempfile::tempdir().expect("eval tempdir");
         fs::create_dir_all(dir.path().join("docs")).expect("mkdir");
         fs::write(dir.path().join("docs/target.txt"), "needle answer").expect("write target");
         fs::write(dir.path().join("docs/decoy.txt"), "unrelated").expect("write decoy");
         jikji_index::prepare(dir.path(), &jikji_core::PrepareOptions::default()).expect("prepare");
-        let eval_set = dir.path().join("hippocamp_eval.jsonl");
+        let eval_set = eval_dir.path().join("hippocamp_eval.jsonl");
         fs::write(
             &eval_set,
             r#"{"query":"needle","expected_paths":["docs/missing.txt","docs/target.txt"],"scenario":"hippocamp"}

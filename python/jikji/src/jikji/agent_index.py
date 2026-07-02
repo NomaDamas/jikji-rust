@@ -302,7 +302,7 @@ def _remove_stale_lock(lock_path: Path) -> bool:
         except OSError:
             return False
     except OSError:
-        return False
+        return _unlink_if_lock_age_stale(lock_path, data)
     # PID reuse can make an unrelated live process look like the original
     # Jikji writer. A coarse age fallback prevents permanent deadlocks while
     # still giving normal prepare runs ample time to finish.
