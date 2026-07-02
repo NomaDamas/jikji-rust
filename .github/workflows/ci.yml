@@ -52,7 +52,12 @@ jobs:
         run: cargo test --workspace --all-features
 
       - name: Python parity contract tests
+        if: runner.os != 'Windows'
         run: python -m pytest python/jikji/tests tests/parity -q
+
+      - name: Windows Python compatibility smoke
+        if: runner.os == 'Windows'
+        run: python -m pytest python/jikji/tests/test_jikji_prepare.py::test_prepare_recovers_stale_lock -q
 
       - name: Documentation smoke
         run: cargo doc --workspace --all-features --no-deps
